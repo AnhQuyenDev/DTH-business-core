@@ -104,6 +104,17 @@ class FormTemplateResource extends Resource
                         ->defaultItems(0)
                         ->reorderableWithButtons()
                         ->collapsed()
+                        ->itemLabel(
+                            function (array $state): string {
+                                $label = trim(
+                                    (string) ($state['label'] ?? '')
+                                );
+                                if ($label !== '') {
+                                    return $label;
+                                } 
+                                return '';
+                            }
+                        )
                         ->schema([
                             TextInput::make('label')->label(__('field.field_label'))->required()->maxLength(255),
                             TextInput::make('field_key')->label(__('field.field_key'))->required()->maxLength(255),

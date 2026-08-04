@@ -75,8 +75,8 @@ class ListLandingPages extends ListRecords
                         Notification::make()
                             ->title('Tạo Landing Page thành công')
                             ->body(
-                                'Form có sẵn trong HTML đã được loại bỏ. '
-                                .'Bạn cần gắn Form cá nhân và Form doanh nghiệp trước khi xuất bản.'
+                                'Form có sẵn trong HTML đã được loại bỏ'
+                                .'Bạn cần gắn Form cá nhân và Form doanh nghiệp trước khi xuất bản'
                             )
                             ->success()
                             ->send();
