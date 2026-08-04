@@ -4,9 +4,8 @@ namespace App\Filament\Resources\LandingPageResource\Pages;
 
 use App\Filament\Resources\LandingPageResource;
 use App\Models\Marketing\Campaign;
-use App\Models\Marketing\LandingPage;
 use App\Models\Marketing\MarketingCampaign;
-use App\Services\Marketing\LandingPageRenderService;
+use App\Services\Marketing\LandingPageImportService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -14,6 +13,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Throwable;
 
 class ListLandingPages extends ListRecords
 {
@@ -47,25 +47,52 @@ class ListLandingPages extends ListRecords
                         ->disk('local'),
                 ])
                 ->action(function (array $data): void {
-                    $filePath = storage_path('app/private/'.$data['html_file']);
-                    $content = file_get_contents($filePath);
-                    @unlink($filePath);
-                    $body = app(LandingPageRenderService::class)->extractBodyContent($content);
+                    $filePath = storage_path(
+                        'app/private/'.$data['html_file']
+                    );
 
-                    LandingPage::query()->create([
-                        'name' => (string) $data['name'],
-                        'slug' => (string) $data['slug'],
-                        'marketing_campaign_id' => $data['marketing_campaign_id'] ?? null,
-                        'campaign_id' => $data['campaign_id'] ?? null,
-                        'html_body' => $body,
-                        'status' => 'draft',
-                        'created_by' => auth()->id(),
-                    ]);
+                    try {
+                        if (! is_file($filePath)) {
+                            throw new \RuntimeException(
+                                'Không tìm thấy file HTML đã tải lên.'
+                            );
+                        }
 
-                    Notification::make()
-                        ->title(__('notification.created'))
-                        ->success()
-                        ->send();
+                        $content = file_get_contents($filePath);
+
+                        if ($content === false) {
+                            throw new \RuntimeException(
+                                'Không thể đọc nội dung file HTML.'
+                            );
+                        }
+
+                        app(LandingPageImportService::class)->import(
+                            data: $data,
+                            sourceHtml: $content,
+                            userId: auth()->id(),
+                        );
+
+                        Notification::make()
+                            ->title('Tạo Landing Page thành công')
+                            ->body(
+                                'Form có sẵn trong HTML đã được loại bỏ. '
+                                .'Bạn cần gắn Form cá nhân và Form doanh nghiệp trước khi xuất bản.'
+                            )
+                            ->success()
+                            ->send();
+                    } catch (Throwable $exception) {
+                        report($exception);
+
+                        Notification::make()
+                            ->title('Không thể import Landing Page')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+                    } finally {
+                        if (is_file($filePath)) {
+                            unlink($filePath);
+                        }
+                    }
                 }),
         ];
     }

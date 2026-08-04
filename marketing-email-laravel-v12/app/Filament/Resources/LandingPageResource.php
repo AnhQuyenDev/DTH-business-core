@@ -10,7 +10,6 @@ use App\Models\Marketing\LandingPage;
 use App\Models\Marketing\LandingPageUtmUrl;
 use App\Support\UtmOptions;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -29,7 +28,10 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-
+use App\Enums\Marketing\FormAudienceType;
+use App\Enums\Marketing\FormTemplateStatus;
+use Filament\Forms\Components\Tabs;
+use Filament\Forms\Components\ColorPicker;
 class LandingPageResource extends Resource
 {
     protected static ?string $model = LandingPage::class;
@@ -88,43 +90,122 @@ class LandingPageResource extends Resource
                 Select::make('status')->label(__('field.status'))->options(LandingPageStatus::options())->default('draft')->required(),
                 DateTimePicker::make('published_at')->label(__('field.published_at')),
             ]),
-            Section::make(__('section.landing_page_forms'))->schema([
-                Repeater::make('forms')
-                    ->relationship('forms')
-                    ->label(__('field.form_template'))
-                    ->addActionLabel(__('action.add_form'))
-                    ->defaultItems(0)
-                    ->reorderableWithButtons()
-                    ->schema([
-                        Select::make('form_template_id')
-                            ->label(__('field.form_template'))
-                            ->options(FormTemplate::query()->orderBy('name')->pluck('name', 'id'))
-                            ->searchable()
-                            ->required(),
-                        Select::make('form_type')
-                            ->label(__('field.form_type'))
-                            ->options([
-                                'personal' => __('field.form_type.personal'),
-                                'business' => __('field.form_type.business'),
-                                'generic' => __('field.form_type.generic'),
-                            ])
-                            ->required(),
-                        TextInput::make('display_mode')->label(__('field.method'))->default('embedded')->maxLength(30),
-                        TextInput::make('position_key')->label(__('field.position_key'))->maxLength(100),
-                        Toggle::make('is_default')->label(__('field.is_default'))->default(false),
-                        TextInput::make('sort_order')->label(__('field.sort_order'))->numeric()->default(0),
-                        Select::make('status')
-                            ->label(__('field.status'))
-                            ->options([
-                                'active' => __('field.status_active'),
-                                'inactive' => __('field.status_inactive'),
-                            ])
-                            ->default('active')
-                            ->required(),
-                    ])
-                    ->columns(2)
-                    ->columnSpanFull(),
-            ]),
+            Section::make(__('section.landing_page_forms'))
+                ->description(
+                    'Mỗi Landing Page cần một Form cá nhân và một Form doanh nghiệp. '
+                    .'Hai form sẽ được hiển thị dưới dạng tab ở cuối Landing Page.'
+                )
+                ->schema([
+                    Tabs::make('landing_page_form_tabs')
+                        ->tabs([
+                            Tabs\Tab::make(
+                                __('field.form_type.personal')
+                            )
+                                ->icon('heroicon-o-user')
+                                ->schema([
+                                    Select::make(
+                                        'personal_form_template_id'
+                                    )
+                                        ->label('Mẫu Form cá nhân')
+                                        ->options(
+                                            fn (): array =>
+                                                FormTemplate::query()
+                                                    ->where(
+                                                        'audience_type',
+                                                        FormAudienceType::Personal->value
+                                                    )
+                                                    ->where(
+                                                        'status',
+                                                        FormTemplateStatus::Active->value
+                                                    )
+                                                    ->orderBy('name')
+                                                    ->pluck('name', 'id')
+                                                    ->all()
+                                        )
+                                        ->searchable()
+                                        ->preload()
+                                        ->helperText(
+                                            'Chỉ hiển thị các mẫu cá nhân đang hoạt động.'
+                                        ),
+                                ]),
+
+                            Tabs\Tab::make(
+                                __('field.form_type.business')
+                            )
+                                ->icon('heroicon-o-building-office')
+                                ->schema([
+                                    Select::make(
+                                        'business_form_template_id'
+                                    )
+                                        ->label('Mẫu Form doanh nghiệp')
+                                        ->options(
+                                            fn (): array =>
+                                                FormTemplate::query()
+                                                    ->where(
+                                                        'audience_type',
+                                                        FormAudienceType::Business->value
+                                                    )
+                                                    ->where(
+                                                        'status',
+                                                        FormTemplateStatus::Active->value
+                                                    )
+                                                    ->orderBy('name')
+                                                    ->pluck('name', 'id')
+                                                    ->all()
+                                        )
+                                        ->searchable()
+                                        ->preload()
+                                        ->helperText(
+                                            'Chỉ hiển thị các mẫu doanh nghiệp đang hoạt động.'
+                                        ),
+                                ]),
+                        ])
+                        ->columnSpanFull(),
+                ]),
+            Section::make('Tone màu Form')
+                ->description(
+                    'Hệ thống tự nhận diện màu khi import. '
+                    .'Bạn có thể điều chỉnh nếu kết quả chưa phù hợp.'
+                )
+                ->columns(3)
+                ->schema([
+                    ColorPicker::make('theme_tokens.primary')
+                        ->label('Màu chính')
+                        ->default('#2563eb'),
+
+                    ColorPicker::make('theme_tokens.primary_hover')
+                        ->label('Màu hover')
+                        ->default('#1d4ed8'),
+
+                    ColorPicker::make('theme_tokens.background')
+                        ->label('Nền vùng form')
+                        ->default('#f8fafc'),
+
+                    ColorPicker::make('theme_tokens.surface')
+                        ->label('Nền khung form')
+                        ->default('#ffffff'),
+
+                    ColorPicker::make('theme_tokens.text')
+                        ->label('Màu chữ')
+                        ->default('#0f172a'),
+
+                    ColorPicker::make('theme_tokens.muted_text')
+                        ->label('Màu chữ phụ')
+                        ->default('#64748b'),
+
+                    ColorPicker::make('theme_tokens.border')
+                        ->label('Màu viền')
+                        ->default('#cbd5e1'),
+
+                    ColorPicker::make('theme_tokens.danger')
+                        ->label('Màu báo lỗi')
+                        ->default('#dc2626'),
+
+                    TextInput::make('theme_tokens.radius')
+                        ->label('Bo góc')
+                        ->default('12px')
+                        ->placeholder('12px'),
+                ]),
             Section::make(__('section.automation'))->columns(1)->schema([
                 TagsInput::make('auto_tag_names'),
                 TagsInput::make('auto_list_names'),
@@ -191,10 +272,45 @@ class LandingPageResource extends Resource
                     ->action(function (LandingPage $record): void {
                         if (! $record->campaign_id && ! $record->marketing_campaign_id) {
                             Notification::make()->title(__('notification.failed'))->body(__('notification.landing_page_requires_campaign'))->danger()->send();
+                            return;
+                        }
+                        $hasPersonalForm = $record->forms()
+                            ->where('form_type', 'personal')
+                            ->where('status', 'active')
+                            ->whereHas('formTemplate', function ($query): void {
+                                $query->where('status', 'active');
+                            })
+                            ->exists();
+
+                        $hasBusinessForm = $record->forms()
+                            ->where('form_type', 'business')
+                            ->where('status', 'active')
+                            ->whereHas('formTemplate', function ($query): void {
+                                $query->where('status', 'active');
+                            })
+                            ->exists();
+
+                        if (! $hasPersonalForm || ! $hasBusinessForm) {
+                            $missing = [];
+
+                            if (! $hasPersonalForm) {
+                                $missing[] = 'Form cá nhân';
+                            }
+
+                            if (! $hasBusinessForm) {
+                                $missing[] = 'Form doanh nghiệp';
+                            }
+
+                            Notification::make()
+                                ->title('Chưa thể xuất bản Landing Page')
+                                ->body(
+                                    'Thiếu: '.implode(', ', $missing).'.'
+                                )
+                                ->danger()
+                                ->send();
 
                             return;
                         }
-
                         $record->update([
                             'status' => LandingPageStatus::Published->value,
                             'published_at' => now(),

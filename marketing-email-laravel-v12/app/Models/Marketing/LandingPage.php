@@ -27,6 +27,7 @@ class LandingPage extends Model
         'cta_text',
         'html_body',
         'css_body',
+        'theme_tokens',
         'thumbnail_path',
         'tracking_source',
         'campaign_id',
@@ -49,6 +50,7 @@ class LandingPage extends Model
             'auto_create_tags' => 'boolean',
             'auto_create_lists' => 'boolean',
             'auto_create_segment' => 'boolean',
+            'theme_tokens' => 'array',
             'status' => LandingPageStatus::class,
             'published_at' => 'datetime',
         ];

@@ -6,6 +6,7 @@ use App\Http\Controllers\Marketing\Admin\LandingPageUtmUrlController;
 use App\Http\Controllers\Marketing\Public\EmailTrackingController;
 use App\Http\Controllers\Marketing\Public\LandingPageController;
 use App\Http\Controllers\Marketing\Public\UnsubscribeController;
+use App\Http\Controllers\Marketing\Admin\FormTemplatePreviewController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Sales\QuotationPublicController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,10 @@ Route::middleware(['web', 'auth'])->prefix('admin/marketing')->name('marketing.'
     Route::get('landing-pages/{landingPage}/preview', [LandingPagePreviewController::class, 'preview'])->name('landing-pages.preview');
     Route::delete('landing-pages/{landingPage}/utm-urls/{utmUrl}', [LandingPageUtmUrlController::class, 'destroy'])->name('landing-pages.utm-urls.destroy');
     Route::get('email-templates/{emailTemplate}/preview', [EmailTemplatePreviewController::class, 'preview'])->name('email-templates.preview');
+    Route::get(
+        'form-templates/{formTemplate}/preview',
+        [FormTemplatePreviewController::class, 'preview']
+    )->name('form-templates.preview');
 });
 
 // ─── Public Tracking Routes (no auth) ─────────────────────────────────────

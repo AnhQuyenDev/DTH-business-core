@@ -1,10 +1,16 @@
 <?php
 
 namespace App\Services\Marketing;
-
+use App\Models\Marketing\FormTemplate;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 class FormTemplateImportService
 {
-    public function parseFieldsFromHtml(string $html): array
+    public function __construct(
+    private readonly LandingPageRenderService $renderer) {
+
+    }
+    public function parseFieldsFromHtml(string $html,string $audienceType): array
     {
         $dom = new \DOMDocument();
         @$dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
@@ -49,8 +55,13 @@ class FormTemplateImportService
                 'options'           => null,
                 'default_value'     => $input->getAttribute('value') ?: null,
                 'is_required'       => $input->hasAttribute('required'),
-                'contact_mapping'   => self::suggestContactMapping($name, $fieldType),
+                'contact_mapping'   => self::suggestContactMapping(
+                                            $name,
+                                            $fieldType,
+                                            $audienceType
+                                        ),
                 'tag_from_value'    => false,
+                'position' => $sortOrder,
                 'sort_order'        => $sortOrder++,
                 'validation_rules'  => null,
             ];
@@ -70,8 +81,9 @@ class FormTemplateImportService
                 'options'           => null,
                 'default_value'     => null,
                 'is_required'       => $textarea->hasAttribute('required'),
-                'contact_mapping'   => self::suggestContactMapping($name, 'textarea'),
+                'contact_mapping'   => self::suggestContactMapping($name, 'textarea', $audienceType),
                 'tag_from_value'    => false,
+                'position' => $sortOrder,
                 'sort_order'        => $sortOrder++,
                 'validation_rules'  => null,
             ];
@@ -100,8 +112,9 @@ class FormTemplateImportService
                 'options'           => $options ?: null,
                 'default_value'     => null,
                 'is_required'       => $select->hasAttribute('required'),
-                'contact_mapping'   => self::suggestContactMapping($name, 'select'),
+                'contact_mapping'   => self::suggestContactMapping($name, 'select', $audienceType),
                 'tag_from_value'    => false,
+                'position' => $sortOrder,
                 'sort_order'        => $sortOrder++,
                 'validation_rules'  => null,
             ];
@@ -134,29 +147,174 @@ class FormTemplateImportService
         return null;
     }
 
-    public static function suggestContactMapping(string $fieldKey, string $fieldType): ?string
-    {
-        $map = [
+    public static function suggestContactMapping(
+        string $fieldKey,
+        string $fieldType,
+        string $audienceType
+    ): ?string {
+        $key = strtolower(trim($fieldKey));
+
+        $personalMap = [
             'first_name' => 'personal.first_name',
-            'last_name'  => 'personal.last_name',
-            'email'      => 'personal.email',
-            'phone'      => 'personal.phone',
-            'company_name' => 'business.company_name',
-            'company'    => 'business.company_name',
-            'tax_code'   => 'business.tax_code',
-            'business_email' => 'business.business_email',
-            'business_phone' => 'business.business_phone',
+            'last_name' => 'personal.last_name',
+            'full_name' => 'personal.first_name',
+            'email' => 'personal.email',
+            'phone' => 'personal.phone',
+            'date_of_birth' => 'personal.date_of_birth',
+            'gender' => 'personal.gender',
+            'occupation' => 'personal.occupation',
         ];
 
-        $key = strtolower(trim($fieldKey));
-        if (isset($map[$key])) {
-            return $map[$key];
+        $businessMap = [
+            'company_name' => 'business.company_name',
+            'company' => 'business.company_name',
+            'tax_code' => 'business.tax_code',
+            'business_email' => 'business.business_email',
+            'email' => 'business.business_email',
+            'business_phone' => 'business.business_phone',
+            'phone' => 'business.business_phone',
+            'company_address' => 'business.company_address',
+            'legal_representative' =>
+                'business.legal_representative',
+            'contact_position' =>
+                'business.contact_position',
+            'industry' => 'business.industry',
+        ];
+
+        $mapping = $audienceType === 'business'
+            ? $businessMap
+            : $personalMap;
+
+        if (isset($mapping[$key])) {
+            return $mapping[$key];
         }
 
         if ($fieldType === 'email') {
-            return 'personal.email';
+            return $audienceType === 'business'
+                ? 'business.business_email'
+                : 'personal.email';
+        }
+
+        if ($fieldType === 'phone') {
+            return $audienceType === 'business'
+                ? 'business.business_phone'
+                : 'personal.phone';
         }
 
         return null;
+    }
+
+    public function import(array $data,string $sourceHtml,?int $userId): FormTemplate {
+        $audienceType = (string) $data['audience_type'];
+
+        if (! in_array($audienceType, ['personal', 'business'], true)) {
+            throw new RuntimeException(
+                'Form Template chỉ được thuộc loại Cá nhân hoặc Doanh nghiệp.'
+            );
+        }
+
+        $formHtml = $this->extractSingleForm($sourceHtml);
+
+        $fields = $this->parseFieldsFromHtml(
+            $formHtml,
+            $audienceType
+        );
+
+        if ($fields === []) {
+            throw new RuntimeException(
+                'Không tìm thấy input, select hoặc textarea hợp lệ trong form.'
+            );
+        }
+
+        return DB::transaction(function () use (
+            $data,
+            $audienceType,
+            $formHtml,
+            $fields,
+            $userId
+        ): FormTemplate {
+            $formTemplate = FormTemplate::query()->create([
+                'name' => (string) $data['name'],
+                'slug' => (string) $data['slug'],
+                'audience_type' => $audienceType,
+                'status' => 'draft',
+                'submit_button_text' =>
+                    $data['submit_button_text'] ?? 'Gửi thông tin',
+                'html_body' => $formHtml,
+                'created_by' => $userId,
+            ]);
+
+            $formTemplate->fields()->createMany($fields);
+
+            return $formTemplate->fresh('fields');
+        });
+    }
+
+    private function extractSingleForm(string $html): string
+    {
+        $html = $this->renderer->sanitizeImportedHtml(
+            $html,
+            false
+        );
+
+        preg_match_all(
+            '/<form\b[^>]*>.*?<\/form>/is',
+            $html,
+            $matches
+        );
+
+        $forms = $matches[0] ?? [];
+
+        if (count($forms) === 0) {
+            throw new RuntimeException(
+                'File HTML không chứa thẻ <form>.'
+            );
+        }
+
+        if (count($forms) > 1) {
+            throw new RuntimeException(
+                'Mỗi Form Template chỉ được chứa một thẻ <form>.'
+            );
+        }
+
+        $formHtml = $this->addSystemFormClass($forms[0]);
+
+        /*
+        * Chỉ giữ CSS nằm trong <style>.
+        * Không giữ toàn bộ <html>, <head> hoặc <body>.
+        */
+        preg_match_all(
+            '/<style\b[^>]*>.*?<\/style>/is',
+            $html,
+            $styleMatches
+        );
+
+        $styles = implode("\n", $styleMatches[0] ?? []);
+
+        return trim(
+            $styles."\n".
+            '<div class="lp-form-template">'.
+            $formHtml.
+            '</div>'
+        );
+    }
+
+    private function addSystemFormClass(string $formHtml): string
+    {
+        if (preg_match('/<form\b[^>]*class\s*=/i', $formHtml)) {
+            return preg_replace(
+                '/(<form\b[^>]*class\s*=\s*["\'])([^"\']*)/i',
+                '$1$2 lp-form-template__form',
+                $formHtml,
+                1
+            ) ?? $formHtml;
+        }
+
+        return preg_replace(
+            '/<form\b/i',
+            '<form class="lp-form-template__form"',
+            $formHtml,
+            1
+        ) ?? $formHtml;
     }
 }

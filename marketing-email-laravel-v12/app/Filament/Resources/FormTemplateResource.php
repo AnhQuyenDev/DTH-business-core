@@ -26,7 +26,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-
+use Filament\Tables\Actions\Action;
 class FormTemplateResource extends Resource
 {
     protected static ?string $model = FormTemplate::class;
@@ -78,7 +78,17 @@ class FormTemplateResource extends Resource
                 ->schema([
                     TextInput::make('name')->label(__('field.name'))->required()->maxLength(255),
                     TextInput::make('slug')->label(__('field.slug'))->required()->maxLength(255)->unique(ignoreRecord: true),
-                    Select::make('audience_type')->label(__('field.form_type'))->options(FormAudienceType::options())->default('generic')->required()->live(),
+                    Select::make('audience_type')
+                        ->label(__('field.form_type'))
+                        ->options([
+                            FormAudienceType::Personal->value =>
+                                FormAudienceType::Personal->label(),
+                            FormAudienceType::Business->value =>
+                                FormAudienceType::Business->label(),
+                        ])
+                        ->default(FormAudienceType::Personal->value)
+                        ->required()
+                        ->live(),
                     Select::make('status')->label(__('field.status'))->options(FormTemplateStatus::options())->default('draft')->required(),
                     TextInput::make('submit_button_text')->label(__('field.submit_button_text'))->maxLength(100)->default(__('field.submit')),
                     TextInput::make('success_message')->label(__('field.success_message'))->maxLength(255),
@@ -187,6 +197,17 @@ class FormTemplateResource extends Resource
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable(),
         ])
             ->actions([ActionGroup::make([
+                Action::make('preview')
+                    ->label('Xem trước')
+                    ->icon('heroicon-o-eye')
+                    ->url(
+                        fn (FormTemplate $record): string =>
+                            route(
+                                'marketing.form-templates.preview',
+                                $record
+                            )
+                    )
+                    ->openUrlInNewTab(),
                 EditAction::make(),
                 DeleteAction::make(),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton()])

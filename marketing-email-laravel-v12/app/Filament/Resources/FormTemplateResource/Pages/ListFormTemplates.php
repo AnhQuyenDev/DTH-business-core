@@ -4,8 +4,6 @@ namespace App\Filament\Resources\FormTemplateResource\Pages;
 
 use App\Enums\Marketing\FormAudienceType;
 use App\Filament\Resources\FormTemplateResource;
-use App\Models\Marketing\FormTemplate;
-use App\Services\Marketing\LandingPageRenderService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -13,7 +11,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
-
+use App\Services\Marketing\FormTemplateImportService;
+use Throwable;
 class ListFormTemplates extends ListRecords
 {
     protected static string $resource = FormTemplateResource::class;
@@ -31,8 +30,13 @@ class ListFormTemplates extends ListRecords
                     TextInput::make('slug')->label(__('field.slug'))->required()->maxLength(255),
                     Select::make('audience_type')
                         ->label(__('field.form_type'))
-                        ->options(FormAudienceType::options())
-                        ->default(FormAudienceType::Generic->value)
+                        ->options([
+                            FormAudienceType::Personal->value =>
+                                FormAudienceType::Personal->label(),
+                            FormAudienceType::Business->value =>
+                                FormAudienceType::Business->label(),
+                        ])
+                        ->default(FormAudienceType::Personal->value)
                         ->required(),
                     FileUpload::make('html_file')
                         ->label(__('field.html_file'))
@@ -41,24 +45,54 @@ class ListFormTemplates extends ListRecords
                         ->disk('local'),
                 ])
                 ->action(function (array $data): void {
-                    $filePath = storage_path('app/private/'.$data['html_file']);
-                    $content = file_get_contents($filePath);
-                    @unlink($filePath);
-                    $body = app(LandingPageRenderService::class)->extractBodyContent($content);
+                    $filePath = storage_path(
+                        'app/private/'.$data['html_file']
+                    );
 
-                    FormTemplate::query()->create([
-                        'name' => (string) $data['name'],
-                        'slug' => (string) $data['slug'],
-                        'audience_type' => (string) $data['audience_type'],
-                        'status' => 'draft',
-                        'html_body' => $body,
-                        'created_by' => auth()->id(),
-                    ]);
+                    try {
+                        if (! is_file($filePath)) {
+                            throw new \RuntimeException(
+                                'Không tìm thấy file HTML đã tải lên.'
+                            );
+                        }
 
-                    Notification::make()
-                        ->title(__('notification.created'))
-                        ->success()
-                        ->send();
+                        $content = file_get_contents($filePath);
+
+                        if ($content === false) {
+                            throw new \RuntimeException(
+                                'Không thể đọc nội dung Form HTML.'
+                            );
+                        }
+
+                        $template = app(
+                            FormTemplateImportService::class
+                        )->import(
+                            data: $data,
+                            sourceHtml: $content,
+                            userId: auth()->id(),
+                        );
+
+                        Notification::make()
+                            ->title('Import Form Template thành công')
+                            ->body(
+                                "Đã tạo {$template->fields->count()} trường dữ liệu. "
+                                .'Form đang ở trạng thái nháp để bạn xem trước và kiểm tra mapping.'
+                            )
+                            ->success()
+                            ->send();
+                    } catch (Throwable $exception) {
+                        report($exception);
+
+                        Notification::make()
+                            ->title('Không thể import Form Template')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+                    } finally {
+                        if (is_file($filePath)) {
+                            unlink($filePath);
+                        }
+                    }
                 }),
         ];
     }

@@ -4,52 +4,106 @@ namespace App\Services\Marketing;
 
 use App\Models\Marketing\FormField;
 use App\Models\Marketing\LandingPage;
-
+use App\Models\Marketing\FormTemplate;
 class LandingPageRenderService
 {
-    public function render(LandingPage $landingPage, string $formType = 'personal'): string
-    {
-        $genericFormHtml = $this->renderGenericForm($landingPage);
+    public function __construct(private readonly LandingPageThemeService $themeService) {
 
-        if ($genericFormHtml !== null) {
-            $html = $landingPage->html_body;
-            $css = $landingPage->css_body;
-
-            if ($html) {
-                if ($css) {
-                    $html = str_replace('</head>', "<style>\n{$css}\n</style>\n</head>", $html);
-                }
-                $html = $this->ensureTailwindConfig($html);
-                $html = $this->replaceExistingFormsWithPlaceholder($html);
-
-                return $this->replacePlaceholders($html, $landingPage, $genericFormHtml, '', false);
-            }
-
-            $html = '<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{{page_title}}</title></head><body><h1>{{headline}}</h1><p>{{subheadline}}</p><div>{{content}}</div><div>{{form}}</div></body></html>';
-
-            return $this->replacePlaceholders($html, $landingPage, $genericFormHtml, '', false);
-        }
-
-        $hasBoth = $this->hasBothForms($landingPage);
-        $formPersonal = $this->renderForm($landingPage, 'personal', ! $hasBoth);
-        $formBusiness = $this->renderForm($landingPage, 'business', ! $hasBoth);
-
+    }
+    public function render(
+        LandingPage $landingPage,
+        string $formType = 'personal'
+    ): string {
         $html = $landingPage->html_body;
-        $css = $landingPage->css_body;
 
-        if ($html) {
-            if ($css) {
-                $html = str_replace('</head>', "<style>\n{$css}\n</style>\n</head>", $html);
-            }
-            $html = $this->ensureTailwindConfig($html);
-            $html = $this->replaceExistingFormsWithPlaceholder($html);
-
-            return $this->replacePlaceholders($html, $landingPage, $formPersonal, $formBusiness, $hasBoth);
+        if (blank($html)) {
+            $html = '<!DOCTYPE html>
+    <html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport"
+            content="width=device-width, initial-scale=1.0">
+        <title>{{page_title}}</title>
+    </head>
+    <body>
+        <h1>{{headline}}</h1>
+        <p>{{subheadline}}</p>
+        <div>{{content}}</div>
+    </body>
+    </html>';
         }
 
-        $html = '<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{{page_title}}</title></head><body><h1>{{headline}}</h1><p>{{subheadline}}</p><div>{{content}}</div><div>{{form}}</div></body></html>';
+        if (filled($landingPage->css_body)) {
+            $html = str_replace(
+                '</head>',
+                "<style>\n{$landingPage->css_body}\n</style>\n</head>",
+                $html
+            );
+        }
 
-        return $this->replacePlaceholders($html, $landingPage, $formPersonal, $formBusiness, $hasBoth);
+        $html = $this->ensureTailwindConfig($html);
+
+        /*
+        * Xử lý cả những Landing Page cũ vẫn còn form.
+        */
+        $html = preg_replace(
+            '/<form\b[^>]*>.*?<\/form>/is',
+            '',
+            $html
+        ) ?? $html;
+
+        $personalForm = $this->renderForm(
+            $landingPage,
+            'personal',
+            false
+        );
+
+        $businessForm = $this->renderForm(
+            $landingPage,
+            'business',
+            false
+        );
+
+        $formsSection = $this->renderTabbedFormsSection(
+            $landingPage,
+            $personalForm,
+            $businessForm
+        );
+
+        $ctaText = e($landingPage->cta_text ?? '');
+
+        $html = strtr($html, [
+            '{{page_title}}' =>
+                e($landingPage->page_title ?? $landingPage->name),
+            '{{headline}}' =>
+                e($landingPage->headline ?? ''),
+            '{{subheadline}}' =>
+                e($landingPage->subheadline ?? ''),
+            '{{content}}' =>
+                $landingPage->content ?? '',
+            '{{cta_text}}' =>
+                $ctaText,
+            '{{company_name}}' =>
+                e(config('app.name', 'Company')),
+        ]);
+
+        $themeCss = $this->formThemeCss();
+
+        if (preg_match('/<\/head>/i', $html)) {
+            $html = preg_replace(
+                '/<\/head>/i',
+                $themeCss."\n</head>",
+                $html,
+                1
+            ) ?? $html;
+        } else {
+            $html = $themeCss.$html;
+        }
+
+        return $this->appendFormsToEnd(
+            $html,
+            $formsSection
+        );
     }
 
     protected function renderGenericForm(LandingPage $landingPage): ?string
@@ -74,15 +128,13 @@ class LandingPageRenderService
         return $hasPersonal && $hasBusiness;
     }
 
-    public function renderForm(LandingPage $landingPage, string $formType = 'personal', bool $showTypeSelector = true): string
-    {
-        $formTemplate = $this->resolveFormTemplate($landingPage, $formType);
-
-        if (! $formTemplate) {
-            return '<p style="color:#e53e3e;">Chưa có form được gắn vào Landing Page này.</p>';
-        }
-
-        $actionUrl = route('marketing.landing-pages.public.submit', $landingPage->slug);
+    protected function renderResolvedFormTemplate(
+        LandingPage $landingPage,
+        FormTemplate $formTemplate,
+        string $formType,
+        bool $showTypeSelector = false
+    ): string {
+                $actionUrl = route('marketing.landing-pages.public.submit', $landingPage->slug);
 
         $utmQuery = [];
         foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as $utmParam) {
@@ -170,21 +222,92 @@ class LandingPageRenderService
         }
 
         return $heading.<<<HTML
-<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;box-shadow:0 4px 12px rgba(0,0,0,0.08);box-sizing:border-box;">
-    {$typeSelector}
-    <form method="POST" action="{$actionUrl}" novalidate style="margin:0;">
-        <input type="hidden" name="_token" value="{$csrfToken}">
-        <input type="hidden" name="submission_type" value="{$formType}">
-        <input type="hidden" name="form_template_id" value="{$formTemplate->id}">
-        {$fieldsHtml}
-        <div style="margin-top:20px;">
-            <button type="submit" style="width:100%;padding:14px 20px;background:#2563eb;color:#fff;font-size:16px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:background .2s;">{$submitText}</button>
+        <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;box-shadow:0 4px 12px rgba(0,0,0,0.08);box-sizing:border-box;">
+            {$typeSelector}
+            <form method="POST" action="{$actionUrl}" novalidate style="margin:0;">
+                <input type="hidden" name="_token" value="{$csrfToken}">
+                <input type="hidden" name="submission_type" value="{$formType}">
+                <input type="hidden" name="form_template_id" value="{$formTemplate->id}">
+                {$fieldsHtml}
+                <div style="margin-top:20px;">
+                    <button type="submit" style="width:100%;padding:14px 20px;background:#2563eb;color:#fff;font-size:16px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:background .2s;">{$submitText}</button>
+                </div>
+            </form>
         </div>
-    </form>
-</div>
-HTML;
+        HTML;
     }
 
+    public function renderForm(
+        LandingPage $landingPage,
+        string $formType = 'personal',
+        bool $showTypeSelector = false
+    ): string {
+        $formTemplate = $this->resolveFormTemplate(
+            $landingPage,
+            $formType
+        );
+
+        if (! $formTemplate) {
+            return '';
+        }
+
+        return $this->renderResolvedFormTemplate(
+            $landingPage,
+            $formTemplate,
+            $formType,
+            $showTypeSelector
+        );
+    }
+
+    public function previewFormTemplate(
+        FormTemplate $formTemplate,
+        ?LandingPage $landingPage = null
+    ): string {
+        $landingPage ??= new LandingPage([
+            'id' => 0,
+            'name' => 'Form Preview',
+            'slug' => 'form-preview',
+            'theme_tokens' => app(
+                LandingPageThemeService::class
+            )->defaults(),
+        ]);
+
+        $formType = $formTemplate->audience_type?->value
+            ?? (string) $formTemplate->audience_type;
+
+        $formHtml = $this->renderResolvedFormTemplate(
+            $landingPage,
+            $formTemplate,
+            $formType,
+            false
+        );
+
+        $section = $formType === 'business'
+            ? $this->renderTabbedFormsSection(
+                $landingPage,
+                '',
+                $formHtml
+            )
+            : $this->renderTabbedFormsSection(
+                $landingPage,
+                $formHtml,
+                ''
+            );
+
+        return '<!DOCTYPE html>
+    <html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport"
+            content="width=device-width, initial-scale=1.0">
+        <title>Xem trước Form Template</title>'
+        .$this->formThemeCss().
+    '</head>
+    <body style="margin:0;">'
+        .$section.
+    '</body>
+    </html>';
+    }
     protected function renderTypeSelector(LandingPage $landingPage, string $currentType): string
     {
         $hasPersonal = $landingPage->forms()->where('form_type', 'personal')->exists();
@@ -395,11 +518,11 @@ HTML;
         return $body;
     }
 
-    public function sanitizeImportedHtml(string $html): string
+    public function sanitizeImportedHtml(string $html, bool $replaceForms = true): string 
     {
         $html = preg_replace_callback(
             '/<script\b(?!\s*src\s*=)[^>]*>.*?<\/script>/is',
-            function ($match) {
+            function (array $match): string {
                 if (stripos($match[0], 'tailwind.config') !== false) {
                     return $match[0];
                 }
@@ -415,15 +538,74 @@ HTML;
             'cdnjs.cloudflare.com',
             'unpkg.com',
         ];
-        $escaped = implode('|', array_map(fn ($d) => preg_quote($d, '/'), $trustedDomains));
-        $html = preg_replace('/<script\s+src\s*=\s*"(?:https?:)?\/\/(?!'.$escaped.')[^"]*"[^>]*>.*?<\/script>/is', '', $html) ?? $html;
-        $html = preg_replace("/<script\s+src\s*=\s*'(?:https?:)?\/\/(?!".$escaped.")[^']*'[^>]*>.*?<\/script>/is", '', $html) ?? $html;
-        $html = preg_replace('/\s+on\w+\s*=\s*"[^"]*"/i', '', $html) ?? $html;
-        $html = preg_replace("/\s+on\w+\s*=\s*'[^']*'/i", '', $html) ?? $html;
-        $html = preg_replace('/href\s*=\s*["\']?\s*javascript:[^"\'>\s]*/i', 'href="#"', $html) ?? $html;
-        $html = $this->replaceExistingFormsWithPlaceholder($html);
+
+        $escaped = implode(
+            '|',
+            array_map(
+                static fn (string $domain): string => preg_quote($domain, '/'),
+                $trustedDomains
+            )
+        );
+
+        $html = preg_replace(
+            '/<script\s+src\s*=\s*"(?:https?:)?\/\/(?!'.$escaped.')[^"]*"[^>]*>.*?<\/script>/is',
+            '',
+            $html
+        ) ?? $html;
+
+        $html = preg_replace(
+            "/<script\s+src\s*=\s*'(?:https?:)?\/\/(?!".$escaped.")[^']*'[^>]*>.*?<\/script>/is",
+            '',
+            $html
+        ) ?? $html;
+
+        $html = preg_replace(
+            '/\s+on\w+\s*=\s*"[^"]*"/i',
+            '',
+            $html
+        ) ?? $html;
+
+        $html = preg_replace(
+            "/\s+on\w+\s*=\s*'[^']*'/i",
+            '',
+            $html
+        ) ?? $html;
+
+        $html = preg_replace(
+            '/href\s*=\s*["\']?\s*javascript:[^"\'>\s]*/i',
+            'href="#"',
+            $html
+        ) ?? $html;
+
+        if ($replaceForms) {
+            $html = $this->replaceExistingFormsWithPlaceholder($html);
+        }
 
         return $html;
+    }
+    
+    public function prepareImportedLandingPageHtml(string $html): string
+    {
+        $html = $this->sanitizeImportedHtml($html, false);
+        $html = preg_replace(
+            '/<form\b[^>]*>.*?<\/form>/is',
+            '',
+            $html
+        ) ?? $html;
+        $html = preg_replace(
+            '/<\/?form\b[^>]*>/i',
+            '',
+            $html
+        ) ?? $html;
+
+        $html = str_replace([
+            '{{form}}',
+            '{{form_personal}}',
+            '{{form_business}}',
+            '{{forms_section}}',
+        ], '', $html);
+
+        return trim($html);
     }
 
     protected function ensureTailwindConfig(string $html): string
@@ -591,5 +773,292 @@ HTML;
         $html = preg_replace("/<script\s+src\s*=\s*'(?:https?:)?\/\/(?!".$escaped.")[^']*'[^>]*>.*?<\/script>/is", '', $html) ?? $html;
 
         return trim($html);
+    }
+
+    protected function renderTabbedFormsSection(
+        LandingPage $landingPage,
+        string $personalForm,
+        string $businessForm
+    ): string {
+        if (blank($personalForm) && blank($businessForm)) {
+            return '';
+        }
+
+        $sectionId = 'lp-forms-section-'.$landingPage->id;
+
+        $personalTab = filled($personalForm)
+            ? <<<HTML
+    <button
+        type="button"
+        class="lp-form-tab is-active"
+        data-lp-form-tab="personal"
+    >
+        Cá nhân
+    </button>
+    HTML
+            : '';
+
+        $businessTab = filled($businessForm)
+            ? <<<HTML
+    <button
+        type="button"
+        class="lp-form-tab"
+        data-lp-form-tab="business"
+    >
+        Doanh nghiệp
+    </button>
+    HTML
+            : '';
+
+        $personalPanel = filled($personalForm)
+            ? <<<HTML
+    <div
+        class="lp-form-panel is-active"
+        data-lp-form-panel="personal"
+    >
+        {$personalForm}
+    </div>
+    HTML
+            : '';
+
+        $businessHidden = filled($personalForm) ? ' hidden' : '';
+        $businessActive = filled($personalForm) ? '' : ' is-active';
+
+        $businessPanel = filled($businessForm)
+            ? <<<HTML
+    <div
+        class="lp-form-panel{$businessActive}"
+        data-lp-form-panel="business"
+        {$businessHidden}
+    >
+        {$businessForm}
+    </div>
+    HTML
+            : '';
+
+        $themeVariables = $this->themeService
+            ->cssVariables($landingPage->theme_tokens);
+
+        return <<<HTML
+    <section
+        id="{$sectionId}"
+        class="lp-forms-section"
+        style="{$themeVariables}"
+    >
+        <div class="lp-forms-card">
+            <div class="lp-forms-heading">
+                <h2>Đăng ký nhận tư vấn</h2>
+                <p>Chọn loại khách hàng phù hợp để gửi thông tin.</p>
+            </div>
+
+            <div class="lp-form-tabs">
+                {$personalTab}
+                {$businessTab}
+            </div>
+
+            <div class="lp-form-panels">
+                {$personalPanel}
+                {$businessPanel}
+            </div>
+        </div>
+    </section>
+
+    <script>
+    (function () {
+        const root = document.getElementById('{$sectionId}');
+
+        if (!root) {
+            return;
+        }
+
+        const tabs = root.querySelectorAll('[data-lp-form-tab]');
+        const panels = root.querySelectorAll('[data-lp-form-panel]');
+
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                const selectedType = tab.dataset.lpFormTab;
+
+                tabs.forEach(function (item) {
+                    item.classList.toggle(
+                        'is-active',
+                        item === tab
+                    );
+                });
+
+                panels.forEach(function (panel) {
+                    const isSelected =
+                        panel.dataset.lpFormPanel === selectedType;
+
+                    panel.classList.toggle(
+                        'is-active',
+                        isSelected
+                    );
+
+                    panel.hidden = !isSelected;
+                });
+            });
+        });
+    })();
+    </script>
+    HTML;
+    }
+
+    protected function formThemeCss(): string
+    {
+        return <<<'CSS'
+    <style>
+    .lp-forms-section {
+        width: 100%;
+        padding: 64px 20px;
+        background: var(--lp-background);
+        box-sizing: border-box;
+    }
+
+    .lp-forms-card {
+        width: min(720px, 100%);
+        margin: 0 auto;
+        padding: 32px;
+        color: var(--lp-text);
+        background: var(--lp-surface);
+        border: 1px solid var(--lp-border);
+        border-radius: var(--lp-radius);
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+        box-sizing: border-box;
+    }
+
+    .lp-forms-heading {
+        margin-bottom: 24px;
+        text-align: center;
+    }
+
+    .lp-forms-heading h2 {
+        margin: 0 0 8px;
+        color: var(--lp-text);
+        font-size: 28px;
+        line-height: 1.25;
+    }
+
+    .lp-forms-heading p {
+        margin: 0;
+        color: var(--lp-muted-text);
+    }
+
+    .lp-form-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 24px;
+        padding: 5px;
+        background: color-mix(
+            in srgb,
+            var(--lp-primary) 8%,
+            var(--lp-surface)
+        );
+        border-radius: var(--lp-radius);
+    }
+
+    .lp-form-tab {
+        padding: 12px 18px;
+        color: var(--lp-text);
+        background: transparent;
+        border: 0;
+        border-radius: calc(var(--lp-radius) - 4px);
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+    }
+
+    .lp-form-tab.is-active {
+        color: #fff;
+        background: var(--lp-primary);
+    }
+
+    .lp-form-panel[hidden] {
+        display: none !important;
+    }
+
+    .lp-forms-section form {
+        color: var(--lp-text);
+    }
+
+    .lp-forms-section label {
+        color: var(--lp-text) !important;
+    }
+
+    .lp-forms-section input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+    .lp-forms-section select,
+    .lp-forms-section textarea {
+        width: 100%;
+        padding: 12px 14px;
+        color: var(--lp-text) !important;
+        background: var(--lp-surface) !important;
+        border: 1px solid var(--lp-border) !important;
+        border-radius: calc(var(--lp-radius) - 4px) !important;
+        box-sizing: border-box;
+    }
+
+    .lp-forms-section input:focus,
+    .lp-forms-section select:focus,
+    .lp-forms-section textarea:focus {
+        outline: none !important;
+        border-color: var(--lp-primary) !important;
+        box-shadow: 0 0 0 3px color-mix(
+            in srgb,
+            var(--lp-primary) 18%,
+            transparent
+        ) !important;
+    }
+
+    .lp-forms-section button[type="submit"],
+    .lp-forms-section input[type="submit"] {
+        color: #fff !important;
+        background: var(--lp-primary) !important;
+        border: 0 !important;
+        border-radius: calc(var(--lp-radius) - 4px) !important;
+    }
+
+    .lp-forms-section button[type="submit"]:hover,
+    .lp-forms-section input[type="submit"]:hover {
+        background: var(--lp-primary-hover) !important;
+    }
+
+    @media (max-width: 640px) {
+        .lp-forms-section {
+            padding: 40px 14px;
+        }
+
+        .lp-forms-card {
+            padding: 22px 16px;
+        }
+    }
+    </style>
+    CSS;
+    }
+
+    protected function appendFormsToEnd(
+        string $html,
+        string $formsSection
+    ): string {
+        $html = str_replace([
+            '{{form}}',
+            '{{form_personal}}',
+            '{{form_business}}',
+            '{{forms_section}}',
+        ], '', $html);
+
+        if (blank($formsSection)) {
+            return $html;
+        }
+
+        if (preg_match('/<\/body>/i', $html)) {
+            return preg_replace(
+                '/<\/body>/i',
+                $formsSection."\n</body>",
+                $html,
+                1
+            ) ?? $html;
+        }
+
+        return $html."\n".$formsSection;
     }
 }

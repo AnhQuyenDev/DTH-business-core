@@ -58,13 +58,24 @@ class LandingPageController extends Controller
             return redirect()->back()->withErrors($e->errors())->withInput();
         }
 
-        $formTemplate = $landingPage->formTemplate;
+        $formTemplate = $submission->formTemplate;
+
         if ($formTemplate && $formTemplate->redirect_url) {
-            return redirect()->away($formTemplate->redirect_url);
+            return redirect()->away(
+                $formTemplate->redirect_url
+            );
         }
 
-        return redirect()->route('marketing.landing-pages.public.thank-you', $slug)
-            ->with('success_message', $formTemplate?->success_message ?? 'Cảm ơn! Thông tin của bạn đã được ghi nhận.');
+        return redirect()
+            ->route(
+                'marketing.landing-pages.public.thank-you',
+                $slug
+            )
+            ->with(
+                'success_message',
+                $formTemplate?->success_message
+                    ?? 'Cảm ơn! Thông tin của bạn đã được ghi nhận.'
+            );
     }
 
     public function thankYou(Request $request, string $slug): \Illuminate\Contracts\View\View
