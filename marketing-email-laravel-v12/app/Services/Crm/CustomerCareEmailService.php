@@ -133,7 +133,7 @@ class CustomerCareEmailService
             'staff_id' => $staffId,
             'interaction_type' => 'email',
             'subject' => $subject,
-            'content' => Str::limit(strip_tags($htmlBody), 1000),
+             'content' => Str::limit(\App\Services\Sales\QuotationEmailCrmSyncer::cleanHtmlForContent($htmlBody), 1000),
             'outcome' => __('page.customer_care.email_outcome'),
             'status' => 'completed',
             'interaction_at' => now(),

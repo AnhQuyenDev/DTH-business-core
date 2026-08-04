@@ -188,7 +188,7 @@ class QuotationResource extends Resource
                             ->default(fn (Quotation $q) => $q->customer?->email),
                         Select::make('template_id')
                             ->label(__('field.email_template'))
-                            ->options(\App\Models\Marketing\EmailTemplate::query()->where('category', 'quotation')->where('status', 'active')->pluck('name', 'id'))
+                            ->options(\App\Models\Marketing\EmailTemplate::query()->whereHas('categoryRelation', fn ($q) => $q->where('slug', 'quotation'))->where('status', 'active')->pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->helperText(__('field.email_template_helper'))

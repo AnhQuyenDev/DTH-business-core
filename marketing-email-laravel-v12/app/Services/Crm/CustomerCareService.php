@@ -54,7 +54,7 @@ class CustomerCareService
             ]);
         }
 
-        foreach (Quotation::query()->where('customer_id', $customer->id)->get() as $quotation) {
+        foreach (Quotation::query()->where('customer_id', $customer->id)->with('emailLogs')->get() as $quotation) {
             $items->push([
                 'at' => $quotation->sent_at ?? $quotation->created_at,
                 'kind' => 'quotation',

@@ -28,12 +28,25 @@ class QuotationPublicAccessService
         }
     }
 
+    public function markViewed(Quotation $quotation): void
+    {
+        $update = ['last_viewed_at' => now()];
+
+        if ($quotation->status->value === 'sent') {
+            $update['status'] = 'viewed';
+            $update['first_viewed_at'] = $quotation->first_viewed_at ?? now();
+        }
+
+        $quotation->update($update);
+    }
+
     public function checkOtpThrottle(string $key): bool
     {
         if (RateLimiter::tooManyAttempts("otp-send:{$key}", 3)) {
             $seconds = RateLimiter::availableIn("otp-send:{$key}");
             throw new \RuntimeException("Vui lòng thử lại sau {$seconds} giây.");
         }
+
         return true;
     }
 

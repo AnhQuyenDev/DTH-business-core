@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\EmailTemplateResource\Pages;
 use App\Models\Marketing\EmailTemplate;
+use App\Models\Marketing\EmailTemplateCategory;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -20,7 +21,6 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 class EmailTemplateResource extends Resource
 {
@@ -67,35 +67,17 @@ class EmailTemplateResource extends Resource
     {
         return $form->schema([
             TextInput::make('name')->label(__('field.name'))->required()->maxLength(255),
-            Select::make('category')
+            Select::make('category_id')
                 ->label(__('field.category'))
-                ->options(static function (): array {
-                    $categories = EmailTemplate::query()
-                        ->whereNotNull('category')
-                        ->pluck('category')
-                        ->filter(fn (?string $category): bool => filled($category))
-                        ->unique()
-                        ->sort()
-                        ->values();
-
-                    if (! $categories->contains('marketing')) {
-                        $categories->prepend('marketing');
-                    }
-
-                    return $categories->mapWithKeys(function (string $category): array {
-                        $key = 'enum.email_template_category.' . $category;
-
-                        return [
-                            $category => __($key) === $key
-                                ? Str::of($category)->replace('_', ' ')->headline()->toString()
-                                : __($key),
-                        ];
-                    })->all();
-                })
-                ->default('marketing')
-                ->required()
+                ->relationship('categoryRelation', 'name')
                 ->searchable()
-                ->preload(),
+                ->preload()
+                ->default(fn () => EmailTemplateCategory::where('slug', 'marketing')->first()?->id)
+                ->required()
+                ->createOptionForm([
+                    TextInput::make('name')->label(__('field.name'))->required()->maxLength(255),
+                    TextInput::make('slug')->label(__('field.slug'))->required()->unique(ignoreRecord: true)->maxLength(255),
+                ]),
             Grid::make(3)->schema([
                 TextInput::make('subject')->label(__('field.subject'))->required()->maxLength(255),
                 TextInput::make('preheader')->label(__('field.preheader'))->maxLength(255),
@@ -112,23 +94,15 @@ class EmailTemplateResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
+        return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('categoryRelation'))
+            ->columns([
             TextColumn::make('name')->label(__('field.name'))->searchable()->sortable(),
-            TextColumn::make('category')->label(__('field.category'))->badge()
-                ->formatStateUsing(function (?string $state): string {
-                    if (! $state) {
-                        return '';
-                    }
-
-                    $key = 'enum.email_template_category.' . $state;
-
-                    return __($key) === $key
-                        ? Str::of($state)->replace('_', ' ')->headline()->toString()
-                        : __($key);
-                })
-                ->color(fn (?string $state): string => match ($state) {
-                    'marketing' => 'info',
-                    'quotation' => 'warning',
+            TextColumn::make('categoryRelation.name')->label(__('field.category'))
+                ->badge()
+                ->color(fn (EmailTemplate $record): string => match (true) {
+                    $record->categoryRelation?->slug === 'marketing' => 'info',
+                    $record->categoryRelation?->slug === 'quotation' => 'warning',
                     default => 'gray',
                 }),
             TextColumn::make('subject')->label(__('field.subject'))->searchable()->limit(50),

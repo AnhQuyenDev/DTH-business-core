@@ -36,12 +36,12 @@ class ListFormTemplates extends ListRecords
                         ->required(),
                     FileUpload::make('html_file')
                         ->label(__('field.html_file'))
-                        ->acceptedFileTypes(['.html', '.htm'])
+                        ->acceptedFileTypes(['text/html', 'text/plain'])
                         ->required()
                         ->disk('local'),
                 ])
                 ->action(function (array $data): void {
-                    $filePath = storage_path('app/'.$data['html_file']);
+                    $filePath = storage_path('app/private/'.$data['html_file']);
                     $content = file_get_contents($filePath);
                     @unlink($filePath);
                     $body = app(LandingPageRenderService::class)->extractBodyContent($content);

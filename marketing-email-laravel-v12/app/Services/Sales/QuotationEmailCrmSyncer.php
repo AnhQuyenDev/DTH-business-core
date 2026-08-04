@@ -36,7 +36,7 @@ class QuotationEmailCrmSyncer
                 'staff_id' => $staffId ?? $quotation->assigned_staff_id,
                 'interaction_type' => 'email',
                 'subject' => $subject,
-                'content' => Str::limit(strip_tags($rawContent ?? ''), 1000),
+                'content' => Str::limit(self::cleanHtmlForContent($rawContent ?? ''), 1000),
                 'outcome' => __('page.customer_care.email_outcome'),
                 'status' => 'completed',
                 'interaction_at' => now(),
@@ -84,5 +84,33 @@ class QuotationEmailCrmSyncer
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Convert HTML email body to plain text suitable for storage in a
+     * CustomerInteraction content field.
+     *
+     * Ensures no markup or style/script remnants leak into the stored content.
+     */
+    public static function cleanHtmlForContent(?string $html): string
+    {
+        if (empty($html)) {
+            return '';
+        }
+
+        // Remove <style>, <script> and comment blocks with their content
+        $html = preg_replace(['#<style[^>]*>.*?</style>#is', '#<script[^>]*>.*?</script>#is'], '', $html);
+        $html = preg_replace('#<!--.*?-->#s', '', $html);
+
+        // strip remaining HTML tags
+        $text = strip_tags($html);
+
+        // Remove leftover CSS rules that look like "selector { ... }" (from previously-stripped <style> content)
+        $text = preg_replace('/[^{]*\{[^}]*\}\s*/', '', $text);
+
+        // Remove any remaining @media / @-rules
+        $text = preg_replace('/@\w+\s*[^;]*;/', '', $text);
+
+        return trim($text);
     }
 }

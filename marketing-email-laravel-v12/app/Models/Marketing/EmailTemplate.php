@@ -17,6 +17,7 @@ class EmailTemplate extends Model
     protected $fillable = [
         'name',
         'category',
+        'category_id',
         'subject',
         'preheader',
         'html_body',
@@ -28,6 +29,11 @@ class EmailTemplate extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function categoryRelation(): BelongsTo
+    {
+        return $this->belongsTo(EmailTemplateCategory::class, 'category_id');
     }
 
     public function campaigns(): HasMany

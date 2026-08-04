@@ -16,11 +16,11 @@ class QuotationConfirmationService
         private readonly AuditLogService $auditLog,
     ) {}
 
-    public function accept(Quotation $quotation, array $data): Quotation
+    public function accept(Quotation $quotation, array $data, ?string $otpVerifiedEmail = null): Quotation
     {
         $this->validateConfirmation($quotation);
 
-        return DB::transaction(function () use ($quotation, $data) {
+        return DB::transaction(function () use ($quotation, $data, $otpVerifiedEmail) {
             $this->stateMachine->validateTransition($quotation->status, QuotationStatus::Accepted);
 
             $quotation->confirmations()->create([
@@ -30,6 +30,7 @@ class QuotationConfirmationService
                 'signer_email' => $data['signer_email'],
                 'signer_phone' => $data['signer_phone'] ?? null,
                 'confirmation_code' => strtoupper(bin2hex(random_bytes(8))),
+                'otp_verified_at' => $otpVerifiedEmail ? now() : null,
                 'confirmed_at' => now(),
                 'ip_address' => request()->ip(),
                 'user_agent' => substr((string) request()->userAgent(), 0, 1000),
@@ -111,7 +112,7 @@ class QuotationConfirmationService
 
     private function validateConfirmation(Quotation $quotation): void
     {
-        if (!$quotation->status->canConfirm()) {
+        if (! $quotation->status->canConfirm()) {
             throw new \InvalidArgumentException('This quotation cannot be confirmed.');
         }
 

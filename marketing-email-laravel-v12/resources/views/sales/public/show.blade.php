@@ -3,16 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $quotation->title }} - {{ $quotation->quotation_code }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @media print { .no-print { display: none !important; } }
+        @media print {
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div class="max-w-4xl mx-auto p-4 sm:p-6">
+<body class="bg-gray-100">
+    <div class="max-w-4xl mx-auto px-4 py-6 no-print sticky top-0 z-40 bg-white/95 backdrop-blur shadow">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="markViewed()" class="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition">
+                    {{ __('sales.public.mark_viewed') }}
+                </button>
+                <button onclick="openOtpModal()" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition">
+                    {{ __('sales.public.confirm_electronic') }}
+                </button>
+                <button onclick="window.print()" class="px-3 py-2 bg-gray-700 text-white text-sm rounded hover:bg-gray-800 transition">
+                    {{ __('sales.public.print_quotation') }}
+                </button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="copyLink()" class="px-3 py-2 border border-gray-300 bg-white text-gray-700 text-sm rounded hover:bg-gray-50 transition">
+                    {{ __('action.copy_link') }}
+                </button>
+                <button onclick="shareLink()" class="px-3 py-2 border border-gray-300 bg-white text-gray-700 text-sm rounded hover:bg-gray-50 transition">
+                    {{ __('sales.public.share') }}
+                </button>
+                <a href="{{ route('sales.quotation.public.pdf', ['quotationCode' => $quotation->quotation_code, 'token' => $quotation->public_token]) }}"
+                   target="_blank" class="px-3 py-2 border border-gray-300 bg-white text-gray-700 text-sm rounded hover:bg-gray-50 transition">
+                    {{ __('sales.public.view_pdf') }}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 pb-10">
         @if(session('success'))
             <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 no-print">{{ session('success') }}</div>
+        @endif
+
+        @if($errors->any())
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 no-print">
+                @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
+            </div>
         @endif
 
         @if($quotation->status === 'superseded')
@@ -21,127 +58,256 @@
             </div>
         @endif
 
-        @if($quotation->status->canConfirm())
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 no-print">
-                <h3 class="font-semibold text-blue-800 mb-3">{{ __('sales.public.confirm_quotation') }}</h3>
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="showConfirmForm('accept')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{{ __('action.accept') }}</button>
-                    <button onclick="showConfirmForm('reject')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">{{ __('action.reject') }}</button>
-                    <button onclick="showConfirmForm('revision')" class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600">{{ __('sales.public.request_revision') }}</button>
-                </div>
-            </div>
-        @endif
-
-        @if($quotation->status === 'accepted' && $quotation->confirmations->isNotEmpty())
-            @php $confirm = $quotation->confirmations->first(); @endphp
-            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <h3 class="font-semibold text-green-800 mb-2">{{ __('sales.public.confirmed_check') }}</h3>
-                <p class="text-sm">{{ __('sales.public.confirmed_by') }}: <strong>{{ $confirm->signer_name }}</strong></p>
-                <p class="text-sm">{{ __('field.email') }}: {{ $confirm->signer_email }}</p>
-                <p class="text-sm">{{ __('field.time') }}: {{ $confirm->confirmed_at?->format('d/m/Y H:i') }}</p>
-                <p class="text-sm">{{ __('sales.public.confirmation_code') }}: {{ $confirm->confirmation_code }}</p>
-            </div>
-        @endif
-
-        <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <div class="text-center border-b pb-4 mb-4">
-                <h1 class="text-2xl font-bold text-blue-600">{{ config('app.name') }}</h1>
-                <p class="text-lg font-semibold mt-2">{{ $quotation->title }}</p>
-                <p class="text-gray-500">{{ __('field.code') }}: {{ $quotation->quotation_code }}-V{{ $quotation->version }}</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div class="border rounded p-3">
-                    <h3 class="font-semibold text-blue-600 text-sm mb-1">{{ __('field.customer') }}</h3>
-                    <p class="font-medium">{{ $quotation->customer_snapshot['display_name'] ?? '' }}</p>
-                    @if(!empty($quotation->company_snapshot['company_name']))
-                        <p class="text-sm">{{ $quotation->company_snapshot['company_name'] }}</p>
-                        <p class="text-sm">{{ __('field.tax_code') }}: {{ $quotation->company_snapshot['tax_code'] ?? '' }}</p>
-                    @endif
-                    <p class="text-sm">{{ __('field.email') }}: {{ $quotation->customer_snapshot['email'] ?? '' }}</p>
-                </div>
-                <div class="border rounded p-3">
-                    <h3 class="font-semibold text-blue-600 text-sm mb-1">{{ __('sales.public.quotation_information') }}</h3>
-                    <p class="text-sm">{{ __('field.date') }}: {{ $quotation->quotation_date?->format('d/m/Y') }}</p>
-                    <p class="text-sm">{{ __('field.effective_until') }}: {{ $quotation->valid_until?->format('d/m/Y') }}</p>
-                    <p class="text-sm">{{ __('field.status') }}: {{ $quotation->status->label() }}</p>
+        <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+            <div class="border-b-2 border-blue-600 px-6 py-6">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        @if(company_logo_url())
+                            <img src="{{ company_logo_url() }}" alt="{{ company_name() }}" class="h-14 mb-2">
+                        @endif
+                        <h2 class="text-lg font-bold text-gray-900">{{ company_name() }}</h2>
+                        @if(company_address())<p class="text-sm text-gray-600">{{ __('field.address') }}: {{ company_address() }}</p>@endif
+                        @if(company_phone())<p class="text-sm text-gray-600">{{ __('sales.public.hotline') }}: {{ company_phone() }}</p>@endif
+                        @if(company_email())<p class="text-sm text-gray-600">{{ __('field.email') }}: {{ company_email() }}</p>@endif
+                    </div>
+                    <div class="text-right">
+                        <h1 class="text-3xl font-extrabold text-blue-600 tracking-wide">{{ __('sales.pdf.quotation_title') }}</h1>
+                        <p class="text-sm text-gray-500 mt-1">{{ __('field.code') }}: <strong class="text-gray-800">{{ $quotation->quotation_code }}-V{{ $quotation->version }}</strong></p>
+                        <p class="text-sm text-gray-500">{{ __('field.date') }}: {{ $quotation->quotation_date?->format('d/m/Y') }}</p>
+                        <p class="text-sm text-gray-500">{{ __('field.effective_until') }}: {{ $quotation->valid_until?->format('d/m/Y') }}</p>
+                        <p class="mt-2">
+                            @if(in_array($quotation->status->value, ['viewed', 'accepted', 'rejected', 'expired', 'cancelled', 'revision_requested', 'superseded']))
+                                <span class="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">{{ __('sales.public.status_viewed') }}</span>
+                            @endif
+                            <span class="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-semibold rounded">{{ $quotation->status->label() }}</span>
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            @if(!empty($quotation->company_snapshot['company_address']))
-            <div class="border rounded p-3 mb-6 text-sm">
-                <strong>{{ __('field.address') }}:</strong> {{ $quotation->company_snapshot['company_address'] }}
-            </div>
-            @endif
+            <div class="px-6 py-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                    <div class="border rounded-lg p-4 bg-gray-50">
+                        <h3 class="font-semibold text-blue-600 text-sm mb-2">{{ __('sales.public.customer_info') }}</h3>
+                        <p class="font-medium text-gray-900">{{ $quotation->customer_snapshot['display_name'] ?? '' }}</p>
+                        @if(!empty($quotation->company_snapshot['company_name']))
+                            <p class="text-sm text-gray-600">{{ $quotation->company_snapshot['company_name'] }}</p>
+                            <p class="text-sm text-gray-600">{{ __('field.tax_code') }}: {{ $quotation->company_snapshot['tax_code'] ?? '' }}</p>
+                        @endif
+                        <p class="text-sm text-gray-600">{{ __('sales.public.contact_person') }}: {{ $quotation->customer_snapshot['contact_name'] ?? $quotation->customer_snapshot['display_name'] ?? '' }}</p>
+                        @if(!empty($quotation->customer_snapshot['phone']))
+                            <p class="text-sm text-gray-600">{{ __('field.phone') }}: {{ $quotation->customer_snapshot['phone'] }}</p>
+                        @endif
+                        @if(!empty($quotation->company_snapshot['company_address']))
+                            <p class="text-sm text-gray-600">{{ __('field.address') }}: {{ $quotation->company_snapshot['company_address'] }}</p>
+                        @endif
+                        @if(!empty($quotation->customer_snapshot['email']))
+                            <p class="text-sm text-gray-600">{{ __('field.email') }}: {{ $quotation->customer_snapshot['email'] }}</p>
+                        @endif
+                    </div>
+                    <div class="border rounded-lg p-4 bg-gray-50">
+                        <h3 class="font-semibold text-blue-600 text-sm mb-2">{{ __('sales.public.quotation_information') }}</h3>
+                        @if($quotation->priceBook)
+                            <p class="text-sm text-gray-600">{{ __('sales.public.price_channel') }}: {{ $quotation->priceBook->name }}</p>
+                        @endif
+                        <p class="text-sm text-gray-600">{{ __('field.date') }}: {{ $quotation->quotation_date?->format('d/m/Y') }}</p>
+                        <p class="text-sm text-gray-600">{{ __('field.effective_until') }}: {{ $quotation->valid_until?->format('d/m/Y') }}</p>
+                        @if($quotation->assignedStaff?->user)
+                            <p class="text-sm text-gray-600">{{ __('sales.public.staff_in_charge') }}: {{ $quotation->assignedStaff->full_name }}</p>
+                        @endif
+                    </div>
+                </div>
 
-            <table class="w-full border-collapse mb-6">
-                <thead>
-                    <tr class="bg-gray-100">
-                        <th class="border p-2 text-left text-sm">{{ __('sales.public.no') }}</th>
-                        <th class="border p-2 text-left text-sm">{{ __('sales.public.service') }}</th>
-                        <th class="border p-2 text-center text-sm">{{ __('sales.public.unit') }}</th>
-                        <th class="border p-2 text-center text-sm">{{ __('sales.public.quantity') }}</th>
-                        <th class="border p-2 text-right text-sm">{{ __('sales.public.unit_price') }}</th>
-                        <th class="border p-2 text-right text-sm">{{ __('sales.public.discount') }}</th>
-                        <th class="border p-2 text-right text-sm">{{ __('sales.public.vat') }}</th>
-                        <th class="border p-2 text-right text-sm">{{ __('sales.public.line_total') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($quotation->items as $i => $item)
-                    <tr>
-                        <td class="border p-2 text-sm">{{ $i + 1 }}</td>
-                        <td class="border p-2 text-sm">
-                            <strong>{{ $item->service_name_snapshot }}</strong>
-                            @if($item->package_name_snapshot)<br><span class="text-gray-500 text-xs">{{ $item->package_name_snapshot }}</span>@endif
-                        </td>
-                        <td class="border p-2 text-center text-sm">{{ $item->unit }}</td>
-                        <td class="border p-2 text-center text-sm">{{ $item->quantity }}</td>
-                        <td class="border p-2 text-right text-sm">{{ number_format($item->unit_price, 0) }}</td>
-                        <td class="border p-2 text-right text-sm">{{ $item->discount_amount > 0 ? number_format($item->discount_amount, 0) : '-' }}</td>
-                        <td class="border p-2 text-right text-sm">{{ $item->vat_rate > 0 ? $item->vat_rate.'%' : '-' }}</td>
-                        <td class="border p-2 text-right text-sm font-medium">{{ number_format($item->line_total, 0) }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                <p class="text-sm text-gray-700 mb-5">
+                    {{ __('sales.public.intro', ['company' => company_name(), 'title' => $quotation->title]) }}
+                </p>
 
-            <div class="flex justify-end mb-6">
-                <table class="text-sm">
-                    <tr><td class="py-1 pr-8">{{ __('sales.public.subtotal') }}:</td><td class="py-1 text-right">{{ number_format($quotation->subtotal, 0) }}</td></tr>
-                    @if($quotation->discount_total > 0)
-                    <tr><td class="py-1 pr-8">{{ __('sales.public.discount') }}:</td><td class="py-1 text-right text-red-600">-{{ number_format($quotation->discount_total, 0) }}</td></tr>
-                    @endif
-                    <tr><td class="py-1 pr-8">{{ __('sales.public.vat_tax') }}:</td><td class="py-1 text-right">{{ number_format($quotation->tax_total, 0) }}</td></tr>
-                    <tr class="border-t-2 border-blue-600"><td class="py-2 pr-8 font-bold text-blue-600">{{ __('sales.public.grand_total') }}:</td><td class="py-2 text-right font-bold text-blue-600 text-lg">{{ number_format($quotation->grand_total, 0) }} {{ $quotation->currency }}</td></tr>
+                <h3 class="font-semibold text-gray-800 mb-3">{{ __('sales.public.items_title') }}</h3>
+                <table class="w-full border-collapse mb-5">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border p-2 text-left text-sm w-10">{{ __('sales.public.no') }}</th>
+                            <th class="border p-2 text-left text-sm">{{ __('sales.public.service') }}</th>
+                            <th class="border p-2 text-center text-sm w-16">{{ __('sales.public.unit') }}</th>
+                            <th class="border p-2 text-center text-sm w-16">{{ __('sales.public.quantity') }}</th>
+                            <th class="border p-2 text-right text-sm w-28">{{ __('sales.public.unit_price') }}</th>
+                            <th class="border p-2 text-right text-sm w-24">{{ __('sales.public.discount') }}</th>
+                            <th class="border p-2 text-center text-sm w-16">{{ __('sales.public.vat') }}</th>
+                            <th class="border p-2 text-right text-sm w-28">{{ __('sales.public.line_total') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($quotation->items as $i => $item)
+                        <tr>
+                            <td class="border p-2 text-sm">{{ $i + 1 }}</td>
+                            <td class="border p-2 text-sm">
+                                <strong>{{ $item->service_name_snapshot }}</strong>
+                                @if($item->package_name_snapshot)<br><span class="text-gray-500 text-xs">{{ $item->package_name_snapshot }}</span>@endif
+                            </td>
+                            <td class="border p-2 text-center text-sm">{{ $item->unit }}</td>
+                            <td class="border p-2 text-center text-sm">{{ number_format($item->quantity, $item->quantity == intval($item->quantity) ? 0 : 2) }}</td>
+                            <td class="border p-2 text-right text-sm">{{ format_money($item->unit_price) }}</td>
+                            <td class="border p-2 text-right text-sm">{{ $item->discount_amount > 0 ? format_money($item->discount_amount) : '-' }}</td>
+                            <td class="border p-2 text-center text-sm">{{ $item->vat_rate > 0 ? $item->vat_rate.'%' : '-' }}</td>
+                            <td class="border p-2 text-right text-sm font-medium">{{ format_money($item->line_total) }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
                 </table>
-            </div>
 
-            @if($quotation->payment_snapshot)
-            <div class="border rounded p-4 mb-6">
-                <h3 class="font-semibold text-blue-600 mb-2">{{ __('sales.public.payment_information') }}</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                    <p>{{ __('field.bank') }}: <strong>{{ $quotation->payment_snapshot['bank_name'] ?? '' }}</strong></p>
-                    <p>{{ __('field.account_number') }}: <strong>{{ $quotation->payment_snapshot['account_number'] ?? '' }}</strong></p>
-                    <p>{{ __('field.account_name') }}: {{ $quotation->payment_snapshot['account_name'] ?? '' }}</p>
-                    <p>{{ __('field.branch_name') }}: {{ $quotation->payment_snapshot['branch_name'] ?? '' }}</p>
-                    <p class="md:col-span-2">{{ __('sales.public.transfer_content') }}: <strong class="text-blue-600">{{ $quotation->payment_snapshot['transfer_content'] ?? $quotation->quotation_code }}</strong></p>
+                <div class="flex justify-end mb-6">
+                    <table class="text-sm">
+                        <tr><td class="py-1 pr-8 text-gray-600">{{ __('sales.public.subtotal') }}:</td><td class="py-1 text-right">{{ format_money($quotation->subtotal) }}</td></tr>
+                        @if($quotation->discount_total > 0)
+                        <tr><td class="py-1 pr-8 text-gray-600">{{ __('sales.public.discount') }}:</td><td class="py-1 text-right text-red-600">-{{ format_money($quotation->discount_total) }}</td></tr>
+                        @endif
+                        <tr><td class="py-1 pr-8 text-gray-600">{{ __('sales.public.vat_tax') }}:</td><td class="py-1 text-right">{{ format_money($quotation->tax_total) }}</td></tr>
+                        <tr class="border-t-2 border-blue-600"><td class="py-2 pr-8 font-bold text-blue-600 text-base">{{ __('sales.public.grand_total') }}:</td><td class="py-2 text-right font-bold text-blue-600 text-lg">{{ format_money($quotation->grand_total) }} {{ $quotation->currency }}</td></tr>
+                    </table>
                 </div>
-            </div>
-            @endif
 
-            @if($quotation->terms_snapshot)
-            <div class="border rounded p-4 mb-6 text-sm">
-                <h3 class="font-semibold text-blue-600 mb-2">{{ __('field.terms') }}</h3>
-                <p>{{ __('field.effective_until') }}: {{ $quotation->terms_snapshot['valid_until'] ?? $quotation->valid_until?->format('d/m/Y') }}</p>
-                @if(!empty($quotation->terms_snapshot['scope']))<p class="mt-2"><strong>{{ __('field.scope') }}:</strong><br>{{ $quotation->terms_snapshot['scope'] }}</p>@endif
-                @if(!empty($quotation->terms_snapshot['notes']))<p class="mt-2"><strong>{{ __('field.notes') }}:</strong><br>{{ $quotation->terms_snapshot['notes'] }}</p>@endif
-            </div>
-            @endif
+                @php
+                    $hasScope = false;
+                    foreach ($quotation->items as $item) {
+                        if (!empty($item->scope_snapshot)) { $hasScope = true; break; }
+                    }
+                    if (!empty($quotation->terms_snapshot['scope'])) { $hasScope = true; }
+                @endphp
+                @if($hasScope)
+                <h3 class="font-semibold text-gray-800 mb-3">{{ __('sales.public.scope_of_supply') }}</h3>
+                <table class="w-full border-collapse mb-5">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="border p-2 text-left text-sm w-48">{{ __('sales.public.scope_item') }}</th>
+                            <th class="border p-2 text-left text-sm">{{ __('sales.public.scope_content') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($quotation->items as $item)
+                            @if(!empty($item->scope_snapshot))
+                            <tr>
+                                <td class="border p-2 text-sm font-medium">{{ $item->service_name_snapshot }}</td>
+                                <td class="border p-2 text-sm">{!! nl2br(e($item->scope_snapshot)) !!}</td>
+                            </tr>
+                            @endif
+                        @endforeach
+                        @if(!empty($quotation->terms_snapshot['scope']))
+                        <tr>
+                            <td class="border p-2 text-sm font-medium">{{ $quotation->title }}</td>
+                            <td class="border p-2 text-sm">{!! nl2br(e($quotation->terms_snapshot['scope'])) !!}</td>
+                        </tr>
+                        @endif
+                    </tbody>
+                </table>
+                @endif
 
-            <div class="text-right text-sm text-gray-500 pt-4 border-t no-print">
-                <a href="{{ route('sales.quotation.public.pdf', ['quotationCode' => $quotation->quotation_code, 'token' => $quotation->public_token]) }}" class="text-blue-600 hover:underline">{{ __('sales.public.download_pdf') }}</a>
-                | <button onclick="window.print()" class="text-blue-600 hover:underline">{{ __('sales.public.print_quotation') }}</button>
+                @php
+                    $snapshot = $quotation->payment_snapshot ?? [];
+                    $bankAccount = $quotation->bankAccount;
+                    $payment = array_merge(
+                        $bankAccount ? [
+                            'bank_account_id' => $bankAccount->id,
+                            'bank_code' => $bankAccount->bank_code,
+                            'bank_name' => $bankAccount->bank_name,
+                            'account_number' => $bankAccount->account_number,
+                            'account_name' => $bankAccount->account_name,
+                            'branch_name' => $bankAccount->branch_name,
+                            'swift_code' => $bankAccount->swift_code,
+                            'qr_template' => $bankAccount->qr_template,
+                        ] : [],
+                        $snapshot,
+                    );
+                @endphp
+                @if(!empty($payment['bank_code']) && !empty($payment['account_number']))
+                <h3 class="font-semibold text-gray-800 mb-3">{{ __('sales.pdf.payment_information') }}</h3>
+                <div class="border rounded-lg p-4 mb-6 bg-gray-50">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                        <div class="text-sm space-y-1">
+                            <p>{{ __('field.bank') }}: <strong>{{ $payment['bank_name'] ?? '' }}</strong> @if(!empty($payment['branch_name'])) - {{ $payment['branch_name'] }} @endif</p>
+                            <p class="flex flex-wrap items-center gap-2">{{ __('field.account_number') }}: <strong>{{ $payment['account_number'] }}</strong>
+                                <button onclick="copyText('{{ $payment['account_number'] }}')" class="text-xs px-2 py-0.5 border border-blue-300 text-blue-600 rounded hover:bg-blue-50">{{ __('action.copy') }}</button>
+                            </p>
+                            <p>{{ __('field.account_name') }}: {{ $payment['account_name'] ?? '' }}</p>
+                            @if(!empty($payment['swift_code']))
+                            <p>{{ __('field.swift_code') }}: {{ $payment['swift_code'] }}</p>
+                            @endif
+                            <p>{{ __('sales.public.transfer_amount') }}: <strong>{{ format_money($quotation->grand_total) }} {{ $quotation->currency }}</strong></p>
+                            <p class="flex flex-wrap items-center gap-2">{{ __('sales.public.transfer_content') }}: <strong class="text-blue-600">{{ $payment['transfer_content'] ?? $quotation->quotation_code }}</strong>
+                                <button onclick="copyText('{{ $payment['transfer_content'] ?? $quotation->quotation_code }}')" class="text-xs px-2 py-0.5 border border-blue-300 text-blue-600 rounded hover:bg-blue-50">{{ __('action.copy') }}</button>
+                            </p>
+                        </div>
+                        <div class="text-center">
+                            {!! app(\App\Services\Sales\QrPaymentService::class)->generateHtml(
+                                $payment['bank_code'],
+                                $payment['account_number'],
+                                $quotation->grand_total,
+                                $payment['transfer_content'] ?? $quotation->quotation_code,
+                                $payment['account_name'] ?? null,
+                                180,
+                                $payment['qr_template'] ?? null,
+                            ) !!}
+                            <p class="text-xs text-gray-500 mt-1">{{ __('sales.pdf.scan_qr_payment') }}</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                @if($quotation->terms_snapshot)
+                <h3 class="font-semibold text-gray-800 mb-3">{{ __('sales.pdf.terms_conditions') }}</h3>
+                <div class="border rounded-lg p-4 mb-6 bg-gray-50 text-sm">
+                    <p>{{ __('sales.pdf.validity') }}: <strong>{{ $quotation->terms_snapshot['valid_until'] ?? $quotation->valid_until?->format('d/m/Y') ?? __('common.not_available') }}</strong></p>
+                    @if(!empty($quotation->terms_snapshot['payment_terms']))
+                        <p class="mt-2"><strong>{{ __('sales.pdf.payment_terms') }}:</strong><br>{{ $quotation->terms_snapshot['payment_terms'] }}</p>
+                    @endif
+                    @if(!empty($quotation->terms_snapshot['vat_note']))
+                        <p class="mt-2"><strong>{{ __('sales.pdf.vat_note') }}:</strong><br>{{ $quotation->terms_snapshot['vat_note'] }}</p>
+                    @endif
+                    @if(!empty($quotation->terms_snapshot['notes']))
+                        <p class="mt-2"><strong>{{ __('field.notes') }}:</strong><br>{{ $quotation->terms_snapshot['notes'] }}</p>
+                    @endif
+                </div>
+                @endif
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="text-center border rounded-lg p-6">
+                        <h3 class="font-semibold text-gray-800 mb-2">{{ __('sales.pdf.company_representative') }}</h3>
+                        <p class="text-xs text-gray-500 mb-10">{{ __('sales.public.prepared_by') }}</p>
+                        <p class="font-medium text-gray-900 mt-8">{{ company_name() }}</p>
+                    </div>
+                    <div class="text-center border rounded-lg p-6">
+                        <h3 class="font-semibold text-gray-800 mb-2">{{ __('sales.public.customer_confirmation') }}</h3>
+                        <p class="text-xs text-gray-500 mb-10">{{ __('sales.public.sign_and_stamp') }}</p>
+                        @if($quotation->status === 'accepted' && $quotation->confirmations->isNotEmpty())
+                            @php $confirm = $quotation->confirmations->first(); @endphp
+                            <p class="font-medium text-gray-900 mt-8">{{ $confirm->signer_name }}</p>
+                            <p class="text-xs text-gray-500">{{ $confirm->signer_position ?? '' }}</p>
+                            <p class="text-xs text-gray-500 mt-2">{{ __('sales.public.confirmation_code') }}: {{ $confirm->confirmation_code }}</p>
+                            @if($confirm->otp_verified_at)
+                                <p class="text-xs text-green-600">{{ __('sales.public.otp_verified') }} {{ $confirm->otp_verified_at->format('d/m/Y H:i') }}</p>
+                            @endif
+                        @elseif(!empty($quotation->company_snapshot['company_name']))
+                            <p class="font-medium text-gray-900 mt-8">{{ $quotation->company_snapshot['company_name'] }}</p>
+                        @else
+                            <p class="font-medium text-gray-900 mt-8">{{ $quotation->customer_snapshot['display_name'] ?? '' }}</p>
+                        @endif
+                    </div>
+                </div>
+
+                @if($quotation->status->canConfirm())
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 no-print">
+                    <h3 class="font-semibold text-blue-800 mb-3">{{ __('sales.public.confirm_quotation') }}</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="openOtpModal()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{{ __('sales.public.confirm_electronic') }}</button>
+                        <button onclick="showConfirmForm('reject')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">{{ __('action.reject') }}</button>
+                        <button onclick="showConfirmForm('revision')" class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600">{{ __('sales.public.request_revision') }}</button>
+                    </div>
+                </div>
+                @endif
+
+                <div class="text-xs text-gray-400 border-t pt-4">
+                    @if(company_email())<p>{{ __('field.email') }}: {{ company_email() }}</p>@endif
+                    <p class="mt-1">{{ __('sales.public.generated_note', ['company' => company_name()]) }}</p>
+                </div>
             </div>
         </div>
     </div>
@@ -155,8 +321,6 @@
                 <div class="space-y-3">
                     <div><label class="block text-sm font-medium">{{ __('field.full_name') }}</label><input name="signer_name" required class="w-full border rounded px-3 py-2 text-sm"></div>
                     <div><label class="block text-sm font-medium">{{ __('field.email') }}</label><input name="signer_email" type="email" required class="w-full border rounded px-3 py-2 text-sm"></div>
-                    <div id="positionField"><label class="block text-sm font-medium">{{ __('field.position') }}</label><input name="signer_position" class="w-full border rounded px-3 py-2 text-sm"></div>
-                    <div id="phoneField"><label class="block text-sm font-medium">{{ __('field.phone') }}</label><input name="signer_phone" class="w-full border rounded px-3 py-2 text-sm"></div>
                     <div id="reasonField" class="hidden"><label class="block text-sm font-medium">{{ __('field.reason') }}</label><textarea name="reason" rows="3" class="w-full border rounded px-3 py-2 text-sm"></textarea></div>
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
@@ -167,31 +331,231 @@
         </div>
     </div>
 
-    <script>
-        function showConfirmForm(action) {
-            const modal = document.getElementById('confirmModal');
-            const form = document.getElementById('confirmForm');
-            const title = document.getElementById('modalTitle');
-            const reasonField = document.getElementById('reasonField');
-            const positionField = document.getElementById('positionField');
-            const phoneField = document.getElementById('phoneField');
+    <div id="otpModal" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center hidden no-print z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-bold mb-1">{{ __('sales.public.confirm_electronic') }}</h3>
+            <p class="text-sm text-gray-500 mb-4">{{ __('sales.public.otp_description') }}</p>
+            <form id="otpForm" onsubmit="return false">
+                @csrf
+                <div class="space-y-3">
+                    <div id="step1" class="space-y-3">
+                        <div><label class="block text-sm font-medium">{{ __('field.full_name') }}</label><input id="otpSignerName" type="text" required class="w-full border rounded px-3 py-2 text-sm"></div>
+                        <div><label class="block text-sm font-medium">{{ __('field.email') }}</label><input id="otpEmail" type="email" required class="w-full border rounded px-3 py-2 text-sm"></div>
+                        <div><label class="block text-sm font-medium">{{ __('field.position') }}</label><input id="otpPosition" class="w-full border rounded px-3 py-2 text-sm"></div>
+                        <div><label class="block text-sm font-medium">{{ __('field.phone') }}</label><input id="otpPhone" class="w-full border rounded px-3 py-2 text-sm"></div>
+                        <button onclick="sendOtp()" id="sendOtpBtn" class="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm">{{ __('sales.public.otp_send') }}</button>
+                    </div>
+                    <div id="step2" class="hidden space-y-3">
+                        <p class="text-sm text-gray-600">{{ __('sales.public.otp_enter', ['email' => '']) }} <strong id="otpEmailShown"></strong></p>
+                        <div><label class="block text-sm font-medium">{{ __('sales.public.otp_label') }}</label><input id="otpCode" type="text" maxlength="6" inputmode="numeric" class="w-full border rounded px-3 py-2 text-sm tracking-widest text-center text-lg" required></div>
+                        <button onclick="verifyOtp()" id="verifyOtpBtn" class="w-full px-4 py-2 bg-green-600 text-white rounded text-sm">{{ __('sales.public.otp_verify') }}</button>
+                        <button type="button" onclick="resetOtpForm()" class="w-full px-4 py-2 border rounded text-sm">{{ __('action.back') }}</button>
+                    </div>
+                </div>
+            </form>
+            <div id="otpError" class="hidden bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm mt-3"></div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" onclick="hideOtpModal()" class="px-4 py-2 border rounded text-sm">{{ __('action.cancel') }}</button>
+            </div>
+        </div>
+    </div>
 
-            form.action = action === 'accept' ? '{{ route("sales.quotation.public.accept", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}'
-                : action === 'reject' ? '{{ route("sales.quotation.public.reject", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}'
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-900 text-white text-sm px-4 py-3 rounded shadow-lg hidden z-50"></div>
+
+    <script>
+        var quotationCode = '{{ $quotation->quotation_code }}';
+        var publicToken = '{{ $quotation->public_token }}';
+        var publicUrl = '{{ route("sales.quotation.public.show", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
+        var otpVerifiedEmail = null;
+
+        function showToast(message) {
+            var el = document.getElementById('toast');
+            el.textContent = message;
+            el.classList.remove('hidden');
+            clearTimeout(showToast._t);
+            showToast._t = setTimeout(function () { el.classList.add('hidden'); }, 3000);
+        }
+
+        function getCsrf() {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        }
+
+        function markViewed() {
+            fetch('{{ route("sales.quotation.public.mark-viewed", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': getCsrf(), 'Accept': 'application/json' },
+            }).then(function (res) {
+                if (res.ok) {
+                    showToast('{{ __("sales.public.marked_viewed") }}');
+                    location.reload();
+                } else {
+                    showToast('{{ __("sales.public.error_occurred") }}');
+                }
+            });
+        }
+
+        function copyText(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(function () {
+                    showToast('{{ __("sales.public.copied") }}');
+                });
+            } else {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('{{ __("sales.public.copied") }}');
+            }
+        }
+
+        function copyLink() {
+            copyText(publicUrl);
+        }
+
+        function shareLink() {
+            if (navigator.share) {
+                navigator.share({
+                    title: document.title,
+                    url: publicUrl,
+                }).catch(function () {});
+            } else {
+                copyText(publicUrl);
+            }
+        }
+
+        function showConfirmForm(action) {
+            var form = document.getElementById('confirmForm');
+            var title = document.getElementById('modalTitle');
+            var reasonField = document.getElementById('reasonField');
+
+            form.action = action === 'reject'
+                ? '{{ route("sales.quotation.public.reject", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}'
                 : '{{ route("sales.quotation.public.request-revision", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
 
-            title.textContent = action === 'accept' ? '{{ __('sales.public.accept_quotation') }}' : action === 'reject' ? '{{ __('sales.public.reject_quotation') }}' : '{{ __('sales.public.request_revision') }}';
-            reasonField.classList.toggle('hidden', action === 'accept');
-            positionField.classList.toggle('hidden', action !== 'accept');
-            phoneField.classList.toggle('hidden', action !== 'accept');
-            modal.classList.add('flex');
-            modal.classList.remove('hidden');
+            title.textContent = action === 'reject' ? '{{ __("sales.public.reject_quotation") }}' : '{{ __("sales.public.request_revision") }}';
+            reasonField.classList.toggle('hidden', action === 'reject');
+            document.getElementById('confirmModal').classList.add('flex');
+            document.getElementById('confirmModal').classList.remove('hidden');
         }
 
         function hideConfirmForm() {
-            const modal = document.getElementById('confirmModal');
-            modal.classList.remove('flex');
-            modal.classList.add('hidden');
+            document.getElementById('confirmModal').classList.remove('flex');
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+        function openOtpModal() {
+            resetOtpForm();
+            document.getElementById('otpModal').classList.add('flex');
+            document.getElementById('otpModal').classList.remove('hidden');
+        }
+
+        function hideOtpModal() {
+            document.getElementById('otpModal').classList.remove('flex');
+            document.getElementById('otpModal').classList.add('hidden');
+        }
+
+        function resetOtpForm() {
+            otpVerifiedEmail = null;
+            document.getElementById('step1').classList.remove('hidden');
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('otpError').classList.add('hidden');
+            document.getElementById('sendOtpBtn').disabled = false;
+            document.getElementById('verifyOtpBtn').disabled = false;
+        }
+
+        function showOtpError(message) {
+            var el = document.getElementById('otpError');
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+
+        function sendOtp() {
+            var email = document.getElementById('otpEmail').value.trim();
+            if (!email || !document.getElementById('otpSignerName').value.trim()) {
+                showOtpError('{{ __("sales.public.otp_fill_form") }}');
+                return;
+            }
+
+            var btn = document.getElementById('sendOtpBtn');
+            btn.disabled = true;
+
+            fetch('{{ route("sales.quotation.public.send-otp", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': getCsrf(), 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email }),
+            }).then(function (res) {
+                return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+            }).then(function (result) {
+                if (result.ok) {
+                    document.getElementById('otpEmailShown').textContent = email;
+                    document.getElementById('step1').classList.add('hidden');
+                    document.getElementById('step2').classList.remove('hidden');
+                } else {
+                    btn.disabled = false;
+                    showOtpError(result.data.message || '{{ __("sales.public.error_occurred") }}');
+                }
+            }).catch(function () {
+                btn.disabled = false;
+                showOtpError('{{ __("sales.public.error_occurred") }}');
+            });
+        }
+
+        function verifyOtp() {
+            var email = document.getElementById('otpEmail').value.trim();
+            var otp = document.getElementById('otpCode').value.trim();
+
+            if (!/^\d{6}$/.test(otp)) {
+                showOtpError('{{ __("sales.public.otp_invalid_format") }}');
+                return;
+            }
+
+            var btn = document.getElementById('verifyOtpBtn');
+            btn.disabled = true;
+
+            fetch('{{ route("sales.quotation.public.verify-otp", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': getCsrf(), 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, otp: otp }),
+            }).then(function (res) {
+                return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+            }).then(function (result) {
+                if (result.ok) {
+                    otpVerifiedEmail = email;
+                    submitElectronicAccept();
+                } else {
+                    btn.disabled = false;
+                    showOtpError(result.data.message || '{{ __("sales.public.otp_invalid") }}');
+                }
+            }).catch(function () {
+                btn.disabled = false;
+                showOtpError('{{ __("sales.public.error_occurred") }}');
+            });
+        }
+
+        function submitElectronicAccept() {
+            var name = document.getElementById('otpSignerName').value.trim();
+            var email = document.getElementById('otpEmail').value.trim();
+            var position = document.getElementById('otpPosition').value.trim();
+            var phone = document.getElementById('otpPhone').value.trim();
+
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ route("sales.quotation.public.accept", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
+            form.style.display = 'none';
+
+            [['signer_name', name], ['signer_email', email], ['signer_position', position], ['signer_phone', phone], ['otp_email', otpVerifiedEmail], ['_token', getCsrf()]].forEach(function (pair) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = pair[0];
+                input.value = pair[1] || '';
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
 </body>

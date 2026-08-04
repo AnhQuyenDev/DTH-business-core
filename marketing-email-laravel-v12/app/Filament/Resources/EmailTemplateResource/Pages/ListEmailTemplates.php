@@ -4,6 +4,7 @@ namespace App\Filament\Resources\EmailTemplateResource\Pages;
 
 use App\Filament\Resources\EmailTemplateResource;
 use App\Models\Marketing\EmailTemplate;
+use App\Models\Marketing\EmailTemplateCategory;
 use App\Services\Marketing\LandingPageRenderService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -27,34 +28,30 @@ class ListEmailTemplates extends ListRecords
                 ->color('gray')
                 ->form([
                     TextInput::make('name')->label(__('field.name'))->required()->maxLength(255),
-                    Select::make('category')
+                    Select::make('category_id')
                         ->label(__('field.category'))
-                        ->options(
-                            EmailTemplate::query()
-                                ->whereNotNull('category')
-                                ->pluck('category', 'category')
-                                ->toArray()
-                        )
+                        ->options(\App\Models\Marketing\EmailTemplateCategory::query()->pluck('name', 'id')->toArray())
                         ->searchable()
-                        ->default('marketing')
+                        ->preload()
+                        ->default(fn () => \App\Models\Marketing\EmailTemplateCategory::where('slug', 'marketing')->first()?->id)
                         ->required(),
                     TextInput::make('subject')->label(__('field.subject'))->required()->maxLength(255),
                     TextInput::make('preheader')->label(__('field.preheader'))->maxLength(255),
                     FileUpload::make('html_file')
                         ->label(__('field.html_file'))
-                        ->acceptedFileTypes(['.html', '.htm'])
+                        ->acceptedFileTypes(['text/html', 'text/plain'])
                         ->required()
                         ->disk('local'),
                 ])
                 ->action(function (array $data): void {
-                    $filePath = storage_path('app/'.$data['html_file']);
+                    $filePath = storage_path('app/private/'.$data['html_file']);
                     $content = file_get_contents($filePath);
                     @unlink($filePath);
                     $body = app(LandingPageRenderService::class)->extractBodyContent($content);
 
                     EmailTemplate::query()->create([
                         'name' => (string) $data['name'],
-                        'category' => (string) ($data['category'] ?? 'marketing'),
+                        'category_id' => (int) ($data['category_id'] ?? EmailTemplateCategory::where('slug', 'marketing')->first()?->id),
                         'subject' => (string) $data['subject'],
                         'preheader' => (string) ($data['preheader'] ?? ''),
                         'html_body' => $body,

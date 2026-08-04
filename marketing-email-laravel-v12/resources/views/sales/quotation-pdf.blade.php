@@ -3,97 +3,137 @@
 <head>
     <meta charset="utf-8">
     <style>
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 12px; line-height: 1.6; color: #333; }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #2563eb; padding-bottom: 10px; }
-        .header h1 { font-size: 18px; margin: 0; color: #2563eb; }
-        .header .code { font-size: 14px; color: #666; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-        th, td { padding: 8px 10px; border: 1px solid #ddd; text-align: left; }
-        th { background: #f8fafc; font-weight: 600; }
-        .totals { margin-top: 20px; }
-        .totals table { width: auto; margin-left: auto; }
-        .totals td { border: none; padding: 4px 15px; }
-        .totals .grand-total { font-size: 16px; font-weight: bold; color: #2563eb; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
-        .info-box { border: 1px solid #ddd; padding: 10px; border-radius: 4px; }
-        .info-box h3 { margin: 0 0 8px; font-size: 13px; color: #2563eb; }
-        .info-box p { margin: 2px 0; font-size: 11px; }
-        .payment-box { border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin: 15px 0; }
-        .payment-box h3 { color: #2563eb; margin: 0 0 8px; font-size: 13px; }
-        .footer { text-align: center; margin-top: 30px; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 10px; }
-        .terms { margin-top: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        .terms h3 { margin: 0 0 8px; font-size: 13px; color: #2563eb; }
-        .stamp { margin-top: 30px; text-align: right; }
-        .stamp .line { margin: 5px 0; }
+        body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; line-height: 1.5; color: #333; }
+        table { width: 100%; border-collapse: collapse; }
+        .page-header { border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 14px; }
+        .page-header .company { font-size: 14px; font-weight: bold; color: #2563eb; }
+        .page-header .muted { font-size: 10px; color: #666; }
+        .quote-title { font-size: 22px; font-weight: bold; color: #2563eb; text-align: right; }
+        .quote-meta { font-size: 11px; text-align: right; color: #333; }
+        .section-title { font-size: 13px; font-weight: bold; color: #2563eb; margin: 16px 0 8px; }
+        .info-table td { padding: 3px 8px; vertical-align: top; }
+        .info-box { border: 1px solid #ddd; padding: 8px 10px; }
+        .info-box .label { font-size: 12px; font-weight: bold; color: #2563eb; margin-bottom: 4px; }
+        .items-table th { background: #f1f5f9; border: 1px solid #ddd; padding: 6px 8px; font-size: 10px; }
+        .items-table td { border: 1px solid #ddd; padding: 6px 8px; font-size: 10px; }
+        .totals-table { width: auto; margin-left: auto; }
+        .totals-table td { padding: 3px 12px; }
+        .grand-total { font-size: 14px; font-weight: bold; color: #2563eb; }
+        .scope-table th { background: #f1f5f9; border: 1px solid #ddd; padding: 6px 8px; font-size: 10px; text-align: left; }
+        .scope-table td { border: 1px solid #ddd; padding: 6px 8px; font-size: 10px; vertical-align: top; }
+        .payment-box { border: 1px solid #ddd; padding: 10px 12px; margin: 12px 0; }
+        .terms-box { border: 1px solid #ddd; padding: 10px 12px; margin: 12px 0; }
+        .sign-box { border: 1px solid #ddd; padding: 14px; text-align: center; vertical-align: top; height: 130px; }
+        .sign-box .title { font-size: 12px; font-weight: bold; color: #333; margin-bottom: 4px; }
+        .sign-box .hint { font-size: 9px; color: #666; margin-bottom: 60px; }
+        .sign-box .name { font-size: 11px; font-weight: bold; }
+        .footer { text-align: center; margin-top: 24px; font-size: 9px; color: #777; border-top: 1px solid #ddd; padding-top: 8px; }
+        .intro { margin: 10px 0; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>{{ __('sales.pdf.quotation_title') }}</h1>
-        <p class="code">{{ $quotation->quotation_code }}-V{{ $quotation->version }}</p>
-    </div>
+    <table class="page-header">
+        <tr>
+            <td style="width:60%;">
+                @if(company_logo_data_uri())
+                    <img src="{{ company_logo_data_uri() }}" style="max-height:48px; max-width:180px;">
+                @endif
+                <div class="company">{{ company_name() }}</div>
+                @if(company_address())<div class="muted">Địa chỉ: {{ company_address() }}</div>@endif
+                @if(company_phone())<div class="muted">Hotline: {{ company_phone() }}</div>@endif
+                @if(company_email())<div class="muted">Email: {{ company_email() }}</div>@endif
+            </td>
+            <td style="width:40%;">
+                <div class="quote-title">{{ __('sales.pdf.quotation_title') }}</div>
+                <div class="quote-meta">
+                    <strong>{{ __('field.code') }}:</strong> {{ $quotation->quotation_code }}-V{{ $quotation->version }}<br>
+                    {{ __('field.date') }}: {{ $quotation->quotation_date?->format('d/m/Y') }}<br>
+                    {{ __('field.effective_until') }}: {{ $quotation->valid_until?->format('d/m/Y') }}
+                </div>
+            </td>
+        </tr>
+    </table>
 
-    <div class="info-grid">
-        <div class="info-box">
-            <h3>{{ __('sales.pdf.provider') }}</h3>
-            <p><strong>{{ company_name() }}</strong></p>
-        </div>
-        <div class="info-box">
-            <h3>{{ __('sales.pdf.customer') }}</h3>
-            <p><strong>{{ $quotation->customer_snapshot['display_name'] ?? '' }}</strong></p>
-            @if(!empty($quotation->company_snapshot['company_name']))
-                <p>{{ $quotation->company_snapshot['company_name'] }}</p>
-                <p>{{ __('field.tax_code') }}: {{ $quotation->company_snapshot['tax_code'] ?? '' }}</p>
-            @endif
-            <p>{{ __('field.email') }}: {{ $quotation->customer_snapshot['email'] ?? '' }}</p>
-            <p>{{ __('field.phone') }}: {{ $quotation->customer_snapshot['phone'] ?? '' }}</p>
-        </div>
-    </div>
+    <table class="info-table">
+        <tr>
+            <td style="width:50%;">
+                <table class="info-box" style="width:100%;">
+                    <tr><td><div class="label">{{ __('sales.pdf.customer') }}</div></td></tr>
+                    <tr><td><strong>{{ $quotation->customer_snapshot['display_name'] ?? '' }}</strong></td></tr>
+                    @if(!empty($quotation->company_snapshot['company_name']))
+                        <tr><td>{{ $quotation->company_snapshot['company_name'] }}</td></tr>
+                        <tr><td>{{ __('field.tax_code') }}: {{ $quotation->company_snapshot['tax_code'] ?? '' }}</td></tr>
+                    @endif
+                    @if(!empty($quotation->customer_snapshot['phone']))
+                        <tr><td>{{ __('field.phone') }}: {{ $quotation->customer_snapshot['phone'] }}</td></tr>
+                    @endif
+                    @if(!empty($quotation->company_snapshot['company_address']))
+                        <tr><td>{{ __('field.address') }}: {{ $quotation->company_snapshot['company_address'] }}</td></tr>
+                    @endif
+                    @if(!empty($quotation->customer_snapshot['email']))
+                        <tr><td>{{ __('field.email') }}: {{ $quotation->customer_snapshot['email'] }}</td></tr>
+                    @endif
+                </table>
+            </td>
+            <td style="width:50%;">
+                <table class="info-box" style="width:100%;">
+                    <tr><td><div class="label">{{ __('sales.public.quotation_information') }}</div></td></tr>
+                    @if($quotation->priceBook)
+                        <tr><td>{{ __('sales.public.price_channel') }}: {{ $quotation->priceBook->name }}</td></tr>
+                    @endif
+                    <tr><td>{{ __('field.date') }}: {{ $quotation->quotation_date?->format('d/m/Y') }}</td></tr>
+                    <tr><td>{{ __('field.effective_until') }}: {{ $quotation->valid_until?->format('d/m/Y') }}</td></tr>
+                    @if($quotation->assignedStaff?->user)
+                        <tr><td>{{ __('sales.public.staff_in_charge') }}: {{ $quotation->assignedStaff->full_name }}</td></tr>
+                    @endif
+                </table>
+            </td>
+        </tr>
+    </table>
 
-    <table>
+    <div class="intro">{{ __('sales.public.intro', ['company' => company_name(), 'title' => $quotation->title]) }}</div>
+
+    <div class="section-title">{{ __('sales.public.items_title') }}</div>
+    <table class="items-table">
         <thead>
             <tr>
-                <th style="width:40px">{{ __('sales.public.no') }}</th>
+                <th style="width:30px;">{{ __('sales.public.no') }}</th>
                 <th>{{ __('sales.pdf.service') }}</th>
-                <th style="width:60px">{{ __('sales.public.unit') }}</th>
-                <th style="width:60px">{{ __('sales.public.quantity') }}</th>
-                <th style="width:90px">{{ __('sales.public.unit_price') }}</th>
-                <th style="width:80px">{{ __('sales.public.discount') }}</th>
-                <th style="width:80px">{{ __('sales.public.vat') }}</th>
-                <th style="width:100px">{{ __('sales.public.line_total') }}</th>
+                <th style="width:50px;">{{ __('sales.public.unit') }}</th>
+                <th style="width:50px;">{{ __('sales.public.quantity') }}</th>
+                <th style="width:80px;">{{ __('sales.public.unit_price') }}</th>
+                <th style="width:70px;">{{ __('sales.public.discount') }}</th>
+                <th style="width:60px;">{{ __('sales.public.vat') }}</th>
+                <th style="width:85px;">{{ __('sales.public.line_total') }}</th>
             </tr>
         </thead>
         <tbody>
             @foreach($quotation->items as $index => $item)
             <tr>
-                <td>{{ $index + 1 }}</td>
+                <td style="text-align:center;">{{ $index + 1 }}</td>
                 <td>
                     <strong>{{ $item->service_name_snapshot }}</strong>
-                    @if($item->package_name_snapshot)
-                        <br><small>{{ $item->package_name_snapshot }}</small>
-                    @endif
+                    @if($item->package_name_snapshot)<br><span style="font-size:9px; color:#666;">{{ $item->package_name_snapshot }}</span>@endif
                 </td>
-                <td>{{ $item->unit }}</td>
-                <td>{{ $item->quantity }}</td>
-                <td>{{ number_format($item->unit_price, 0) }}</td>
-                <td>{{ $item->discount_amount > 0 ? number_format($item->discount_amount, 0) : '-' }}</td>
-                <td>{{ $item->vat_rate > 0 ? $item->vat_rate.'%' : '-' }}</td>
-                <td style="text-align:right">{{ number_format($item->line_total, 0) }}</td>
+                <td style="text-align:center;">{{ $item->unit }}</td>
+                <td style="text-align:center;">{{ number_format($item->quantity, $item->quantity == intval($item->quantity) ? 0 : 2) }}</td>
+                <td style="text-align:right;">{{ format_money($item->unit_price) }}</td>
+                <td style="text-align:right;">{{ $item->discount_amount > 0 ? format_money($item->discount_amount) : '-' }}</td>
+                <td style="text-align:center;">{{ $item->vat_rate > 0 ? $item->vat_rate.'%' : '-' }}</td>
+                <td style="text-align:right;">{{ format_money($item->line_total) }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
-    <div class="totals">
-        <table>
-            <tr><td>{{ __('sales.pdf.subtotal') }}:</td><td style="text-align:right">{{ number_format($quotation->subtotal, 0) }}</td></tr>
-            @if($quotation->discount_total > 0)
-            <tr><td>{{ __('sales.pdf.discount') }}:</td><td style="text-align:right">-{{ number_format($quotation->discount_total, 0) }}</td></tr>
-            @endif
-            <tr><td>{{ __('sales.public.vat_tax') }} ({{ $quotation->tax_total > 0 ? '10%' : '0%' }}):</td><td style="text-align:right">{{ number_format($quotation->tax_total, 0) }}</td></tr>
-            <tr class="grand-total"><td><strong>{{ __('sales.pdf.grand_total') }}:</strong></td><td style="text-align:right"><strong>{{ number_format($quotation->grand_total, 0) }} {{ $quotation->currency }}</strong></td></tr>
-        </table>
-    </div>
+    <table class="totals-table" style="margin-top:10px;">
+        <tr><td>{{ __('sales.pdf.subtotal') }}:</td><td style="text-align:right;">{{ format_money($quotation->subtotal) }}</td></tr>
+        @if($quotation->discount_total > 0)
+        <tr><td>{{ __('sales.pdf.discount') }}:</td><td style="text-align:right;">-{{ format_money($quotation->discount_total) }}</td></tr>
+        @endif
+        <tr><td>{{ __('sales.public.vat_tax') }}:</td><td style="text-align:right;">{{ format_money($quotation->tax_total) }}</td></tr>
+        <tr><td class="grand-total"><strong>{{ __('sales.pdf.grand_total') }}:</strong></td><td class="grand-total" style="text-align:right;"><strong>{{ format_money($quotation->grand_total) }} {{ $quotation->currency }}</strong></td></tr>
+    </table>
 
     @php
         $snapshot = $quotation->payment_snapshot ?? [];
@@ -111,60 +151,117 @@
             ] : [],
             $snapshot,
         );
+
+        $hasScope = false;
+        foreach ($quotation->items as $item) {
+            if (!empty($item->scope_snapshot)) { $hasScope = true; break; }
+        }
+        if (!empty($quotation->terms_snapshot['scope'])) { $hasScope = true; }
     @endphp
 
-    @if(!empty($payment['bank_code']) && !empty($payment['account_number']))
-    <div class="payment-box">
-        <h3>{{ __('sales.pdf.payment_information') }}</h3>
-        <table style="width:100%; border-collapse:collapse;">
-            <tr>
-                <td style="vertical-align:top; padding-right:20px;">
-                    <p>{{ __('field.bank') }}: {{ $payment['bank_name'] ?? '' }} {{ !empty($payment['branch_name']) ? '- ' . $payment['branch_name'] : '' }}</p>
-                    <p>{{ __('field.account_number') }}: {{ $payment['account_number'] }}</p>
-                    <p>{{ __('field.account_name') }}: {{ $payment['account_name'] ?? '' }}</p>
-                    @if(!empty($payment['swift_code']))
-                    <p>{{ __('field.swift_code') }}: {{ $payment['swift_code'] }}</p>
+    @if($hasScope)
+        <div class="section-title">{{ __('sales.public.scope_of_supply') }}</div>
+        <table class="scope-table">
+            <thead>
+                <tr>
+                    <th style="width:180px;">{{ __('sales.public.scope_item') }}</th>
+                    <th>{{ __('sales.public.scope_content') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($quotation->items as $item)
+                    @if(!empty($item->scope_snapshot))
+                    <tr>
+                        <td><strong>{{ $item->service_name_snapshot }}</strong></td>
+                        <td>{!! nl2br(e($item->scope_snapshot)) !!}</td>
+                    </tr>
                     @endif
-                    <p>{{ __('sales.public.transfer_content') }}: <strong>{{ $payment['transfer_content'] ?? $quotation->quotation_code }}</strong></p>
+                @endforeach
+                @if(!empty($quotation->terms_snapshot['scope']))
+                <tr>
+                    <td><strong>{{ $quotation->title }}</strong></td>
+                    <td>{!! nl2br(e($quotation->terms_snapshot['scope'])) !!}</td>
+                </tr>
+                @endif
+            </tbody>
+        </table>
+    @endif
+
+    @if(!empty($payment['bank_code']) && !empty($payment['account_number']))
+        <div class="section-title">{{ __('sales.pdf.payment_information') }}</div>
+        <div class="payment-box">
+            <table>
+                <tr>
+                    <td style="width:65%; vertical-align:top;">
+                        <div>{{ __('field.bank') }}: <strong>{{ $payment['bank_name'] ?? '' }}</strong> @if(!empty($payment['branch_name'])) - {{ $payment['branch_name'] }} @endif</div>
+                        <div>{{ __('field.account_number') }}: <strong>{{ $payment['account_number'] }}</strong></div>
+                        <div>{{ __('field.account_name') }}: {{ $payment['account_name'] ?? '' }}</div>
+                        @if(!empty($payment['swift_code']))
+                        <div>{{ __('field.swift_code') }}: {{ $payment['swift_code'] }}</div>
+                        @endif
+                        <div>{{ __('sales.public.transfer_amount') }}: <strong>{{ format_money($quotation->grand_total) }} {{ $quotation->currency }}</strong></div>
+                        <div>{{ __('sales.public.transfer_content') }}: <strong>{{ $payment['transfer_content'] ?? $quotation->quotation_code }}</strong></div>
+                    </td>
+                    <td style="width:35%; text-align:center; vertical-align:top;">
+                        {!! app(\App\Services\Sales\QrPaymentService::class)->generateHtml(
+                            $payment['bank_code'],
+                            $payment['account_number'],
+                            $quotation->grand_total,
+                            $payment['transfer_content'] ?? $quotation->quotation_code,
+                            $payment['account_name'] ?? null,
+                            160,
+                            $payment['qr_template'] ?? null,
+                        ) !!}
+                        <div style="font-size:9px; color:#666;">{{ __('sales.pdf.scan_qr_payment') }}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    @endif
+
+    @if($quotation->terms_snapshot)
+        <div class="section-title">{{ __('sales.pdf.terms_conditions') }}</div>
+        <div class="terms-box">
+            <div>{{ __('sales.pdf.validity') }}: <strong>{{ $quotation->terms_snapshot['valid_until'] ?? $quotation->valid_until?->format('d/m/Y') ?? __('common.not_available') }}</strong></div>
+            @if(!empty($quotation->terms_snapshot['payment_terms']))
+                <div style="margin-top:6px;"><strong>{{ __('sales.pdf.payment_terms') }}:</strong></div>
+                <div>{{ $quotation->terms_snapshot['payment_terms'] }}</div>
+            @endif
+            @if(!empty($quotation->terms_snapshot['vat_note']))
+                <div style="margin-top:6px;"><strong>{{ __('sales.pdf.vat_note') }}:</strong></div>
+                <div>{{ $quotation->terms_snapshot['vat_note'] }}</div>
+            @endif
+            @if(!empty($quotation->terms_snapshot['notes']))
+                <div style="margin-top:6px;"><strong>{{ __('field.notes') }}:</strong> {{ $quotation->terms_snapshot['notes'] }}</div>
+            @endif
+        </div>
+    @endif
+
+    <div style="margin-top:20px;">
+        <table>
+            <tr>
+                <td style="width:50%; padding-right:8px;">
+                    <table class="sign-box" style="width:100%;">
+                        <tr><td><div class="title">{{ __('sales.pdf.company_representative') }}</div></td></tr>
+                        <tr><td><div class="hint">{{ __('sales.public.prepared_by') }}</div></td></tr>
+                        <tr><td><div class="name">{{ company_name() }}</div></td></tr>
+                    </table>
                 </td>
-                <td style="vertical-align:top; text-align:center; width:220px;">
-                    {!! app(\App\Services\Sales\QrPaymentService::class)->generateHtml(
-                        $payment['bank_code'],
-                        $payment['account_number'],
-                        $quotation->grand_total,
-                        $payment['transfer_content'] ?? $quotation->quotation_code,
-                        $payment['account_name'] ?? null,
-                        180,
-                        $payment['qr_template'] ?? null,
-                    ) !!}
-                    <p style="font-size:10px; color:#666;">{{ __('sales.pdf.scan_qr_payment') }}</p>
+                <td style="width:50%; padding-left:8px;">
+                    <table class="sign-box" style="width:100%;">
+                        <tr><td><div class="title">{{ __('sales.public.customer_confirmation') }}</div></td></tr>
+                        <tr><td><div class="hint">{{ __('sales.public.sign_and_stamp') }}</div></td></tr>
+                        <tr><td><div class="name">{{ $quotation->customer_snapshot['display_name'] ?? '' }}</div></td></tr>
+                    </table>
                 </td>
             </tr>
         </table>
     </div>
-    @endif
-
-    @if($quotation->terms_snapshot)
-    <div class="terms">
-        <h3>{{ __('sales.pdf.terms_conditions') }}</h3>
-        <p>{{ __('sales.pdf.validity') }}: {{ $quotation->terms_snapshot['valid_until'] ?? $quotation->valid_until?->format('d/m/Y') ?? __('common.not_available') }}</p>
-        @if(!empty($quotation->terms_snapshot['scope']))
-            <p><strong>{{ __('sales.pdf.scope_of_supply') }}:</strong></p>
-            <p>{{ $quotation->terms_snapshot['scope'] }}</p>
-        @endif
-        @if(!empty($quotation->terms_snapshot['notes']))
-            <p><strong>{{ __('field.notes') }}:</strong> {{ $quotation->terms_snapshot['notes'] }}</p>
-        @endif
-    </div>
-    @endif
-
-    <div class="stamp">
-        <p class="line"><strong>{{ __('sales.pdf.company_representative') }}</strong></p>
-        <p class="line" style="margin-top:50px;">{{ company_name() }}</p>
-    </div>
 
     <div class="footer">
-        <p>{{ __('sales.pdf.created_at', ['time' => now()->format('d/m/Y H:i'), 'company' => company_name()]) }}</p>
+        @if(company_email())<div>{{ __('field.email') }}: {{ company_email() }}</div>@endif
+        <div>{{ __('sales.public.generated_note', ['company' => company_name()]) }}</div>
+        <div>{{ __('sales.pdf.created_at', ['time' => now()->format('d/m/Y H:i'), 'company' => company_name()]) }}</div>
     </div>
 </body>
 </html>

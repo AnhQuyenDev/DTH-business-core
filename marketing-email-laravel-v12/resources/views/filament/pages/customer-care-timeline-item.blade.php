@@ -60,14 +60,14 @@
             @svg($interactionIcon($data->interaction_type), 'h-4 w-4')
         </div>
         <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-1.5 flex-wrap">
                 <p class="text-sm font-medium text-gray-950 dark:text-white">{{ $data->subject ?: __("enum.interaction_type.{$data->interaction_type}") }}</p>
-                <x-filament::badge color="gray" size="xs">{{ __("enum.interaction_type.{$data->interaction_type}") }}</x-filament::badge>
+                <x-filament::badge color="gray" size="xs" class="whitespace-nowrap">{{ __("enum.interaction_type.{$data->interaction_type}") }}</x-filament::badge>
                 @if ($data->status)
-                    <x-filament::badge :color="$statusBadgeColor($data->status?->value)" size="xs">{{ $data->status->label() }}</x-filament::badge>
+                    <x-filament::badge :color="$statusBadgeColor($data->status?->value)" size="xs" class="whitespace-nowrap">{{ $data->status->label() }}</x-filament::badge>
                 @endif
             </div>
-            <p class="mt-1.5 text-sm whitespace-pre-wrap text-gray-700 dark:text-gray-300">{{ $data->content }}</p>
+            <p class="mt-1.5 text-sm whitespace-pre-wrap text-gray-700 dark:text-gray-300 line-clamp-3 break-words">{{ $data->content }}</p>
             @if ($data->outcome)
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $data->outcome }}</p>
             @endif
@@ -92,11 +92,11 @@
             @svg('heroicon-m-envelope', 'h-4 w-4')
         </div>
         <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-1.5 flex-wrap">
                 <p class="text-sm font-medium text-gray-950 dark:text-white truncate">{{ $payload['subject'] ?? $data->event_type->label() }}</p>
-                <x-filament::badge :color="$emailBadgeColor($data->event_type->value)" size="xs">{{ $data->event_type->label() }}</x-filament::badge>
+                <x-filament::badge :color="$emailBadgeColor($data->event_type->value)" size="xs" class="whitespace-nowrap">{{ $data->event_type->label() }}</x-filament::badge>
                 @if ($data->campaign_id === null)
-                    <x-filament::badge color="gray" size="xs">{{ __('page.customer_care.from_staff') }}</x-filament::badge>
+                    <x-filament::badge color="gray" size="xs" class="whitespace-nowrap">{{ __('page.customer_care.from_staff') }}</x-filament::badge>
                 @endif
             </div>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $at->format('d/m/Y H:i') }}</p>
@@ -108,14 +108,23 @@
             @endif
         </div>
     @elseif ($kind === 'quotation')
-        <div class="{{ $iconChipColor('warning') }} flex h-8 w-8 items-center justify-center rounded-lg shrink-0">
+        @php
+            $firstEmailLog = $data->emailLogs?->first();
+        @endphp
+        <div class="{{ $iconChipColor($firstEmailLog ? 'primary' : 'warning') }} flex h-8 w-8 items-center justify-center rounded-lg shrink-0">
             @svg('heroicon-m-document-text', 'h-4 w-4')
         </div>
         <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-1.5 flex-wrap">
                 <p class="text-sm font-medium text-gray-950 dark:text-white">{{ $data->quotation_code }}</p>
                 <span class="text-sm text-gray-600 dark:text-gray-300">{{ $data->title }}</span>
-                <x-filament::badge :color="$data->status->color()" size="xs">{{ $data->status->label() }}</x-filament::badge>
+                <x-filament::badge :color="$data->status->color()" size="xs" class="whitespace-nowrap">{{ $data->status->label() }}</x-filament::badge>
+                @if ($firstEmailLog)
+                    <x-filament::badge color="primary" size="xs" class="whitespace-nowrap">
+                        @svg('heroicon-m-envelope', 'h-3 w-3 inline mr-0.5 -mt-px')
+                        {{ __('page.customer_care.emailed_via_template') }}
+                    </x-filament::badge>
+                @endif
             </div>
             <p class="mt-1.5 text-sm font-semibold text-gray-950 dark:text-white">
                 {{ number_format($data->grand_total, 0, ',', '.') }} {{ $data->currency }}
@@ -127,11 +136,11 @@
             @svg($kind === 'assignment_end' ? 'heroicon-m-user-minus' : 'heroicon-m-user-plus', 'h-4 w-4')
         </div>
         <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-1.5 flex-wrap">
                 <p class="text-sm font-medium text-gray-950 dark:text-white">
                     {{ $kind === 'assignment_end' ? __('page.customer_care.assignment_ended') : __('page.customer_care.assignment_started') }}
                 </p>
-                <x-filament::badge color="gray" size="xs">{{ $data->staff?->full_name }}</x-filament::badge>
+                <x-filament::badge color="gray" size="xs" class="whitespace-nowrap">{{ $data->staff?->full_name }}</x-filament::badge>
             </div>
             @if ($data->note)
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $data->note }}</p>
