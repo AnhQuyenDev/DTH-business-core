@@ -5,11 +5,12 @@ namespace App\Services\Marketing;
 use App\Models\Marketing\FormField;
 use App\Models\Marketing\LandingPage;
 use App\Models\Marketing\FormTemplate;
+
 class LandingPageRenderService
 {
     public function __construct(private readonly LandingPageThemeService $themeService) {
-
     }
+
     public function render(
         LandingPage $landingPage,
         string $formType = 'personal'
@@ -42,15 +43,6 @@ class LandingPageRenderService
         }
 
         $html = $this->ensureTailwindConfig($html);
-
-        /*
-        * Xử lý cả những Landing Page cũ vẫn còn form.
-        */
-        $html = preg_replace(
-            '/<form\b[^>]*>.*?<\/form>/is',
-            '',
-            $html
-        ) ?? $html;
 
         $personalForm = $this->renderForm(
             $landingPage,
@@ -134,7 +126,7 @@ class LandingPageRenderService
         string $formType,
         bool $showTypeSelector = false
     ): string {
-                $actionUrl = route('marketing.landing-pages.public.submit', $landingPage->slug);
+        $actionUrl = route('marketing.landing-pages.public.submit', $landingPage->slug);
 
         $utmQuery = [];
         foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as $utmParam) {
@@ -172,6 +164,11 @@ class LandingPageRenderService
 
         if ($formTemplate->html_body) {
             $body = $formTemplate->html_body;
+
+            // Defensive: nếu HTML cũ chưa có {{fields}}, normalize runtime để tương thích.
+            if (! str_contains($body, '{{fields}}')) {
+                $body = self::sanitizeHtmlBody($body);
+            }
 
             // Ensure method="POST" on the form tag
             $body = preg_replace('/<form\b([^>]*)method\s*=\s*["\']get["\']([^>]*)>/i', '<form$1method="POST"$2>', $body) ?? $body;
@@ -308,6 +305,7 @@ class LandingPageRenderService
     '</body>
     </html>';
     }
+
     protected function renderTypeSelector(LandingPage $landingPage, string $currentType): string
     {
         $hasPersonal = $landingPage->forms()->where('form_type', 'personal')->exists();
@@ -587,16 +585,7 @@ HTML;
     public function prepareImportedLandingPageHtml(string $html): string
     {
         $html = $this->sanitizeImportedHtml($html, false);
-        $html = preg_replace(
-            '/<form\b[^>]*>.*?<\/form>/is',
-            '',
-            $html
-        ) ?? $html;
-        $html = preg_replace(
-            '/<\/?form\b[^>]*>/i',
-            '',
-            $html
-        ) ?? $html;
+        $html = $this->removeImportedFormSections($html);
 
         $html = str_replace([
             '{{form}}',
@@ -606,6 +595,98 @@ HTML;
         ], '', $html);
 
         return trim($html);
+    }
+
+    private function removeImportedFormSections(string $html): string
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+
+        libxml_use_internal_errors(true);
+
+        $loaded = $dom->loadHTML(
+            '<?xml encoding="UTF-8">'.$html,
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+        );
+
+        libxml_clear_errors();
+
+        if (! $loaded) {
+            return preg_replace(
+                '/<form\b[^>]*>.*?<\/form>/is',
+                '',
+                $html
+            ) ?? $html;
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $forms = $xpath->query('//form');
+
+        if ($forms === false) {
+            return $html;
+        }
+
+        // Copy node list trước vì DOM sẽ thay đổi khi remove.
+        $formNodes = [];
+
+        foreach ($forms as $form) {
+            $formNodes[] = $form;
+        }
+
+        foreach ($formNodes as $form) {
+            if (! $form instanceof \DOMElement) {
+                continue;
+            }
+
+            $container = $this->findImportedFormContainer($form);
+            $target = $container ?? $form;
+
+            $target->parentNode?->removeChild($target);
+        }
+
+        return trim($dom->saveHTML() ?: $html);
+    }
+
+    private function findImportedFormContainer(
+        \DOMElement $form
+    ): ?\DOMElement {
+        $node = $form->parentNode;
+        $fallback = null;
+
+        while ($node instanceof \DOMElement) {
+            $tag = strtolower($node->tagName);
+            $identity = strtolower(
+                $node->getAttribute('id').' '.
+                $node->getAttribute('class')
+            );
+
+            if (
+                $tag === 'section' &&
+                preg_match(
+                    '/form|contact|register|registration|signup|lead|inquiry|booking/',
+                    $identity
+                )
+            ) {
+                return $node;
+            }
+
+            if (
+                $fallback === null &&
+                preg_match(
+                    '/form-section|form-wrapper|contact-form|register-form/',
+                    $identity
+                )
+            ) {
+                $fallback = $node;
+            }
+
+            if ($tag === 'body') {
+                break;
+            }
+
+            $node = $node->parentNode;
+        }
+
+        return $fallback;
     }
 
     protected function ensureTailwindConfig(string $html): string

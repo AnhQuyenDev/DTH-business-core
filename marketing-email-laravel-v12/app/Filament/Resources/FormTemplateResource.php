@@ -106,13 +106,23 @@ class FormTemplateResource extends Resource
                         ->collapsed()
                         ->itemLabel(
                             function (array $state): string {
-                                $label = trim(
-                                    (string) ($state['label'] ?? '')
-                                );
+                                $label = trim((string) ($state['label'] ?? ''));
+                                $key = trim((string) ($state['field_key'] ?? ''));
+                                $type = trim((string) ($state['field_type'] ?? ''));
+
+                                if ($label !== '' && $key !== '') {
+                                    return $label.' — '.$key.($type !== '' ? ' ['.$type.']' : '');
+                                }
+
                                 if ($label !== '') {
                                     return $label;
-                                } 
-                                return '';
+                                }
+
+                                if ($key !== '') {
+                                    return $key;
+                                }
+
+                                return 'Trường biểu mẫu';
                             }
                         )
                         ->schema([

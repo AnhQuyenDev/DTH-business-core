@@ -22,29 +22,47 @@ final class LandingPageThemeService
     public function detectFromHtml(string $html): array
     {
         $tokens = $this->defaults();
+        $variables = $this->extractCssVariables($html);
 
-        $primary = $this->detectPrimaryColor($html);
+        $primary = $this->normalizeHex(
+            $variables['lp-primary']
+            ?? $variables['primary']
+            ?? null
+        ) ?? $this->detectPrimaryColor($html);
 
         if ($primary !== null) {
             $tokens['primary'] = $primary;
-            $tokens['primary_hover'] = $this->darken($primary, 12);
+            $tokens['primary_hover'] = $this->normalizeHex(
+                $variables['primary-hover']
+                ?? $variables['secondary']
+                ?? null
+            ) ?? $this->darken($primary, 12);
         }
 
-        if (preg_match(
-            '/body\s*\{[^}]*background(?:-color)?\s*:\s*(#[0-9a-f]{6})/i',
+        $tokens['background'] = $this->normalizeHex(
+            $variables['lp-background']
+            ?? $variables['background']
+            ?? $variables['bg']
+            ?? null
+        ) ?? $this->detectBodyColor(
             $html,
-            $match
-        )) {
-            $tokens['background'] = strtolower($match[1]);
-        }
+            'background(?:-color)?'
+        ) ?? $tokens['background'];
 
-        if (preg_match(
-            '/body\s*\{[^}]*color\s*:\s*(#[0-9a-f]{6})/i',
+        $tokens['surface'] = $this->normalizeHex(
+            $variables['lp-surface']
+            ?? $variables['surface']
+            ?? null
+        ) ?? $tokens['surface'];
+
+        $tokens['text'] = $this->normalizeHex(
+            $variables['lp-text']
+            ?? $variables['text']
+            ?? null
+        ) ?? $this->detectBodyColor(
             $html,
-            $match
-        )) {
-            $tokens['text'] = strtolower($match[1]);
-        }
+            'color'
+        ) ?? $tokens['text'];
 
         if (preg_match(
             '/border-radius\s*:\s*(\d+(?:\.\d+)?(?:px|rem))/i',
@@ -80,6 +98,48 @@ final class LandingPageThemeService
             '--lp-danger: '.$tokens['danger'].';',
             '--lp-radius: '.$tokens['radius'].';',
         ]);
+    }
+
+    private function extractCssVariables(string $html): array
+    {
+        $variables = [];
+
+        preg_match_all(
+            '/--([a-z0-9-_]+)\s*:\s*([^;}]+)/i',
+            $html,
+            $matches,
+            PREG_SET_ORDER
+        );
+
+        foreach ($matches as $match) {
+            $variables[strtolower($match[1])] = trim($match[2]);
+        }
+
+        return $variables;
+    }
+
+    private function normalizeHex(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if (preg_match('/^#[0-9a-f]{6}$/i', $value)) {
+            return strtolower($value);
+        }
+
+        if (preg_match('/^#[0-9a-f]{3}$/i', $value)) {
+            return strtolower(sprintf(
+                '#%s%s%s%s%s%s',
+                $value[1], $value[1],
+                $value[2], $value[2],
+                $value[3], $value[3],
+            ));
+        }
+
+        return null;
     }
 
     private function detectPrimaryColor(string $html): ?string
@@ -118,6 +178,21 @@ final class LandingPageThemeService
         }
 
         return null;
+    }
+
+    private function detectBodyColor(
+        string $html,
+        string $propertyPattern
+    ): ?string {
+        if (! preg_match(
+            '/body\s*\{[^}]*'.$propertyPattern.'\s*:\s*(#[0-9a-f]{3,6})/i',
+            $html,
+            $match
+        )) {
+            return null;
+        }
+
+        return $this->normalizeHex($match[1]);
     }
 
     private function darken(string $hex, int $percent): string
