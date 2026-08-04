@@ -318,18 +318,45 @@ class FormTemplateImportService
 
     private function addSystemFormClass(string $formHtml): string
     {
-        if (preg_match('/<form\b[^>]*class\s*=/i', $formHtml)) {
-            return preg_replace(
-                '/(<form\b[^>]*class\s*=\s*["\'])([^"\']*)/i',
-                '$1$2 lp-form-template__form',
-                $formHtml,
-                1
-            ) ?? $formHtml;
-        }
+        return preg_replace_callback(
+            '/<form\b([^>]*)>/i',
+            static function (array $matches): string {
+                $attributes = $matches[1];
 
-        return preg_replace(
-            '/<form\b/i',
-            '<form class="lp-form-template__form"',
+                /*
+                * Xóa các thuộc tính nhận diện/giao diện từ Form HTML gốc.
+                *
+                * Không được giữ class="form-container", vì class này
+                * có thể trùng với CSS của Landing Page.
+                */
+                $attributes = preg_replace(
+                    '/\s+class\s*=\s*(["\']).*?\1/i',
+                    '',
+                    $attributes
+                ) ?? $attributes;
+
+                $attributes = preg_replace(
+                    '/\s+id\s*=\s*(["\']).*?\1/i',
+                    '',
+                    $attributes
+                ) ?? $attributes;
+
+                $attributes = preg_replace(
+                    '/\s+style\s*=\s*(["\']).*?\1/i',
+                    '',
+                    $attributes
+                ) ?? $attributes;
+
+                $attributes = preg_replace(
+                    '/\s+on\w+\s*=\s*(["\']).*?\1/i',
+                    '',
+                    $attributes
+                ) ?? $attributes;
+
+                return '<form'
+                    .$attributes
+                    .' class="lp-form-template__form">';
+            },
             $formHtml,
             1
         ) ?? $formHtml;

@@ -15,7 +15,9 @@ class LandingPageRenderService
         LandingPage $landingPage,
         string $formType = 'personal'
     ): string {
-        $html = $landingPage->html_body;
+        $html = $this->normalizeStyleEntities(
+            (string) $landingPage->html_body
+        );
 
         if (blank($html)) {
             $html = '<!DOCTYPE html>
@@ -164,6 +166,7 @@ class LandingPageRenderService
 
         if ($formTemplate->html_body) {
             $body = $formTemplate->html_body;
+            $body = $this->isolateRuntimeFormShell($body);
 
             // Defensive: nếu HTML cũ chưa có {{fields}}, normalize runtime để tương thích.
             if (! str_contains($body, '{{fields}}')) {
@@ -171,32 +174,42 @@ class LandingPageRenderService
             }
 
             // Ensure method="POST" on the form tag
-            $body = preg_replace('/<form\b([^>]*)method\s*=\s*["\']get["\']([^>]*)>/i', '<form$1method="POST"$2>', $body) ?? $body;
-            if (! preg_match('/<form\b[^>]*method\s*=/i', $body)) {
-                $body = preg_replace('/(<form\b)/i', '<form method="POST"', $body, 1) ?? $body;
-            }
+            $body = preg_replace_callback(
+                '/<form\b([^>]*)>/i',
+                static function (array $matches): string {
+                    $attributes = $matches[1];
+
+                    $attributes = preg_replace(
+                        '/\s+method\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i',
+                        '',
+                        $attributes
+                    ) ?? $attributes;
+
+                    $attributes = preg_replace(
+                        '/\s+action\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i',
+                        '',
+                        $attributes
+                    ) ?? $attributes;
+
+                    return '<form'
+                        .$attributes
+                        .' method="POST"'
+                        .' action="{{action_url}}">';
+                },
+                $body,
+                1
+            ) ?? $body;
 
             if (! str_contains($body, '{{csrf_token}}')) {
                 $body = preg_replace(
                     '/(<form\b[^>]*>)/i',
-                    '$1'."\n".'<input type="hidden" name="_token" value="{{csrf_token}}">',
-                    $body
+                    '$1'."\n".
+                    '<input type="hidden" name="_token" value="{{csrf_token}}">',
+                    $body,
+                    1
                 ) ?? $body;
             }
-
-            $body = preg_replace_callback(
-                '/(<form\b[^>]*?)\s+action\s*=\s*"([^"]*)"/i',
-                fn ($m) => $m[1].' action="{{action_url}}"',
-                $body,
-                1
-            ) ?? $body;
-            $body = preg_replace_callback(
-                "/(<form\b[^>]*?)\s+action\s*=\s*'([^']*)'/i",
-                fn ($m) => $m[1]." action='{{action_url}}'",
-                $body,
-                1
-            ) ?? $body;
-
+            
             $inject = '<input type="hidden" name="form_template_id" value="'.$formTemplate->id.'">'."\n";
             $inject .= '<input type="hidden" name="submission_type" value="'.$formType.'">'."\n";
             $body = preg_replace(
@@ -599,12 +612,37 @@ HTML;
 
     private function removeImportedFormSections(string $html): string
     {
+        /*
+        * DOMDocument có thể chuyển Unicode trong CSS thành:
+        * &#7912;, &#9889;...
+        *
+        * Trong <style>, các entity này không được browser giải mã
+        * như HTML text thông thường.
+        *
+        * Vì vậy phải tách style ra trước khi đưa HTML qua DOM.
+        */
+        $styleBlocks = [];
+
+        $htmlForDom = preg_replace_callback(
+            '/<style\b[^>]*>.*?<\/style>/is',
+            static function (array $matches) use (&$styleBlocks): string {
+                $token = '__LP_STYLE_BLOCK_'
+                    .count($styleBlocks)
+                    .'__';
+
+                $styleBlocks[$token] = $matches[0];
+
+                return $token;
+            },
+            $html
+        ) ?? $html;
+
         $dom = new \DOMDocument('1.0', 'UTF-8');
 
         libxml_use_internal_errors(true);
 
         $loaded = $dom->loadHTML(
-            '<?xml encoding="UTF-8">'.$html,
+            '<?xml encoding="UTF-8">'.$htmlForDom,
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
 
@@ -625,7 +663,6 @@ HTML;
             return $html;
         }
 
-        // Copy node list trước vì DOM sẽ thay đổi khi remove.
         $formNodes = [];
 
         foreach ($forms as $form) {
@@ -643,7 +680,23 @@ HTML;
             $target->parentNode?->removeChild($target);
         }
 
-        return trim($dom->saveHTML() ?: $html);
+        $output = trim(
+            $dom->saveHTML() ?: $htmlForDom
+        );
+
+        /*
+        * Xóa processing instruction được dùng để ép UTF-8.
+        */
+        $output = preg_replace(
+            '/^<\?xml[^>]*\?>\s*/i',
+            '',
+            $output
+        ) ?? $output;
+
+        /*
+        * Trả nguyên vẹn CSS ban đầu vào HTML.
+        */
+        return strtr($output, $styleBlocks);
     }
 
     private function findImportedFormContainer(
@@ -1062,6 +1115,28 @@ HTML;
         color: var(--lp-text);
     }
 
+    .lp-forms-section form.lp-form-template__form {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
+        position: static !important;
+    }
+
+    .lp-form-panel:not([hidden]) {
+        display: block !important;
+    }
+
+    .lp-form-panel[hidden] {
+        display: none !important;
+    }
+
+    .lp-form-template {
+        display: block !important;
+        width: 100%;
+    }
+
     .lp-forms-section label {
         color: var(--lp-text) !important;
     }
@@ -1141,5 +1216,90 @@ HTML;
         }
 
         return $html."\n".$formsSection;
+    }
+
+    private function isolateRuntimeFormShell(string $html): string
+    {
+        return preg_replace_callback(
+            '/<form\b([^>]*)>/i',
+            static function (array $matches): string {
+                $attributes = $matches[1];
+
+                $attributes = preg_replace(
+                    '/\s+class\s*=\s*(["\']).*?\1/i',
+                    '',
+                    $attributes
+                ) ?? $attributes;
+
+                $attributes = preg_replace(
+                    '/\s+id\s*=\s*(["\']).*?\1/i',
+                    '',
+                    $attributes
+                ) ?? $attributes;
+
+                $attributes = preg_replace(
+                    '/\s+style\s*=\s*(["\']).*?\1/i',
+                    '',
+                    $attributes
+                ) ?? $attributes;
+
+                return '<form'
+                    .$attributes
+                    .' class="lp-form-template__form">';
+            },
+            $html,
+            1
+        ) ?? $html;
+    }
+
+    private function normalizeStyleEntities(string $html): string
+    {
+        return preg_replace_callback(
+            '/<style\b([^>]*)>(.*?)<\/style>/is',
+            static function (array $matches): string {
+                $attributes = $matches[1];
+                $css = $matches[2];
+
+                /*
+                * Sửa trường hợp bị encode nhiều lần:
+                * &amp;#9889; → &#9889;
+                */
+                for ($i = 0; $i < 3; $i++) {
+                    $normalized = preg_replace(
+                        '/&amp;(#(?:x[0-9a-f]+|\d+);)/i',
+                        '&$1',
+                        $css
+                    ) ?? $css;
+
+                    if ($normalized === $css) {
+                        break;
+                    }
+
+                    $css = $normalized;
+                }
+
+                /*
+                * &#9889; → ⚡
+                * &#7912; → Ứ
+                */
+                $css = preg_replace_callback(
+                    '/&#(?:x[0-9a-f]+|\d+);/i',
+                    static fn (array $entity): string =>
+                        html_entity_decode(
+                            $entity[0],
+                            ENT_QUOTES | ENT_HTML5,
+                            'UTF-8'
+                        ),
+                    $css
+                ) ?? $css;
+
+                return '<style'
+                    .$attributes
+                    .'>'
+                    .$css
+                    .'</style>';
+            },
+            $html
+        ) ?? $html;
     }
 }
