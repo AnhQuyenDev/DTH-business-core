@@ -45,6 +45,11 @@ class Company extends Model
         ];
     }
 
+    public function leads(): HasMany
+    {
+        return $this->hasMany(Lead::class);
+    }
+
     public function businessProfiles(): HasMany
     {
         return $this->hasMany(BusinessContactProfile::class);

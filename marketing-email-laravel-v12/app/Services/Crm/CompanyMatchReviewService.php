@@ -61,6 +61,10 @@ final class CompanyMatchReviewService
                 'reviewed_at' => now(),
             ]);
 
+            $candidate->submission->lead?->update([
+                'company_id' => $candidate->suggestedCompany->id,
+            ]);
+
             return $candidate->fresh();
         });
     }

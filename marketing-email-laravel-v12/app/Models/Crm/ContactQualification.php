@@ -15,6 +15,7 @@ class ContactQualification extends Model
     use HasFactory;
 
     protected $fillable = [
+        'lead_id',
         'contact_id',
         'assigned_staff_id',
         'status',
@@ -46,6 +47,11 @@ class ContactQualification extends Model
             'qualified_at' => 'datetime',
             'converted_at' => 'datetime',
         ];
+    }
+
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(Lead::class);
     }
 
     public function contact(): BelongsTo

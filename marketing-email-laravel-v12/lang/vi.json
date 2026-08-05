@@ -556,7 +556,6 @@
     "field.department_code": "Mã phòng ban",
     "field.description": "Mô tả",
     "field.discount": "Giảm giá",
-    "field.discount": "Giảm giá",
     "field.discount_limit_type": "Loại giới hạn chiết khấu",
     "field.discount_limit_value": "Giá trị giới hạn",
     "field.discount_type": "Loại giảm giá",
@@ -1507,5 +1506,11 @@
     "field.intake_status": "Tiếp nhận",
     "field.distribution_state": "Phân phối",
     "field.crm_status": "Trạng thái CRM",
-    "unsubscribe.success_title": "Hủy đăng ký thành công"
+    "unsubscribe.success_title": "Hủy đăng ký thành công",
+    "field.lead_code": "Mã Lead",
+    "navigation.leads": "Leads",
+    "page.title.leads": "Danh sách Leads",
+    "field.source_detail": "Chi tiết nguồn",
+    "field.contacted_at": "Thời gian liên hệ",
+    "action.not_applicable": "Không áp dụng"
 }

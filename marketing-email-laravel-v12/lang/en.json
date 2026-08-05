@@ -1496,5 +1496,11 @@
     "field.submission_type": "Form Type",
     "field.intake_status": "Intake",
     "field.distribution_state": "Distribution",
-    "field.crm_status": "CRM Status"
+    "field.crm_status": "CRM Status",
+    "field.lead_code": "Lead Code",
+    "navigation.leads": "Leads",
+    "page.title.leads": "Leads",
+    "field.source_detail": "Source detail",
+    "field.contacted_at": "Contacted at",
+    "action.not_applicable": "N/A"
 }

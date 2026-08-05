@@ -23,6 +23,7 @@ use App\Services\Crm\CompanyCodeGenerator;
 use App\Services\Crm\CompanyContactLinkService;
 use App\Services\Crm\CompanyNormalizationService;
 use App\Services\Crm\CompanyResolutionService;
+use App\Services\Crm\LeadCreationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -78,11 +79,6 @@ class LandingPageSubmissionService
             $this->applyTagsAndLists($contact, $landingPage, $formTemplate, $validatedData);
             $this->saveCustomFields($contact, $formTemplate, $validatedData);
 
-            $qualification = ContactQualification::firstOrCreate(
-                ['contact_id' => $contact->id],
-                ['status' => ContactQualificationStatus::New->value]
-            );
-
             $taxCodeKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, 'tax_code');
 
             $submission = LandingPageSubmission::create([
@@ -108,13 +104,35 @@ class LandingPageSubmissionService
                 'submitted_at' => now(),
             ]);
 
+            $company = null;
+
             if ($resolvedType === 'business' && isset($profile)) {
-                $this->resolveCompany(
+                $company = $this->resolveCompany(
                     $contact,
                     $profile,
                     $validatedData,
                     $formTemplate,
                     $submission
+                );
+            }
+
+            if (config('business_flow.v2_enabled')) {
+                $submission->refresh();
+
+                app(LeadCreationService::class)->createFromSubmission(
+                    submission: $submission->loadMissing('landingPage'),
+                    companyId: $company?->id ?? $submission->company_id,
+                    serviceInterest: $this->resolveServiceInterest(
+                        $formTemplate,
+                        $resolvedType,
+                        $validatedData
+                    ),
+                    userId: auth()->id(),
+                );
+            } else {
+                ContactQualification::query()->firstOrCreate(
+                    ['contact_id' => $contact->id],
+                    ['status' => ContactQualificationStatus::New->value]
                 );
             }
 
@@ -589,5 +607,29 @@ class LandingPageSubmissionService
         }
 
         return null;
+    }
+
+    protected function resolveServiceInterest(
+        $formTemplate,
+        string $resolvedType,
+        array $validatedData,
+    ): ?string {
+        $key = $this->findFieldKeyByMapping(
+            $formTemplate,
+            $resolvedType,
+            'service_interest'
+        );
+
+        if ($key === null) {
+            return null;
+        }
+
+        $value = $validatedData[$key] ?? null;
+
+        if (is_array($value)) {
+            $value = implode(', ', array_filter($value));
+        }
+
+        return filled($value) ? trim((string) $value) : null;
     }
 }

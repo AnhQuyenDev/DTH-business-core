@@ -7,6 +7,7 @@ use App\Models\Crm\BusinessContactProfile;
 use App\Models\Crm\Company;
 use App\Models\Crm\ContactQualification;
 use App\Models\Crm\Customer;
+use App\Models\Crm\Lead;
 use App\Models\Crm\PersonalContactProfile;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -51,10 +53,33 @@ class Contact extends Model
         static::deleting(function (self $contact): void {
             $contact->personalProfile?->delete();
             $contact->businessProfile?->delete();
-            $contact->qualification?->delete();
+            $contact->leads()->each(
+                fn (Lead $lead): bool => $lead->delete()
+            );
             $contact->customFieldValues()->each(fn ($v) => $v->delete());
             $contact->landingPageSubmissions()->each(fn ($s) => $s->delete());
         });
+    }
+
+    public function leads(): HasMany
+    {
+        return $this->hasMany(Lead::class);
+    }
+
+    public function qualifications(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            ContactQualification::class,
+            Lead::class,
+            'contact_id',
+            'lead_id'
+        );
+    }
+
+    public function qualification(): HasOne
+    {
+        return $this->hasOne(ContactQualification::class)
+            ->latestOfMany();
     }
 
     public function landingPageSubmissions(): HasMany
@@ -131,11 +156,6 @@ class Contact extends Model
     public function businessProfile(): HasOne
     {
         return $this->hasOne(BusinessContactProfile::class);
-    }
-
-    public function qualification(): HasOne
-    {
-        return $this->hasOne(ContactQualification::class);
     }
 
     public function companies(): BelongsToMany

@@ -52,6 +52,11 @@ class ContactQualificationResource extends Resource
         return __('navigation.group.crm');
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return ! config('business_flow.v2_enabled');
+    }
+
     public static function canViewAny(): bool
     {
         $user = auth()->user();

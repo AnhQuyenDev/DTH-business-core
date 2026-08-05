@@ -5,9 +5,11 @@ namespace App\Models\Marketing;
 use App\Enums\Marketing\LandingPageContactAction;
 use App\Enums\Marketing\LandingPageSubmissionStatus;
 use App\Models\Crm\Company;
+use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LandingPageSubmission extends Model
 {
@@ -46,6 +48,11 @@ class LandingPageSubmission extends Model
             'contact_action' => LandingPageContactAction::class,
             'submitted_at' => 'datetime',
         ];
+    }
+
+    public function lead(): HasOne
+    {
+        return $this->hasOne(Lead::class, 'submission_id');
     }
 
     public function landingPage(): BelongsTo
