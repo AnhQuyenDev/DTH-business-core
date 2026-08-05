@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Contracts\Tax\TaxCodeVerificationProvider;
+use App\Events\Crm\LeadAssigned;
+use App\Listeners\Crm\RecordLeadAssignmentAudit;
 use App\Listeners\LogSuccessfulLogin;
 use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\Staff;
@@ -30,7 +32,10 @@ class AppServiceProvider extends ServiceProvider
 
         // ─── Event Listeners ────────────────────────────────────────────
         Event::listen(Login::class, LogSuccessfulLogin::class);
-
+        Event::listen(
+            LeadAssigned::class,
+            RecordLeadAssignmentAudit::class
+        );
         // ─── Marketing View Gates ───────────────────────────────────────
         Gate::define('marketing.view-contacts', fn (User $user) => $user->isAnyMarketingUser());
         Gate::define('marketing.view-tags', fn (User $user) => $user->isAnyMarketingUser());
@@ -65,6 +70,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('crm.view-contacts', fn (User $user) => $user->isAnyMarketingUser());
         Gate::define('crm.manage-contact-qualification', fn (User $user) => $user->isMarketingStaff() || $user->isCustomerServiceStaff());
         Gate::define('crm.assign-contact', fn (User $user) => $user->isMarketingManager() || $user->isCustomerServiceManager() || $user->isAdmin());
+        Gate::define('crm.assign-lead', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager());
+        Gate::define('crm.reassign-lead', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager());
+        Gate::define('crm.manage-company-owner', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager());
         Gate::define('crm.convert-contact', fn (User $user) => $user->isMarketingManager() || $user->isCustomerServiceManager() || $user->isAdmin());
         Gate::define('crm.view-customers', fn (User $user) => $user->isAnyMarketingUser());
         Gate::define('crm.view-owned-customers', fn (User $user) => $user->isMarketingStaff() || $user->isCustomerServiceStaff());

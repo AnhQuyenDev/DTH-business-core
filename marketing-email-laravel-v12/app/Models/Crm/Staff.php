@@ -2,6 +2,7 @@
 
 namespace App\Models\Crm;
 
+use App\Enums\Crm\LeadIntakeStatus;
 use App\Enums\Crm\StaffEmploymentStatus;
 use App\Models\Marketing\AuditLog;
 use App\Models\User;
@@ -63,6 +64,21 @@ class Staff extends Model
     public function availabilities(): HasMany
     {
         return $this->hasMany(StaffAvailability::class);
+    }
+
+    public function assignedLeads(): HasMany
+    {
+        return $this->hasMany(Lead::class, 'assigned_staff_id');
+    }
+
+    public function ownedCompanies(): HasMany
+    {
+        return $this->hasMany(Company::class, 'account_owner_staff_id');
+    }
+
+    public function companyAssignments(): HasMany
+    {
+        return $this->hasMany(CompanyAssignment::class);
     }
 
     public function assignments(): HasMany
@@ -147,5 +163,30 @@ class Staff extends Model
         }
 
         return $this->currentLoad() < $this->customer_capacity;
+    }
+
+    public function canReceiveNewLeads(): bool
+    {
+        if (
+            $this->employment_status !== StaffEmploymentStatus::Active
+            || ! $this->can_receive_customers
+        ) {
+            return false;
+        }
+
+        return ! $this->availabilities()
+            ->active()
+            ->where('can_receive_new_customers', false)
+            ->exists();
+    }
+
+    public function openLeadCount(): int
+    {
+        return $this->assignedLeads()
+            ->whereIn('intake_status', [
+                LeadIntakeStatus::New->value,
+                LeadIntakeStatus::Active->value,
+            ])
+            ->count();
     }
 }

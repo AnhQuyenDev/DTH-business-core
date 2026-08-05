@@ -7,6 +7,7 @@ use App\Enums\Crm\LeadIntakeStatus;
 use App\Models\Crm\ContactQualification;
 use App\Models\Crm\LandingPageForm;
 use App\Models\Crm\Lead;
+use App\Models\Marketing\Contact;
 use App\Models\Marketing\FormField;
 use App\Models\Marketing\FormTemplate;
 use App\Models\Marketing\LandingPage;
@@ -14,7 +15,7 @@ use App\Models\Marketing\LandingPageSubmission;
 use App\Services\Crm\LeadCreationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-use App\Models\Marketing\Contact;
+
 class SubmissionCreatesLeadTest extends TestCase
 {
     use RefreshDatabase;

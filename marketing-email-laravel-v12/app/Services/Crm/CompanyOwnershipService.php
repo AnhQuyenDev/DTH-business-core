@@ -6,6 +6,7 @@ use App\Models\Crm\Company;
 use App\Models\Crm\CompanyAssignment;
 use App\Models\Crm\Staff;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 final class CompanyOwnershipService
 {
@@ -15,28 +16,54 @@ final class CompanyOwnershipService
         ?string $reason,
         ?int $assignedByUserId,
     ): CompanyAssignment {
+        $reason = trim((string) $reason);
+
+        if ($reason === '') {
+            throw ValidationException::withMessages([
+                'reason' => __('validation.company_owner_reason_required'),
+            ]);
+        }
+
+        if (! $staff->canReceiveNewLeads()) {
+            throw ValidationException::withMessages([
+                'staff_id' => __('validation.staff_cannot_receive_leads'),
+            ]);
+        }
+
         return DB::transaction(function () use (
             $company,
             $staff,
             $reason,
             $assignedByUserId,
         ): CompanyAssignment {
-            Company::query()
+            $lockedCompany = Company::query()
                 ->whereKey($company->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            CompanyAssignment::query()
-                ->where('company_id', $company->id)
+            $currentAssignment = CompanyAssignment::query()
+                ->where('company_id', $lockedCompany->id)
                 ->where('assignment_type', 'owner')
                 ->where('status', 'active')
-                ->update([
+                ->lockForUpdate()
+                ->first();
+
+            if (
+                $currentAssignment?->staff_id === $staff->id
+                && $lockedCompany->account_owner_staff_id === $staff->id
+            ) {
+                return $currentAssignment;
+            }
+
+            if ($currentAssignment !== null) {
+                $currentAssignment->update([
                     'status' => 'ended',
                     'ends_at' => now(),
                 ]);
+            }
 
             $assignment = CompanyAssignment::query()->create([
-                'company_id' => $company->id,
+                'company_id' => $lockedCompany->id,
                 'staff_id' => $staff->id,
                 'assignment_type' => 'owner',
                 'status' => 'active',
@@ -45,7 +72,7 @@ final class CompanyOwnershipService
                 'starts_at' => now(),
             ]);
 
-            $company->update([
+            $lockedCompany->update([
                 'account_owner_staff_id' => $staff->id,
             ]);
 
@@ -53,26 +80,68 @@ final class CompanyOwnershipService
         });
     }
 
+    public function transferOwner(
+        Company $company,
+        Staff $staff,
+        string $reason,
+        ?int $assignedByUserId,
+    ): CompanyAssignment {
+        return $this->assignOwner(
+            company: $company,
+            staff: $staff,
+            reason: $reason,
+            assignedByUserId: $assignedByUserId,
+        );
+    }
+
     public function endAssignment(
-        CompanyAssignment $assignment
+        CompanyAssignment $assignment,
+        string $reason,
+        ?int $endedByUserId = null,
     ): void {
-        DB::transaction(function () use ($assignment): void {
-            $assignment = CompanyAssignment::query()
+        $reason = trim($reason);
+
+        if ($reason === '') {
+            throw ValidationException::withMessages([
+                'reason' => __('validation.company_owner_end_reason_required'),
+            ]);
+        }
+
+        DB::transaction(function () use (
+            $assignment,
+            $reason,
+            $endedByUserId,
+        ): void {
+            $lockedAssignment = CompanyAssignment::query()
+                ->with('company')
                 ->whereKey($assignment->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $assignment->update([
+            if ($lockedAssignment->status !== 'active') {
+                return;
+            }
+
+            $historyReason = trim(implode("\n", array_filter([
+                $lockedAssignment->reason,
+                '[Kết thúc] '.$reason,
+                $endedByUserId !== null
+                    ? '[Người thực hiện] User #'.$endedByUserId
+                    : null,
+            ])));
+
+            $lockedAssignment->update([
                 'status' => 'ended',
                 'ends_at' => now(),
+                'reason' => $historyReason,
             ]);
 
             if (
-                $assignment->assignment_type === 'owner'
-                && $assignment->company?->account_owner_staff_id
-                    === $assignment->staff_id
+                $lockedAssignment->assignment_type === 'owner'
+                && $lockedAssignment->company?->account_owner_staff_id
+                    === $lockedAssignment->staff_id
             ) {
-                $assignment->company->update([
+                $lockedAssignment->company->update([
                     'account_owner_staff_id' => null,
                 ]);
             }

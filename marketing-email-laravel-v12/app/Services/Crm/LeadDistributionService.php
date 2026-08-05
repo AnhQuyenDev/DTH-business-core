@@ -4,131 +4,233 @@ namespace App\Services\Crm;
 
 use App\Enums\Crm\ContactQualificationStatus;
 use App\Enums\Crm\DistributionStrategy;
-use App\Models\Crm\ContactQualification;
+use App\Enums\Crm\LeadIntakeStatus;
+use App\Enums\Crm\StaffEmploymentStatus;
+use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
-use App\Models\Marketing\LandingPageSubmission;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 final class LeadDistributionService
 {
+    public function __construct(
+        private readonly LeadAssignmentService $leadAssignmentService,
+    ) {}
+
     public function distributeUnassigned(
         DistributionStrategy $strategy = DistributionStrategy::LeastLoaded,
         ?array $staffIds = null,
         ?int $landingPageId = null,
+        ?int $assignedByUserId = null,
     ): array {
-        $query = LandingPageSubmission::query()
+        if ($strategy === DistributionStrategy::Manual) {
+            throw ValidationException::withMessages([
+                'strategy' => __('validation.manual_strategy_not_automatic'),
+            ]);
+        }
+
+        $query = Lead::query()
             ->whereNull('assigned_staff_id')
-            ->orderBy('submitted_at');
+            ->where('intake_status', LeadIntakeStatus::New->value)
+            ->whereHas(
+                'qualification',
+                fn ($query) => $query->where(
+                    'status',
+                    ContactQualificationStatus::New->value
+                )
+            )
+            ->with([
+                'qualification',
+                'company.accountOwner.availabilities',
+                'submission',
+            ])
+            ->orderBy('created_at')
+            ->orderBy('id');
 
         if ($landingPageId !== null) {
-            $query->where('landing_page_id', $landingPageId);
+            $query->whereHas(
+                'submission',
+                fn ($query) => $query->where(
+                    'landing_page_id',
+                    $landingPageId
+                )
+            );
         }
 
         $unassigned = $query->get();
 
         if ($unassigned->isEmpty()) {
-            return ['assigned' => 0, 'skipped' => 0, 'total' => 0];
+            return [
+                'assigned' => 0,
+                'skipped' => 0,
+                'total' => 0,
+                'errors' => [],
+            ];
         }
 
         $eligibleStaff = $this->getEligibleStaff($staffIds);
+
         if ($eligibleStaff->isEmpty()) {
-            return ['assigned' => 0, 'skipped' => $unassigned->count(), 'total' => $unassigned->count()];
+            return [
+                'assigned' => 0,
+                'skipped' => $unassigned->count(),
+                'total' => $unassigned->count(),
+                'errors' => [__('validation.no_eligible_staff')],
+            ];
         }
 
         $assigned = 0;
         $skipped = 0;
+        $errors = [];
+        $roundRobinIndex = 0;
 
-        $strategyFn = $this->resolveStrategy($strategy);
+        foreach ($unassigned as $lead) {
+            $target = $this->resolveTarget(
+                lead: $lead,
+                eligibleStaff: $eligibleStaff,
+                strategy: $strategy,
+                roundRobinIndex: $roundRobinIndex,
+            );
 
-        foreach ($unassigned as $submission) {
-            $target = $strategyFn($eligibleStaff);
-            if (! $target) {
+            if ($target === null) {
                 $skipped++;
+                $errors[] = "{$lead->lead_code}: "
+                    .__('validation.company_owner_not_available');
 
                 continue;
             }
 
-            DB::transaction(function () use ($submission, $target, &$assigned) {
-                $submission->update(['assigned_staff_id' => $target->id]);
+            try {
+                $this->leadAssignmentService->assign(
+                    lead: $lead,
+                    staff: $target,
+                    assignedByUserId: $assignedByUserId,
+                    reason: 'Tự động phân phối theo '.$strategy->value,
+                );
 
-                ContactQualification::firstOrCreate(
-                    ['contact_id' => $submission->contact_id],
-                    ['status' => ContactQualificationStatus::New->value]
-                )->update([
-                    'assigned_staff_id' => $target->id,
-                    'status' => ContactQualificationStatus::Assigned->value,
-                ]);
-            });
-
-            $assigned++;
+                $assigned++;
+            } catch (ValidationException $exception) {
+                $skipped++;
+                $errors[] = "{$lead->lead_code}: "
+                    .collect($exception->errors())
+                        ->flatten()
+                        ->first();
+            }
         }
 
         return [
             'assigned' => $assigned,
             'skipped' => $skipped,
             'total' => $unassigned->count(),
+            'errors' => array_values(array_unique($errors)),
         ];
     }
 
     private function getEligibleStaff(?array $staffIds = null): Collection
     {
         $query = Staff::query()
-            ->where('employment_status', 'active')
+            ->where(
+                'employment_status',
+                StaffEmploymentStatus::Active->value
+            )
             ->where('can_receive_customers', true)
-            ->whereDoesntHave('availabilities', fn ($q) => $q
-                ->active()
-                ->where('can_receive_new_customers', false)
+            ->whereDoesntHave(
+                'availabilities',
+                fn ($query) => $query
+                    ->active()
+                    ->where('can_receive_new_customers', false)
             );
 
         if ($staffIds !== null) {
             $query->whereIn('id', $staffIds);
         }
 
-        return $query->orderBy('full_name')->get();
+        return $query
+            ->orderBy('id')
+            ->get();
     }
 
-    private function resolveStrategy(DistributionStrategy $strategy): callable
-    {
+    private function resolveTarget(
+        Lead $lead,
+        Collection $eligibleStaff,
+        DistributionStrategy $strategy,
+        int &$roundRobinIndex,
+    ): ?Staff {
+        $accountOwnerId = $lead->company?->account_owner_staff_id;
+
+        if ($accountOwnerId !== null) {
+            // Không giao sang Staff khác khi Account Owner không sẵn sàng.
+            // Đưa Lead vào skipped để Manager xử lý thủ công.
+            return $eligibleStaff->firstWhere('id', $accountOwnerId);
+        }
+
         return match ($strategy) {
-            DistributionStrategy::RoundRobin => function (Collection $staff) {
-                static $index = 0;
-
-                return $staff->get($index++ % $staff->count());
-            },
-            DistributionStrategy::LeastLoaded => function (Collection $staff) {
-                $loads = $staff->mapWithKeys(fn (Staff $s) => [
-                    $s->id => ContactQualification::where('assigned_staff_id', $s->id)
-                        ->whereNotIn('status', [
-                            ContactQualificationStatus::Converted->value,
-                            ContactQualificationStatus::Duplicate->value,
-                            ContactQualificationStatus::Spam->value,
-                            ContactQualificationStatus::Archived->value,
-                        ])
-                        ->count(),
-                ]);
-                $minLoad = $loads->min();
-                $candidates = $staff->filter(fn (Staff $s) => $loads[$s->id] === $minLoad);
-
-                return $candidates->sortBy('id')->first();
-            },
-            DistributionStrategy::Weighted => function (Collection $staff) {
-                $loads = $staff->mapWithKeys(fn (Staff $s) => [
-                    $s->id => ContactQualification::where('assigned_staff_id', $s->id)
-                        ->whereNotIn('status', [
-                            ContactQualificationStatus::Converted->value,
-                            ContactQualificationStatus::Duplicate->value,
-                            ContactQualificationStatus::Spam->value,
-                            ContactQualificationStatus::Archived->value,
-                        ])
-                        ->count() / max($s->distribution_weight, 0.01),
-                ]);
-                $minLoad = $loads->min();
-                $candidates = $staff->filter(fn (Staff $s) => $loads[$s->id] === $minLoad);
-
-                return $candidates->sortBy('id')->first();
-            },
-            default => fn (Collection $staff) => $staff->sortBy('id')->first(),
+            DistributionStrategy::RoundRobin => $this->roundRobin(
+                $eligibleStaff,
+                $roundRobinIndex,
+            ),
+            DistributionStrategy::LeastLoaded => $this->leastLoaded(
+                $eligibleStaff
+            ),
+            DistributionStrategy::Weighted => $this->weighted(
+                $eligibleStaff
+            ),
+            DistributionStrategy::Manual => null,
         };
+    }
+
+    private function roundRobin(
+        Collection $staff,
+        int &$index,
+    ): ?Staff {
+        if ($staff->isEmpty()) {
+            return null;
+        }
+
+        $target = $staff->values()->get($index % $staff->count());
+        $index++;
+
+        return $target;
+    }
+
+    private function leastLoaded(Collection $staff): ?Staff
+    {
+        return $staff
+            ->sort(function (Staff $left, Staff $right): int {
+                return [
+                    $this->openLeadLoad($left),
+                    $left->id,
+                ] <=> [
+                    $this->openLeadLoad($right),
+                    $right->id,
+                ];
+            })
+            ->first();
+    }
+
+    private function weighted(Collection $staff): ?Staff
+    {
+        return $staff
+            ->sort(function (Staff $left, Staff $right): int {
+                $leftLoad = $this->openLeadLoad($left)
+                    / max((float) $left->distribution_weight, 0.01);
+                $rightLoad = $this->openLeadLoad($right)
+                    / max((float) $right->distribution_weight, 0.01);
+
+                return [$leftLoad, $left->id]
+                    <=> [$rightLoad, $right->id];
+            })
+            ->first();
+    }
+
+    private function openLeadLoad(Staff $staff): int
+    {
+        return Lead::query()
+            ->where('assigned_staff_id', $staff->id)
+            ->whereIn('intake_status', [
+                LeadIntakeStatus::New->value,
+                LeadIntakeStatus::Active->value,
+            ])
+            ->count();
     }
 }

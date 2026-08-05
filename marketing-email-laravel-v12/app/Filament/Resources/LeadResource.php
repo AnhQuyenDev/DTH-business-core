@@ -5,21 +5,29 @@ namespace App\Filament\Resources;
 use App\Enums\Crm\ContactQualificationStatus;
 use App\Enums\Crm\ContactType;
 use App\Enums\Crm\LeadIntakeStatus;
+use App\Enums\Crm\StaffEmploymentStatus;
 use App\Filament\Resources\LeadResource\Pages;
 use App\Filament\Resources\LeadResource\RelationManagers\QualificationNotesRelationManager;
 use App\Models\Crm\Lead;
+use App\Models\Crm\Staff;
+use App\Services\Crm\LeadAssignmentService;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 
 class LeadResource extends Resource
 {
@@ -156,6 +164,74 @@ class LeadResource extends Resource
         ]);
     }
 
+    public static function assignmentForm(
+        bool $isReassignment = false
+    ): array {
+        return [
+            Select::make('staff_id')
+                ->label(__('field.assigned_staff'))
+                ->options(function (?Lead $record) use ($isReassignment): array {
+                    $query = Staff::query()
+                        ->where(
+                            'employment_status',
+                            StaffEmploymentStatus::Active->value
+                        )
+                        ->where('can_receive_customers', true)
+                        ->whereDoesntHave(
+                            'availabilities',
+                            fn ($query) => $query
+                                ->active()
+                                ->where(
+                                    'can_receive_new_customers',
+                                    false
+                                )
+                        );
+
+                    if (
+                        ! $isReassignment
+                        && $record?->company?->account_owner_staff_id !== null
+                    ) {
+                        $query->whereKey(
+                            $record->company->account_owner_staff_id
+                        );
+                    }
+
+                    return $query
+                        ->orderBy('full_name')
+                        ->get()
+                        ->mapWithKeys(fn (Staff $staff): array => [
+                            $staff->id => "{$staff->full_name} "
+                                ."({$staff->employee_code})",
+                        ])
+                        ->all();
+                })
+                ->searchable()
+                ->preload()
+                ->required(),
+
+            Textarea::make('reason')
+                ->label(__('field.reason'))
+                ->required($isReassignment)
+                ->maxLength(1000),
+
+            Toggle::make('transfer_company_owner')
+                ->label(__('field.transfer_company_owner'))
+                ->helperText(__('help.transfer_company_owner'))
+                ->default(false)
+                ->visible($isReassignment),
+        ];
+    }
+
+    public static function canAssignLeads(): bool
+    {
+        return Gate::allows('crm.assign-lead');
+    }
+
+    public static function canReassignLeads(): bool
+    {
+        return Gate::allows('crm.reassign-lead');
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -163,6 +239,9 @@ class LeadResource extends Resource
                 Tables\Columns\TextColumn::make('lead_code')->label(__('field.lead_code'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('contact.full_name')->label(__('field.contact'))->searchable(),
                 Tables\Columns\TextColumn::make('company.legal_name')->label(__('field.company'))->searchable()->toggleable(),
+                Tables\Columns\TextColumn::make('company.accountOwner.full_name')
+                    ->label(__('field.account_owner'))
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('contact.contact_type')
                     ->label(__('field.contact_type'))
                     ->badge()
@@ -171,6 +250,11 @@ class LeadResource extends Resource
                 Tables\Columns\TextColumn::make('source')->label(__('field.source'))->toggleable(),
                 Tables\Columns\TextColumn::make('service_interest')->label(__('field.service_interest'))->searchable(),
                 Tables\Columns\TextColumn::make('assignedStaff.full_name')->label(__('field.assigned_staff'))->searchable()->toggleable(),
+                Tables\Columns\TextColumn::make('assigned_at')
+                    ->label(__('field.assigned_at'))
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('qualification.status')
                     ->label(__('field.status'))
                     ->badge()
@@ -221,6 +305,57 @@ class LeadResource extends Resource
             ->actions([
                 ActionGroup::make([
                     ViewAction::make(),
+
+                    Action::make('assign')
+                        ->label(__('action.assign_lead'))
+                        ->icon('heroicon-o-user-plus')
+                        ->form(static::assignmentForm())
+                        ->visible(
+                            fn (Lead $record): bool => $record->assigned_staff_id === null
+                                && static::canAssignLeads()
+                        )
+                        ->action(function (Lead $record, array $data): void {
+                            app(LeadAssignmentService::class)->assign(
+                                lead: $record,
+                                staff: Staff::query()->findOrFail(
+                                    $data['staff_id']
+                                ),
+                                assignedByUserId: auth()->id(),
+                                reason: $data['reason'] ?? null,
+                            );
+
+                            Notification::make()
+                                ->title(__('notification.lead_assigned'))
+                                ->success()
+                                ->send();
+                        }),
+
+                    Action::make('reassign')
+                        ->label(__('action.reassign_lead'))
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->form(static::assignmentForm(true))
+                        ->visible(
+                            fn (Lead $record): bool => $record->assigned_staff_id !== null
+                                && static::canReassignLeads()
+                        )
+                        ->action(function (Lead $record, array $data): void {
+                            app(LeadAssignmentService::class)->assign(
+                                lead: $record,
+                                staff: Staff::query()->findOrFail(
+                                    $data['staff_id']
+                                ),
+                                assignedByUserId: auth()->id(),
+                                reason: $data['reason'],
+                                force: true,
+                                transferCompanyOwner: (bool) ($data['transfer_company_owner'] ?? false),
+                            );
+
+                            Notification::make()
+                                ->title(__('notification.lead_reassigned'))
+                                ->success()
+                                ->send();
+                        }),
                 ])
                     ->icon('heroicon-o-ellipsis-vertical')
                     ->iconButton(),

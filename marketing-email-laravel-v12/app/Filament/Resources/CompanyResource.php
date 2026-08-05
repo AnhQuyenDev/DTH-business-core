@@ -91,7 +91,10 @@ class CompanyResource extends Resource
             Select::make('account_owner_staff_id')
                 ->label(__('field.account_owner'))
                 ->relationship('accountOwner', 'full_name')
-                ->searchable(),
+                ->searchable()
+                ->disabled()
+                ->dehydrated(false)
+                ->helperText(__('help.account_owner_managed_by_assignment')),
         ]);
     }
 

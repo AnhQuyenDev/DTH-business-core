@@ -2,16 +2,19 @@
 
 namespace App\Filament\Resources\CompanyResource\RelationManagers;
 
+use App\Enums\Crm\StaffEmploymentStatus;
 use App\Models\Crm\CompanyAssignment;
 use App\Models\Crm\Staff;
 use App\Services\Crm\CompanyOwnershipService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 
 class AssignmentsRelationManager extends RelationManager
 {
@@ -41,22 +44,45 @@ class AssignmentsRelationManager extends RelationManager
                     ->wrap(),
                 TextColumn::make('starts_at')
                     ->label(__('field.starts_at'))
-                    ->dateTime(),
+                    ->dateTime('d/m/Y H:i'),
                 TextColumn::make('ends_at')
                     ->label(__('field.ends_at'))
-                    ->dateTime(),
+                    ->dateTime('d/m/Y H:i'),
             ])
+            ->defaultSort('starts_at', 'desc')
             ->headerActions([
                 Action::make('assign_owner')
-                    ->label('Giao Account Owner')
+                    ->label(fn (): string => $this->getOwnerRecord()
+                        ->account_owner_staff_id === null
+                            ? __('action.assign_account_owner')
+                            : __('action.transfer_account_owner'))
                     ->icon('heroicon-o-user-plus')
                     ->form([
                         Select::make('staff_id')
                             ->label(__('field.staff'))
                             ->options(
-                                Staff::query()
+                                fn (): array => Staff::query()
+                                    ->where(
+                                        'employment_status',
+                                        StaffEmploymentStatus::Active->value
+                                    )
+                                    ->where('can_receive_customers', true)
+                                    ->whereDoesntHave(
+                                        'availabilities',
+                                        fn ($query) => $query
+                                            ->active()
+                                            ->where(
+                                                'can_receive_new_customers',
+                                                false
+                                            )
+                                    )
                                     ->orderBy('full_name')
-                                    ->pluck('full_name', 'id')
+                                    ->get()
+                                    ->mapWithKeys(fn (Staff $staff): array => [
+                                        $staff->id => "{$staff->full_name} "
+                                            ."({$staff->employee_code})",
+                                    ])
+                                    ->all()
                             )
                             ->searchable()
                             ->preload()
@@ -75,24 +101,50 @@ class AssignmentsRelationManager extends RelationManager
                             reason: $data['reason'],
                             assignedByUserId: auth()->id(),
                         );
+
+                        Notification::make()
+                            ->title(__('notification.company_owner_updated'))
+                            ->success()
+                            ->send();
                     })
                     ->visible(
-                        fn (): bool => auth()->user()?->isAdmin() ?? false
+                        fn (): bool => Gate::allows(
+                            'crm.manage-company-owner'
+                        )
                     ),
             ])
             ->actions([
                 Action::make('end_assignment')
-                    ->label('Kết thúc')
+                    ->label(__('action.end_assignment'))
                     ->icon('heroicon-o-x-circle')
+                    ->color('danger')
                     ->requiresConfirmation()
+                    ->form([
+                        Textarea::make('reason')
+                            ->label(__('field.reason'))
+                            ->required()
+                            ->maxLength(1000),
+                    ])
                     ->visible(
                         fn (CompanyAssignment $record): bool => $record->status === 'active'
-                            && (auth()->user()?->isAdmin() ?? false)
+                            && Gate::allows('crm.manage-company-owner')
                     )
-                    ->action(
-                        fn (CompanyAssignment $record): mixed => app(CompanyOwnershipService::class)
-                            ->endAssignment($record)
-                    ),
+                    ->action(function (
+                        CompanyAssignment $record,
+                        array $data,
+                    ): void {
+                        app(CompanyOwnershipService::class)
+                            ->endAssignment(
+                                assignment: $record,
+                                reason: $data['reason'],
+                                endedByUserId: auth()->id(),
+                            );
+
+                        Notification::make()
+                            ->title(__('notification.assignment_ended'))
+                            ->success()
+                            ->send();
+                    }),
             ]);
     }
 }
