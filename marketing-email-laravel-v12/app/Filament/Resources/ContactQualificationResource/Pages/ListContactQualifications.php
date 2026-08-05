@@ -19,22 +19,26 @@ class ListContactQualifications extends ListRecords
     public function getTabs(): array
     {
         return [
-            'all' => Tab::make(__('action.all')),
+            'overview' => Tab::make(__('action.all')),
             'not_contacted' => Tab::make(__('enum.qualification.not_contacted'))
-                ->modifyQueryUsing(fn ($query) => $query->whereIn('status', [
-                    ContactQualificationStatus::New->value,
-                    ContactQualificationStatus::Assigned->value,
-                ])),
+                ->modifyQueryUsing(fn ($query) => $query->where('status', ContactQualificationStatus::New->value)),
             'in_progress' => Tab::make(__('enum.qualification.in_progress'))
                 ->modifyQueryUsing(fn ($query) => $query->whereIn('status', [
+                    ContactQualificationStatus::Assigned->value,
                     ContactQualificationStatus::Contacting->value,
                     ContactQualificationStatus::FollowUp->value,
                 ])),
             'qualified' => Tab::make(__('enum.qualification.qualified'))
                 ->modifyQueryUsing(fn ($query) => $query->where('status', ContactQualificationStatus::Qualified->value)),
+            'closed' => Tab::make(__('enum.qualification.unqualified'))
+                ->modifyQueryUsing(fn ($query) => $query->whereIn('status', [
+                    ContactQualificationStatus::Unqualified->value,
+                    ContactQualificationStatus::Duplicate->value,
+                    ContactQualificationStatus::Spam->value,
+                    ContactQualificationStatus::Archived->value,
+                ])),
             'converted' => Tab::make(__('enum.qualification.converted'))
                 ->modifyQueryUsing(fn ($query) => $query->where('status', ContactQualificationStatus::Converted->value)),
         ];
     }
-
 }

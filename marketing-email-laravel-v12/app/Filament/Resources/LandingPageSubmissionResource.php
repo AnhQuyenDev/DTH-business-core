@@ -5,7 +5,6 @@ namespace App\Filament\Resources;
 use App\Enums\Marketing\LandingPageContactAction;
 use App\Enums\Marketing\LandingPageSubmissionStatus;
 use App\Filament\Resources\LandingPageSubmissionResource\Pages;
-use App\Models\Crm\Staff;
 use App\Models\Marketing\LandingPageSubmission;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -18,6 +17,7 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class LandingPageSubmissionResource extends Resource
@@ -71,9 +71,32 @@ class LandingPageSubmissionResource extends Resource
     {
         return $table->columns([
             TextColumn::make('landingPage.name')->label(__('field.landing_page'))->searchable(),
+            TextColumn::make('submission_type')
+                ->label(__('field.submission_type'))
+                ->badge()
+                ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    'personal' => __('submission.type.personal'),
+                    'business' => __('submission.type.business'),
+                    default => __('common.not_available'),
+                })
+                ->color(fn (?string $state): string => match ($state) {
+                    'personal' => 'info',
+                    'business' => 'warning',
+                    default => 'gray',
+                }),
             TextColumn::make('normalized_email')->label(__('field.email'))->searchable(),
-            TextColumn::make('status')->label(__('field.status'))->badge()
-                ->formatStateUsing(fn (?LandingPageSubmissionStatus $state): string => $state ? __('enum.landing_page_submission.' . $state->value) : __('common.not_available'))
+            TextColumn::make('status')->label(__('field.intake_status'))->badge()
+                ->formatStateUsing(function ($state): string {
+                    $value = $state?->value ?? $state;
+
+                    return match ($value) {
+                        'received' => __('submission.status.received'),
+                        'processed' => __('submission.status.processed'),
+                        'failed' => __('submission.status.failed'),
+                        'spam' => __('submission.status.spam'),
+                        default => $value ?: __('common.not_available'),
+                    };
+                })
                 ->color(fn (?LandingPageSubmissionStatus $state): string => match ($state?->value) {
                     'processed' => 'success',
                     'received' => 'info',
@@ -81,9 +104,45 @@ class LandingPageSubmissionResource extends Resource
                     'spam' => 'warning',
                     default => 'gray',
                 }),
-            TextColumn::make('contact.qualification.assignedStaff.full_name')->label(__('field.assigned_staff'))->toggleable(),
+            TextColumn::make('distribution_state')
+                ->label(__('field.distribution_state'))
+                ->badge()
+                ->getStateUsing(fn (LandingPageSubmission $record): string => $record->contact?->qualification?->assigned_staff_id
+                    ? 'assigned'
+                    : 'unassigned')
+                ->formatStateUsing(fn (string $state): string => match ($state) {
+                    'assigned' => __('distribution.assigned'),
+                    default => __('distribution.unassigned'),
+                })
+                ->color(fn (string $state): string => $state === 'assigned' ? 'success' : 'warning'),
+            TextColumn::make('contact.qualification.status')
+                ->label(__('field.crm_status'))
+                ->badge()
+                ->formatStateUsing(function ($state): string {
+                    $value = $state?->value ?? $state;
+
+                    return match ($value) {
+                        'new' => __('lead.status.new'),
+                        'assigned' => __('lead.status.assigned'),
+                        'contacting' => __('lead.status.contacting'),
+                        'follow_up' => __('lead.status.follow_up'),
+                        'qualified' => __('lead.status.qualified'),
+                        'unqualified' => __('lead.status.unqualified'),
+                        'converted' => __('lead.status.converted'),
+                        default => $value ?: __('common.not_available'),
+                    };
+                })
+                ->color(fn ($state): string => match ($state?->value ?? $state) {
+                    'new' => 'gray',
+                    'assigned' => 'info',
+                    'contacting' => 'warning',
+                    'follow_up' => 'primary',
+                    'qualified', 'converted' => 'success',
+                    'unqualified', 'spam', 'duplicate', 'archived' => 'danger',
+                    default => 'gray',
+                }),
             TextColumn::make('contact_action')->label(__('field.action'))->badge()
-                ->formatStateUsing(fn (?LandingPageContactAction $state): string => $state ? __('enum.landing_page_contact_action.' . $state->value) : __('common.not_available'))
+                ->formatStateUsing(fn (?LandingPageContactAction $state): string => $state ? __('enum.landing_page_contact_action.'.$state->value) : __('common.not_available'))
                 ->color(fn (?LandingPageContactAction $state): string => match ($state?->value) {
                     'created' => 'success',
                     'updated' => 'info',
@@ -93,40 +152,46 @@ class LandingPageSubmissionResource extends Resource
             TextColumn::make('submitted_at')->label(__('field.submitted_at'))->dateTime()->sortable(),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->toggleable(),
         ])
+            ->filters([
+                SelectFilter::make('submission_type')
+                    ->label(__('field.submission_type'))
+                    ->options([
+                        'personal' => __('submission.type.personal'),
+                        'business' => __('submission.type.business'),
+                    ]),
+                SelectFilter::make('status')
+                    ->label(__('field.intake_status'))
+                    ->options([
+                        'received' => __('submission.status.received'),
+                        'processed' => __('submission.status.processed'),
+                        'failed' => __('submission.status.failed'),
+                        'spam' => __('submission.status.spam'),
+                    ]),
+            ])
             ->actions([ActionGroup::make([
                 ViewAction::make(),
                 Action::make('edit')
                     ->label(__('action.edit'))
                     ->icon('heroicon-o-pencil-square')
                     ->form([
-                        Select::make('qualification_status')
-                            ->label(__('field.status'))
+                        Select::make('status')
+                            ->label(__('field.intake_status'))
                             ->options([
-                                'received' => __('enum.landing_page_submission.received'),
-                                'processed' => __('enum.landing_page_submission.processed'),
-                                'failed' => __('enum.landing_page_submission.failed'),
-                                'spam' => __('enum.landing_page_submission.spam'),
+                                'received' => __('submission.status.received'),
+                                'processed' => __('submission.status.processed'),
+                                'failed' => __('submission.status.failed'),
+                                'spam' => __('submission.status.spam'),
                             ]),
-                        Select::make('assigned_staff_id')
-                            ->label(__('field.assigned_staff'))
-                            ->options(Staff::query()->orderBy('full_name')->pluck('full_name', 'id'))
-                            ->searchable(),
                         Textarea::make('note')->label(__('field.note'))->rows(3),
                     ])
                     ->fillForm(fn (LandingPageSubmission $record): array => [
-                        'qualification_status' => $record->qualification_status,
-                        'assigned_staff_id' => $record->contact?->qualification?->assigned_staff_id,
+                        'status' => $record->status?->value ?? $record->status,
+                        'note' => null,
                     ])
                     ->action(function (LandingPageSubmission $record, array $data): void {
                         $record->update([
-                            'qualification_status' => $data['qualification_status'] ?? $record->qualification_status,
+                            'status' => $data['status'] ?? $record->status,
                         ]);
-
-                        if ($record->contact?->qualification) {
-                            $record->contact->qualification->update([
-                                'assigned_staff_id' => $data['assigned_staff_id'] ?? null,
-                            ]);
-                        }
                     }),
                 DeleteAction::make(),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton()])

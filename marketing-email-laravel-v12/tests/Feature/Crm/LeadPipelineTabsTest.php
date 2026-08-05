@@ -13,12 +13,12 @@ class LeadPipelineTabsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_tabs_are_grouped_into_five_phases(): void
+    public function test_tabs_are_grouped_into_six_phases(): void
     {
         $tabs = $this->app->make(ListContactQualifications::class)->getTabs();
 
         $this->assertSame(
-            ['all', 'not_contacted', 'in_progress', 'qualified', 'converted'],
+            ['overview', 'not_contacted', 'in_progress', 'qualified', 'closed', 'converted'],
             array_keys($tabs),
         );
     }
@@ -45,10 +45,11 @@ class LeadPipelineTabsTest extends TestCase
         $page = $this->app->make(ListContactQualifications::class);
 
         $expected = [
-            'all' => 7,
-            'not_contacted' => 2,
-            'in_progress' => 2,
+            'overview' => 7,
+            'not_contacted' => 1,
+            'in_progress' => 3,
             'qualified' => 1,
+            'closed' => 1,
             'converted' => 1,
         ];
 
