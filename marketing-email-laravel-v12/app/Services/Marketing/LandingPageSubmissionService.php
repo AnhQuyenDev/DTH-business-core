@@ -7,6 +7,8 @@ use App\Enums\Crm\TaxVerificationStatus;
 use App\Enums\Marketing\LandingPageContactAction;
 use App\Enums\Marketing\LandingPageSubmissionStatus;
 use App\Models\Crm\BusinessContactProfile;
+use App\Models\Crm\Company;
+use App\Models\Crm\CompanyMatchCandidate;
 use App\Models\Crm\ContactQualification;
 use App\Models\Crm\PersonalContactProfile;
 use App\Models\Marketing\Contact;
@@ -17,93 +19,106 @@ use App\Models\Marketing\LandingPage;
 use App\Models\Marketing\LandingPageSubmission;
 use App\Models\Marketing\Segment;
 use App\Models\Marketing\Tag;
+use App\Services\Crm\CompanyCodeGenerator;
+use App\Services\Crm\CompanyResolutionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class LandingPageSubmissionService
 {
     public function handle(LandingPage $landingPage, array $payload, Request $request, ?int $campaignId = null): LandingPageSubmission
     {
-        $submissionType = $payload['submission_type'] ?? 'personal';
+        return DB::transaction(function () use ($landingPage, $payload, $request, $campaignId) {
+            $submissionType = $payload['submission_type'] ?? 'personal';
 
-        // Generic form dùng customer_type từ payload để xác định personal/business
-        $resolvedType = $submissionType;
-        if ($submissionType === 'generic' && ! empty($payload['customer_type'])) {
-            $resolvedType = $payload['customer_type'];
-        }
+            // Generic form dùng customer_type từ payload để xác định personal/business
+            $resolvedType = $submissionType;
+            if ($submissionType === 'generic' && ! empty($payload['customer_type'])) {
+                $resolvedType = $payload['customer_type'];
+            }
 
-        $landingPageForm = $landingPage->forms()
-            ->where('form_type', $submissionType)
-            ->where('status', 'active')
-            ->first();
-        $formTemplate = $landingPageForm?->formTemplate;
-        $formTemplateId = $formTemplate?->id;
+            $landingPageForm = $landingPage->forms()
+                ->where('form_type', $submissionType)
+                ->where('status', 'active')
+                ->first();
+            $formTemplate = $landingPageForm?->formTemplate;
+            $formTemplateId = $formTemplate?->id;
 
-        $validatedData = $this->validatePayload($formTemplate, $payload, $submissionType);
-        $utm = app(LandingPageTrackingService::class)->extractUtm($request);
+            $validatedData = $this->validatePayload($formTemplate, $payload, $submissionType);
+            $utm = app(LandingPageTrackingService::class)->extractUtm($request);
 
-        $emailField = $resolvedType === 'business' ? 'business_email' : 'email';
-        $phoneField = $resolvedType === 'business' ? 'business_phone' : 'phone';
-        $emailKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, $emailField);
-        $phoneKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, $phoneField);
-        $normalizedEmail = isset($validatedData[$emailKey]) ? strtolower(trim($validatedData[$emailKey])) : null;
-        $normalizedPhone = isset($validatedData[$phoneKey]) ? preg_replace('/[^0-9]/', '', $validatedData[$phoneKey]) : null;
+            $emailField = $resolvedType === 'business' ? 'business_email' : 'email';
+            $phoneField = $resolvedType === 'business' ? 'business_phone' : 'phone';
+            $emailKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, $emailField);
+            $phoneKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, $phoneField);
+            $normalizedEmail = isset($validatedData[$emailKey]) ? strtolower(trim($validatedData[$emailKey])) : null;
+            $normalizedPhone = isset($validatedData[$phoneKey]) ? preg_replace('/[^0-9]/', '', $validatedData[$phoneKey]) : null;
 
-        $contact = $this->findDuplicateContact($normalizedEmail, $normalizedPhone, $validatedData);
+            $contact = $this->findDuplicateContact($normalizedEmail, $normalizedPhone, $validatedData);
 
-        if (! $contact) {
-            $contact = Contact::create(['contact_type' => $resolvedType]);
-            $action = LandingPageContactAction::Created;
-        } else {
-            $action = LandingPageContactAction::Updated;
-        }
+            if (! $contact) {
+                $contact = Contact::create(['contact_type' => $resolvedType]);
+                $action = LandingPageContactAction::Created;
+            } else {
+                $action = LandingPageContactAction::Updated;
+            }
 
-        if ($resolvedType === 'personal') {
-            $this->savePersonalProfile($contact, $validatedData, $normalizedEmail, $normalizedPhone, $formTemplate);
-        } elseif ($resolvedType === 'business') {
-            $profile = $this->saveBusinessProfile($contact, $validatedData, $normalizedEmail, $normalizedPhone, $formTemplate);
-            // Tax code verification happens manually via the "Xác thực MST" button on Form Submissions page
-        }
+            $company = null;
 
-        $this->applyTagsAndLists($contact, $landingPage, $formTemplate, $validatedData);
-        $this->saveCustomFields($contact, $formTemplate, $validatedData);
+            if ($resolvedType === 'personal') {
+                $this->savePersonalProfile($contact, $validatedData, $normalizedEmail, $normalizedPhone, $formTemplate);
+            } elseif ($resolvedType === 'business') {
+                $profile = $this->saveBusinessProfile($contact, $validatedData, $normalizedEmail, $normalizedPhone, $formTemplate);
+                // Tax code verification happens manually via the "Xác thực MST" button on Form Submissions page
+            }
 
-        $qualification = ContactQualification::firstOrCreate(
-            ['contact_id' => $contact->id],
-            ['status' => ContactQualificationStatus::New->value]
-        );
+            $this->applyTagsAndLists($contact, $landingPage, $formTemplate, $validatedData);
+            $this->saveCustomFields($contact, $formTemplate, $validatedData);
 
-        $taxCodeKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, 'tax_code');
+            $qualification = ContactQualification::firstOrCreate(
+                ['contact_id' => $contact->id],
+                ['status' => ContactQualificationStatus::New->value]
+            );
 
-        $submission = LandingPageSubmission::create([
-            'landing_page_id'          => $landingPage->id,
-            'campaign_id'              => $campaignId,
-            'landing_form_template_id' => $formTemplateId,
-            'contact_id'               => $contact->id,
-            'data'                     => $payload,
-            'normalized_email'         => $normalizedEmail,
-            'status'                   => LandingPageSubmissionStatus::Processed,
-            'contact_action'           => $action,
-            'submission_type'          => $submissionType,
-            'business_tax_code'        => $taxCodeKey ? ($validatedData[$taxCodeKey] ?? null) : null,
-            'qualification_status'     => 'received',
-            'ip_address'               => $request->ip(),
-            'user_agent'               => $request->userAgent(),
-            'referrer'                 => $request->headers->get('referer'),
-            'utm_source'               => $utm['utm_source'] ?? null,
-            'utm_medium'               => $utm['utm_medium'] ?? null,
-            'utm_campaign'             => $utm['utm_campaign'] ?? null,
-            'utm_content'              => $utm['utm_content'] ?? null,
-            'utm_term'                 => $utm['utm_term'] ?? null,
-            'submitted_at'             => now(),
-        ]);
+            $taxCodeKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, 'tax_code');
 
-        if ($landingPage->auto_create_segment) {
-            $this->autoCreateSegmentIfNeeded($landingPage);
-        }
+            $submission = LandingPageSubmission::create([
+                'landing_page_id' => $landingPage->id,
+                'campaign_id' => $campaignId,
+                'landing_form_template_id' => $formTemplateId,
+                'contact_id' => $contact->id,
+                'data' => $payload,
+                'normalized_email' => $normalizedEmail,
+                'status' => LandingPageSubmissionStatus::Processed,
+                'contact_action' => $action,
+                'submission_type' => $submissionType,
+                'business_tax_code' => $taxCodeKey ? ($validatedData[$taxCodeKey] ?? null) : null,
+                'qualification_status' => 'received',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'referrer' => $request->headers->get('referer'),
+                'utm_source' => $utm['utm_source'] ?? null,
+                'utm_medium' => $utm['utm_medium'] ?? null,
+                'utm_campaign' => $utm['utm_campaign'] ?? null,
+                'utm_content' => $utm['utm_content'] ?? null,
+                'utm_term' => $utm['utm_term'] ?? null,
+                'submitted_at' => now(),
+            ]);
 
-        return $submission;
+            if ($resolvedType === 'business' && isset($profile)) {
+                $company = $this->resolveCompany($contact, $profile, $validatedData, $formTemplate, $submission);
+                if ($company) {
+                    $submission->update(['company_id' => $company->id]);
+                }
+            }
+
+            if ($landingPage->auto_create_segment) {
+                $this->autoCreateSegmentIfNeeded($landingPage);
+            }
+
+            return $submission;
+        });
     }
 
     public function validatePayload($formTemplate, array $payload, string $submissionType): array
@@ -112,7 +127,9 @@ class LandingPageSubmissionService
 
         if ($formTemplate && $formTemplate->fields) {
             foreach ($formTemplate->fields as $field) {
-                if ($field->field_type->value === 'hidden') continue;
+                if ($field->field_type->value === 'hidden') {
+                    continue;
+                }
                 $fieldRules = [];
                 if ($field->is_required) {
                     $fieldRules[] = 'required';
@@ -138,23 +155,33 @@ class LandingPageSubmissionService
     {
         if ($normalizedEmail) {
             $profile = PersonalContactProfile::where('email', $normalizedEmail)->first();
-            if ($profile) return $profile->contact;
+            if ($profile) {
+                return $profile->contact;
+            }
 
             $profile = BusinessContactProfile::where('business_email', $normalizedEmail)->first();
-            if ($profile) return $profile->contact;
+            if ($profile) {
+                return $profile->contact;
+            }
         }
 
         if ($normalizedPhone) {
             $profile = PersonalContactProfile::where('phone', $normalizedPhone)->first();
-            if ($profile) return $profile->contact;
+            if ($profile) {
+                return $profile->contact;
+            }
 
             $profile = BusinessContactProfile::where('business_phone', $normalizedPhone)->first();
-            if ($profile) return $profile->contact;
+            if ($profile) {
+                return $profile->contact;
+            }
         }
 
         if (isset($validatedData['tax_code']) && filled($validatedData['tax_code'])) {
             $contact = Contact::whereHas('businessProfile', fn ($q) => $q->where('tax_code', $validatedData['tax_code']))->first();
-            if ($contact) return $contact;
+            if ($contact) {
+                return $contact;
+            }
         }
 
         return null;
@@ -167,22 +194,32 @@ class LandingPageSubmissionService
 
         $profileData = [];
 
-        if (filled($normalizedEmail)) $profileData['email'] = $normalizedEmail;
-        if (filled($normalizedPhone)) $profileData['phone'] = $normalizedPhone;
+        if (filled($normalizedEmail)) {
+            $profileData['email'] = $normalizedEmail;
+        }
+        if (filled($normalizedPhone)) {
+            $profileData['phone'] = $normalizedPhone;
+        }
 
         if ($formTemplate && $formTemplate->fields) {
             foreach ($formTemplate->fields as $field) {
                 $mapping = $field->contact_mapping;
-                if (! $mapping || ! str_starts_with($mapping, 'personal.')) continue;
+                if (! $mapping || ! str_starts_with($mapping, 'personal.')) {
+                    continue;
+                }
                 $profileField = explode('.', $mapping, 2)[1] ?? null;
-                if (! $profileField || ! isset($validatedData[$field->field_key])) continue;
+                if (! $profileField || ! isset($validatedData[$field->field_key])) {
+                    continue;
+                }
                 $value = $validatedData[$field->field_key];
                 if ($profileField === 'email') {
                     $profileData['email'] = $normalizedEmail ?? $value;
+
                     continue;
                 }
                 if ($profileField === 'phone') {
                     $profileData['phone'] = $value;
+
                     continue;
                 }
                 $profileData[$profileField] = $value;
@@ -209,20 +246,27 @@ class LandingPageSubmissionService
         if ($formTemplate && $formTemplate->fields) {
             foreach ($formTemplate->fields as $field) {
                 $mapping = $field->contact_mapping;
-                if (! $mapping || ! str_starts_with($mapping, 'business.')) continue;
+                if (! $mapping || ! str_starts_with($mapping, 'business.')) {
+                    continue;
+                }
                 $profileField = explode('.', $mapping, 2)[1] ?? null;
-                if (! $profileField || ! isset($validatedData[$field->field_key])) continue;
+                if (! $profileField || ! isset($validatedData[$field->field_key])) {
+                    continue;
+                }
                 $value = $validatedData[$field->field_key];
                 if ($profileField === 'business_email') {
                     $profileData['business_email'] = $normalizedEmail ?? $value;
+
                     continue;
                 }
                 if ($profileField === 'business_phone') {
                     $profileData['business_phone'] = $value;
+
                     continue;
                 }
                 if ($profileField === 'tax_code') {
                     $profileData['tax_code'] = $value;
+
                     continue;
                 }
                 $profileData[$profileField] = $value;
@@ -233,6 +277,96 @@ class LandingPageSubmissionService
             ['contact_id' => $contact->id],
             $profileData
         );
+    }
+
+    protected function resolveCompany(Contact $contact, ?BusinessContactProfile $profile, array $validatedData, $formTemplate, LandingPageSubmission $submission): ?Company
+    {
+        if (! config('business_flow.v2_enabled') || ! config('business_flow.company_resolution_enabled')) {
+            return null;
+        }
+
+        $taxCodeKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'tax_code');
+        $nameKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'company_name');
+        $emailKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'business_email');
+
+        $companyName = $nameKey ? ($validatedData[$nameKey] ?? null) : null;
+        $businessEmail = $emailKey ? ($validatedData[$emailKey] ?? null) : null;
+        $taxCode = $taxCodeKey ? ($validatedData[$taxCodeKey] ?? null) : null;
+
+        if (blank($taxCode) && blank($businessEmail) && blank($companyName)) {
+            return null;
+        }
+
+        $result = app(CompanyResolutionService::class)->resolve([
+            'tax_code' => $taxCode,
+            'business_email' => $businessEmail,
+            'company_name' => $companyName,
+        ]);
+
+        if ($result->found()) {
+            $company = $result->company;
+
+            if ($result->confidenceScore < 100) {
+                CompanyMatchCandidate::updateOrCreate(
+                    [
+                        'submission_id' => $submission->id,
+                        'contact_id' => $contact->id,
+                        'suggested_company_id' => $company->id,
+                    ],
+                    [
+                        'confidence_score' => $result->confidenceScore,
+                        'matched_by' => $result->matchedBy,
+                        'status' => 'pending',
+                    ]
+                );
+            }
+        } else {
+            $company = $this->createCompanyFromSubmission($submission, $validatedData, $formTemplate);
+        }
+
+        if (! $company) {
+            return null;
+        }
+
+        $contact->companies()->syncWithoutDetaching([$company->id => [
+            'job_title' => $profile?->contact_position,
+            'department' => null,
+            'decision_role' => 'other',
+            'is_primary' => true,
+            'is_active' => true,
+            'joined_at' => now()->toDateString(),
+        ]]);
+
+        return $company;
+    }
+
+    protected function createCompanyFromSubmission(LandingPageSubmission $submission, array $validatedData, $formTemplate): ?Company
+    {
+        $taxCodeKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'tax_code');
+        $nameKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'company_name');
+        $emailKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'business_email');
+        $addressKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'company_address');
+
+        $companyName = $nameKey ? ($validatedData[$nameKey] ?? null) : null;
+
+        if (blank($companyName)) {
+            return null;
+        }
+
+        $resolver = app(CompanyResolutionService::class);
+        $businessEmail = $emailKey ? ($validatedData[$emailKey] ?? null) : null;
+        $taxCode = $taxCodeKey ? ($validatedData[$taxCodeKey] ?? null) : null;
+
+        return Company::query()->create([
+            'company_code' => app(CompanyCodeGenerator::class)->next(),
+            'legal_name' => $companyName,
+            'normalized_name' => $resolver->normalizeName($companyName),
+            'tax_code' => $taxCode ? preg_replace('/\D+/', '', $taxCode) : null,
+            'email_domain' => $resolver->extractBusinessDomain($businessEmail),
+            'address' => $addressKey ? ($validatedData[$addressKey] ?? null) : null,
+            'lifecycle_stage' => 'prospect',
+            'created_from_submission_id' => $submission->id,
+        ]);
     }
 
     public function applyTagsAndLists(Contact $contact, LandingPage $landingPage, $formTemplate, array $validatedData = []): void
@@ -264,11 +398,17 @@ class LandingPageSubmissionService
         if ($formTemplate && ! empty($validatedData)) {
             $tagIds = [];
             foreach ($formTemplate->fields as $field) {
-                if (! $field->tag_from_value) continue;
+                if (! $field->tag_from_value) {
+                    continue;
+                }
                 $value = $validatedData[$field->field_key] ?? null;
-                if (blank($value)) continue;
+                if (blank($value)) {
+                    continue;
+                }
                 $tagValue = is_array($value) ? implode(', ', $value) : (string) $value;
-                if (blank($tagValue)) continue;
+                if (blank($tagValue)) {
+                    continue;
+                }
                 $tag = Tag::firstOrCreate(
                     ['slug' => Str::slug($tagValue)],
                     ['name' => $tagValue]
@@ -298,7 +438,7 @@ class LandingPageSubmissionService
 
     public function autoCreateSegmentIfNeeded(LandingPage $landingPage): ?Segment
     {
-        $segmentName = 'Lead từ LP - ' . $landingPage->name;
+        $segmentName = 'Lead từ LP - '.$landingPage->name;
         $segmentSlug = Str::slug($segmentName);
 
         if (Segment::where('slug', $segmentSlug)->exists()) {
@@ -322,7 +462,7 @@ class LandingPageSubmissionService
         return Segment::create([
             'name' => $segmentName,
             'slug' => $segmentSlug,
-            'description' => 'Auto-created from Landing Page: ' . $landingPage->name,
+            'description' => 'Auto-created from Landing Page: '.$landingPage->name,
             'rules' => ['conditions' => $conditions],
             'status' => 'active',
         ]);
@@ -330,19 +470,27 @@ class LandingPageSubmissionService
 
     protected function saveCustomFields(Contact $contact, $formTemplate, array $validatedData): void
     {
-        if (! $formTemplate) return;
+        if (! $formTemplate) {
+            return;
+        }
 
         foreach ($formTemplate->fields as $field) {
             $mapping = $field->contact_mapping;
-            if (! $mapping || ! str_starts_with($mapping, 'custom_field:')) continue;
+            if (! $mapping || ! str_starts_with($mapping, 'custom_field:')) {
+                continue;
+            }
 
             $cfKey = substr($mapping, strlen('custom_field:'));
             $value = $validatedData[$field->field_key] ?? null;
 
-            if ($value === null) continue;
+            if ($value === null) {
+                continue;
+            }
 
             $customField = CustomField::where('key', $cfKey)->first();
-            if (! $customField) continue;
+            if (! $customField) {
+                continue;
+            }
 
             ContactCustomFieldValue::updateOrCreate(
                 ['contact_id' => $contact->id, 'custom_field_id' => $customField->id],
@@ -353,13 +501,16 @@ class LandingPageSubmissionService
 
     protected function findFieldKeyByMapping($formTemplate, string $type, string $field): ?string
     {
-        if (! $formTemplate || ! $formTemplate->fields) return null;
+        if (! $formTemplate || ! $formTemplate->fields) {
+            return null;
+        }
         $prefix = $type === 'personal' ? 'personal.' : 'business.';
         foreach ($formTemplate->fields as $f) {
-            if ($f->contact_mapping === $prefix . $field) {
+            if ($f->contact_mapping === $prefix.$field) {
                 return $f->field_key;
             }
         }
+
         return null;
     }
 }

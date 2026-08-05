@@ -4,7 +4,6 @@ namespace App\Models\Crm;
 
 use App\Enums\Crm\TaxVerificationStatus;
 use App\Models\Marketing\Contact;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +14,7 @@ class BusinessContactProfile extends Model
 
     protected $fillable = [
         'contact_id',
+        'company_id',
         'company_name',
         'tax_code',
         'company_address',
@@ -44,6 +44,11 @@ class BusinessContactProfile extends Model
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function isTaxVerified(): bool

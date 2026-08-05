@@ -4,6 +4,7 @@ namespace App\Models\Marketing;
 
 use App\Enums\Crm\ContactType;
 use App\Models\Crm\BusinessContactProfile;
+use App\Models\Crm\Company;
 use App\Models\Crm\ContactQualification;
 use App\Models\Crm\Customer;
 use App\Models\Crm\PersonalContactProfile;
@@ -12,6 +13,7 @@ use App\Services\Marketing\AuditLogService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -80,6 +82,7 @@ class Contact extends Model
                 $this->personalProfile->last_name,
             ]))) ?: null;
         }
+
         return $this->businessProfile?->legal_representative;
     }
 
@@ -133,6 +136,19 @@ class Contact extends Model
     public function qualification(): HasOne
     {
         return $this->hasOne(ContactQualification::class);
+    }
+
+    public function companies(): BelongsToMany
+    {
+        return $this->belongsToMany(Company::class, 'company_contacts')
+            ->withPivot([
+                'job_title',
+                'department',
+                'decision_role',
+                'is_primary',
+                'is_active',
+            ])
+            ->withTimestamps();
     }
 
     public function customer(): HasOne

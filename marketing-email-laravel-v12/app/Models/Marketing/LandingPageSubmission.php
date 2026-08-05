@@ -4,6 +4,7 @@ namespace App\Models\Marketing;
 
 use App\Enums\Marketing\LandingPageContactAction;
 use App\Enums\Marketing\LandingPageSubmissionStatus;
+use App\Models\Crm\Company;
 use App\Models\Crm\Staff;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,7 @@ class LandingPageSubmission extends Model
         'campaign_id',
         'landing_form_template_id',
         'contact_id',
+        'company_id',
         'data',
         'normalized_email',
         'status',
@@ -39,10 +41,10 @@ class LandingPageSubmission extends Model
     protected function casts(): array
     {
         return [
-            'data'           => 'array',
-            'status'         => LandingPageSubmissionStatus::class,
+            'data' => 'array',
+            'status' => LandingPageSubmissionStatus::class,
             'contact_action' => LandingPageContactAction::class,
-            'submitted_at'   => 'datetime',
+            'submitted_at' => 'datetime',
         ];
     }
 
@@ -64,6 +66,11 @@ class LandingPageSubmission extends Model
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function assignedStaff(): BelongsTo
