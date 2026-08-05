@@ -47,13 +47,6 @@ class Lead extends Model
         ];
     }
 
-    protected static function booted(): void
-    {
-        static::deleting(function (self $lead): void {
-            $lead->qualification?->delete();
-        });
-    }
-
     public function submission(): BelongsTo
     {
         return $this->belongsTo(

@@ -45,7 +45,10 @@ class BackfillLeadsFromSubmissions extends Command
             foreach ($submissionIds->chunk($chunkSize) as $ids) {
                 $submissions = LandingPageSubmission::query()
                     ->whereKey($ids)
-                    ->with('landingPage')
+                    ->with([
+                        'landingPage',
+                        'contact.businessProfile',
+                    ])
                     ->orderBy('id')
                     ->get();
 
@@ -59,7 +62,7 @@ class BackfillLeadsFromSubmissions extends Command
                             [
                                 'lead_code' => $codeGenerator->next(),
                                 'contact_id' => $submission->contact_id,
-                                'company_id' => $submission->company_id,
+                                'company_id' => $submission->company_id ?? $submission->contact?->businessProfile?->company_id,
                                 'source' => 'landing_page',
                                 'source_detail' => $submission->landingPage?->name,
                                 'title' => 'Yêu cầu tư vấn từ Landing Page',
@@ -135,7 +138,8 @@ class BackfillLeadsFromSubmissions extends Command
                             LeadIntakeStatus::Active->value,
                         ])
                         ->whereDoesntHave('qualification')
-                        ->orderByDesc('id')
+                        ->orderBy('created_at')
+                        ->orderBy('id')
                         ->first();
 
                     if ($lead === null) {

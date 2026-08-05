@@ -17,8 +17,6 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -64,16 +62,12 @@ class LeadResource extends Resource
 
     public static function canEdit($record): bool
     {
-        $user = auth()->user();
-
-        return config('business_flow.v2_enabled')
-            && ($user?->isAdmin() || $user?->isCustomerServiceManager() || $user?->isCustomerServiceStaff()) ?? false;
+        return false;
     }
 
     public static function canDelete($record): bool
     {
-        return config('business_flow.v2_enabled')
-            && (auth()->user()?->isAdmin() ?? false);
+        return false;
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -227,9 +221,9 @@ class LeadResource extends Resource
             ->actions([
                 ActionGroup::make([
                     ViewAction::make(),
-                    EditAction::make(),
-                    DeleteAction::make(),
-                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
+                ])
+                    ->icon('heroicon-o-ellipsis-vertical')
+                    ->iconButton(),
             ]);
     }
 
@@ -245,7 +239,6 @@ class LeadResource extends Resource
         return [
             'index' => Pages\ListLeads::route('/'),
             'view' => Pages\ViewLead::route('/{record}'),
-            'edit' => Pages\EditLead::route('/{record}/edit'),
         ];
     }
 }

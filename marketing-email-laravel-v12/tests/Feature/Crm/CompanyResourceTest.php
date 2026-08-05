@@ -17,7 +17,7 @@ use Tests\TestCase;
 class CompanyResourceTest extends TestCase
 {
     use RefreshDatabase;
-    
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -27,6 +27,7 @@ class CompanyResourceTest extends TestCase
             true
         );
     }
+
     private function makeCompany(): Company
     {
         return Company::query()->create([

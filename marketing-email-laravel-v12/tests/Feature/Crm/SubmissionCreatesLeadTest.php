@@ -14,7 +14,7 @@ use App\Models\Marketing\LandingPageSubmission;
 use App\Services\Crm\LeadCreationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-
+use App\Models\Marketing\Contact;
 class SubmissionCreatesLeadTest extends TestCase
 {
     use RefreshDatabase;
@@ -40,8 +40,27 @@ class SubmissionCreatesLeadTest extends TestCase
         ]);
 
         $fields = [
-            ['label' => 'Họ tên', 'field_key' => 'full_name', 'field_type' => 'text', 'contact_mapping' => 'personal.full_name', 'required' => true],
-            ['label' => 'Email cá nhân', 'field_key' => 'personal_email', 'field_type' => 'email', 'contact_mapping' => 'personal.email', 'required' => true],
+            [
+                'label' => 'Họ tên',
+                'field_key' => 'full_name',
+                'field_type' => 'text',
+                'contact_mapping' => 'personal.full_name',
+                'required' => true,
+            ],
+            [
+                'label' => 'Email cá nhân',
+                'field_key' => 'personal_email',
+                'field_type' => 'email',
+                'contact_mapping' => 'personal.email',
+                'required' => true,
+            ],
+            [
+                'label' => 'Điện thoại',
+                'field_key' => 'phone',
+                'field_type' => 'text',
+                'contact_mapping' => 'personal.phone',
+                'required' => false,
+            ],
         ];
 
         foreach ($fields as $index => $field) {
@@ -170,5 +189,63 @@ class SubmissionCreatesLeadTest extends TestCase
         $this->assertSame(0, Lead::query()->count());
         $this->assertSame(1, ContactQualification::query()->count());
         $this->assertSame($submission->contact_id, ContactQualification::query()->firstOrFail()->contact_id);
+    }
+
+    public function test_phone_is_normalized_and_reused_for_contact_deduplication(): void
+    {
+        $page = $this->createPersonalLandingPage();
+
+        $this->submitPersonal($page, [
+            'full_name' => 'Nguyễn Văn A',
+            'personal_email' => 'phone-first@example.com',
+            'phone' => '090 123-4001',
+        ]);
+
+        $this->submitPersonal($page, [
+            'full_name' => 'Nguyễn Văn A',
+            'personal_email' => 'phone-second@example.com',
+            'phone' => '0901234001',
+        ]);
+
+        $this->assertSame(1, Contact::query()->count());
+        $this->assertSame(2, Lead::query()->count());
+
+        $contact = Contact::query()
+            ->with('personalProfile')
+            ->firstOrFail();
+
+        $this->assertSame(
+            '0901234001',
+            $contact->personalProfile?->phone
+        );
+    }
+
+    public function test_soft_deleting_lead_does_not_delete_qualification(): void
+    {
+        $page = $this->createPersonalLandingPage();
+
+        $this->submitPersonal($page, [
+            'full_name' => 'Nguyễn Văn A',
+            'personal_email' => 'soft-delete@example.com',
+        ]);
+
+        $lead = Lead::query()
+            ->with('qualification')
+            ->firstOrFail();
+
+        $qualificationId = $lead->qualification?->id;
+
+        $this->assertNotNull($qualificationId);
+
+        $lead->delete();
+
+        $this->assertSoftDeleted('leads', [
+            'id' => $lead->id,
+        ]);
+
+        $this->assertDatabaseHas('contact_qualifications', [
+            'id' => $qualificationId,
+            'lead_id' => $lead->id,
+        ]);
     }
 }

@@ -234,7 +234,7 @@ class LandingPageSubmissionService
                     continue;
                 }
                 if ($profileField === 'phone') {
-                    $profileData['phone'] = $value;
+                    $profileData['phone'] = $normalizedPhone ?? $value;
 
                     continue;
                 }
@@ -276,7 +276,7 @@ class LandingPageSubmissionService
                     continue;
                 }
                 if ($profileField === 'business_phone') {
-                    $profileData['business_phone'] = $value;
+                    $profileData['business_phone'] = $normalizedPhone ?? $value;
 
                     continue;
                 }

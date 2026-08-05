@@ -17,9 +17,13 @@ class CustomerCarePageRenderTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $staffUser;
+
     private Staff $staff;
+
     private Customer $customer;
+
     private CustomerAssignment $assignment;
 
     protected function setUp(): void
@@ -64,6 +68,7 @@ class CustomerCarePageRenderTest extends TestCase
             ])
             ->assertSuccessful();
     }
+
     public function test_staff_can_release_assigned_customer(): void
     {
         $component = Livewire::actingAs($this->staffUser)

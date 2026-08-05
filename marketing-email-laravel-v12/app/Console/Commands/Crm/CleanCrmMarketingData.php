@@ -25,8 +25,8 @@ class CleanCrmMarketingData extends Command
         'tracked_links',
         'email_events',
         'campaign_recipients',
-        'landing_page_submissions',
         'import_batches',
+
         // --- CRM: dữ liệu giao dịch ---
         'company_contacts',
         'company_match_candidates',
@@ -36,6 +36,8 @@ class CleanCrmMarketingData extends Command
         'personal_contact_profiles',
         'contact_qualification_notes',
         'contact_qualifications',
+        'leads',
+        'landing_page_submissions',
         'customer_distribution_items',
         'customer_distribution_batches',
         'customer_assignments',
@@ -47,8 +49,10 @@ class CleanCrmMarketingData extends Command
         'contacts',
         'tags',
         'segments',
+
         // --- Bộ đếm & log ---
         'company_code_sequences',
+        'lead_code_sequences',
         'audit_logs',
     ];
 

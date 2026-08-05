@@ -104,18 +104,35 @@ class LandingPageSubmissionResource extends Resource
                     'spam' => 'warning',
                     default => 'gray',
                 }),
+            TextColumn::make('lead.lead_code')
+                ->label(__('field.lead_code'))
+                ->placeholder(__('common.not_available'))
+                ->searchable()
+                ->url(
+                    fn (LandingPageSubmission $record): ?string => $record->lead
+                            ? LeadResource::getUrl('view', [
+                                'record' => $record->lead,
+                            ])
+                            : null
+                ),
+
             TextColumn::make('distribution_state')
                 ->label(__('field.distribution_state'))
                 ->badge()
-                ->getStateUsing(fn (LandingPageSubmission $record): string => $record->contact?->qualification?->assigned_staff_id
-                    ? 'assigned'
-                    : 'unassigned')
+                ->getStateUsing(
+                    fn (LandingPageSubmission $record): string => $record->lead?->qualification?->assigned_staff_id
+                            ? 'assigned'
+                            : 'unassigned'
+                )
                 ->formatStateUsing(fn (string $state): string => match ($state) {
                     'assigned' => __('distribution.assigned'),
                     default => __('distribution.unassigned'),
                 })
-                ->color(fn (string $state): string => $state === 'assigned' ? 'success' : 'warning'),
-            TextColumn::make('contact.qualification.status')
+                ->color(
+                    fn (string $state): string => $state === 'assigned' ? 'success' : 'warning'
+                ),
+
+            TextColumn::make('lead.qualification.status')
                 ->label(__('field.crm_status'))
                 ->badge()
                 ->formatStateUsing(function ($state): string {
@@ -129,6 +146,9 @@ class LandingPageSubmissionResource extends Resource
                         'qualified' => __('lead.status.qualified'),
                         'unqualified' => __('lead.status.unqualified'),
                         'converted' => __('lead.status.converted'),
+                        'duplicate' => __('lead.status.duplicate'),
+                        'spam' => __('lead.status.spam'),
+                        'archived' => __('lead.status.archived'),
                         default => $value ?: __('common.not_available'),
                     };
                 })

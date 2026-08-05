@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Crm;
 
+use App\Enums\Crm\ContactQualificationStatus;
 use App\Models\Crm\Company;
 use App\Models\Crm\ContactQualification;
 use App\Models\Crm\LandingPageForm;
@@ -10,6 +11,7 @@ use App\Models\Marketing\Contact;
 use App\Models\Marketing\FormField;
 use App\Models\Marketing\FormTemplate;
 use App\Models\Marketing\LandingPage;
+use App\Models\Marketing\LandingPageSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -156,6 +158,58 @@ class MultipleLeadsPerContactTest extends TestCase
         $this->assertSame(
             2,
             $leads->pluck('contact_id')->unique()->count()
+        );
+    }
+
+    public function test_each_submission_uses_qualification_from_its_own_lead(): void
+    {
+        $page = $this->createPersonalLandingPage();
+
+        $this->submit($page, 'personal', [
+            'full_name' => 'Nguyễn Văn A',
+            'personal_email' => 'submission-relation@example.com',
+        ]);
+
+        $this->submit($page, 'personal', [
+            'full_name' => 'Nguyễn Văn A',
+            'personal_email' => 'submission-relation@example.com',
+        ]);
+
+        $submissions = LandingPageSubmission::query()
+            ->with('lead.qualification')
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount(2, $submissions);
+
+        $firstLead = $submissions[0]->lead;
+        $secondLead = $submissions[1]->lead;
+
+        $this->assertNotNull($firstLead);
+        $this->assertNotNull($secondLead);
+        $this->assertNotSame($firstLead->id, $secondLead->id);
+
+        $firstLead->qualification()->update([
+            'status' => ContactQualificationStatus::Contacting->value,
+        ]);
+
+        $secondLead->qualification()->update([
+            'status' => ContactQualificationStatus::Qualified->value,
+        ]);
+
+        $submissions = LandingPageSubmission::query()
+            ->with('lead.qualification')
+            ->orderBy('id')
+            ->get();
+
+        $this->assertSame(
+            ContactQualificationStatus::Contacting,
+            $submissions[0]->lead?->qualification?->status
+        );
+
+        $this->assertSame(
+            ContactQualificationStatus::Qualified,
+            $submissions[1]->lead?->qualification?->status
         );
     }
 }
