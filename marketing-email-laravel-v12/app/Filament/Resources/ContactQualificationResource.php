@@ -9,6 +9,7 @@ use App\Filament\Resources\ContactQualificationResource\Pages;
 use App\Models\Crm\ContactQualification;
 use App\Models\Crm\ContactQualificationNote;
 use App\Models\Crm\Staff;
+use App\Services\Crm\ContactQualificationWorkflowService;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -174,26 +175,34 @@ class ContactQualificationResource extends Resource
                     ->label(__('action.start_contacting'))
                     ->icon('heroicon-o-phone-arrow-up-right')
                     ->color('info')
-                    ->visible(fn (ContactQualification $record): bool => in_array((string) ($record->status?->value ?? $record->status), ['new', 'assigned', 'follow_up'], true))
+                    ->visible(fn (ContactQualification $record): bool => in_array(
+                        (string) ($record->status?->value ?? $record->status),
+                        [
+                            ContactQualificationStatus::Assigned->value,
+                            ContactQualificationStatus::FollowUp->value,
+                        ],
+                        true,
+                    ))
                     ->action(function (ContactQualification $record): void {
-                        $record->update([
-                            'status' => ContactQualificationStatus::Contacting->value,
-                            'first_contacted_at' => $record->first_contacted_at ?? now(),
-                            'last_contacted_at' => now(),
-                        ]);
-
+                        app(ContactQualificationWorkflowService::class)->transition(
+                            qualification: $record,
+                            to: ContactQualificationStatus::Contacting,
+                            actorUserId: auth()->id(),
+                        );
                         Notification::make()->success()->title(__('notification.updated'))->send();
                     }),
                 Action::make('process_lead')
                     ->label(__('action.process_lead'))
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
-                    ->visible(fn (ContactQualification $record): bool => blank($record->last_contacted_at))
+                    ->visible(fn (ContactQualification $record): bool => ! config('business_flow.v2_enabled')
+                            && blank($record->last_contacted_at)
+                    )
                     ->form([
-                        Select::make('status')->options(ContactQualificationStatus::options())->required(),
-                        Select::make('qualification_result')->options(QualificationResult::options()),
-                        DateTimePicker::make('next_follow_up_at'),
-                        Textarea::make('note')->rows(3),
+                    Select::make('status')->options(ContactQualificationStatus::options())->required(),
+                    Select::make('qualification_result')->options(QualificationResult::options()),
+                    DateTimePicker::make('next_follow_up_at'),
+                    Textarea::make('note')->rows(3),
                     ])
                     ->action(function (ContactQualification $record, array $data): void {
                         $record->update([
@@ -226,12 +235,14 @@ class ContactQualificationResource extends Resource
                     ->label(__('action.convert_to_customer'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('success')
-                    ->visible(fn (ContactQualification $record): bool => $record->isConvertible())
+                    ->visible(fn (ContactQualification $record): bool => ! config('business_flow.v2_enabled')
+                            && $record->isConvertible()
+                    )
                     ->form([
-                        Select::make('assign_to_staff_id')
-                            ->label(__('field.assigned_staff'))
-                            ->options(Staff::query()->orderBy('full_name')->pluck('full_name', 'id'))
-                            ->searchable(),
+                    Select::make('assign_to_staff_id')
+                        ->label(__('field.assigned_staff'))
+                        ->options(Staff::query()->orderBy('full_name')->pluck('full_name', 'id'))
+                        ->searchable(),
                     ])
                     ->action(function (ContactQualification $record, array $data): void {
                         $actor = auth()->user()?->staff;

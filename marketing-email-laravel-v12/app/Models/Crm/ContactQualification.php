@@ -77,9 +77,6 @@ class ContactQualification extends Model
     public function isConvertible(): bool
     {
         return $this->status === ContactQualificationStatus::Qualified
-            && in_array($this->qualification_result, [
-                QualificationResult::ConfirmedNeed,
-                QualificationResult::Purchased,
-            ], true);
+            && $this->qualification_result === QualificationResult::Purchased;
     }
 }

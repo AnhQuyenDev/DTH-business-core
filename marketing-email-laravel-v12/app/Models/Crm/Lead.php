@@ -6,14 +6,17 @@ use App\Enums\Crm\LeadIntakeStatus;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\LandingPageSubmission;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Lead extends Model
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
@@ -90,5 +93,12 @@ class Lead extends Model
             'id',
             'id'
         );
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(LeadActivity::class)
+            ->orderByDesc('activity_at')
+            ->orderByDesc('id');
     }
 }

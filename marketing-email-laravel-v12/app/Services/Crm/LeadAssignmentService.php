@@ -15,6 +15,7 @@ final class LeadAssignmentService
 {
     public function __construct(
         private readonly CompanyOwnershipService $companyOwnershipService,
+        private readonly ContactQualificationWorkflowService $workflowService,
     ) {}
 
     public function assign(
@@ -127,21 +128,11 @@ final class LeadAssignmentService
                 'intake_status' => LeadIntakeStatus::Active->value,
             ]);
 
-            $qualificationPayload = [
-                // Compatibility phase. Phase 10 mới xóa cột này.
-                'assigned_staff_id' => $lockedStaff->id,
-            ];
-
-            if (
-                ($lockedLead->qualification->status?->value
-                    ?? $lockedLead->qualification->status)
-                === ContactQualificationStatus::New->value
-            ) {
-                $qualificationPayload['status'] =
-                    ContactQualificationStatus::Assigned->value;
-            }
-
-            $lockedLead->qualification->update($qualificationPayload);
+            $this->workflowService->syncAssignedStaff(
+                qualification: $lockedLead->qualification,
+                staffId: $lockedStaff->id,
+                actorUserId: $assignedByUserId,
+            );
 
             DB::afterCommit(function () use (
                 $lockedLead,

@@ -1,6 +1,10 @@
 <?php
 
+use App\Enums\Crm\ContactQualificationStatus;
+use App\Jobs\Crm\MarkStaleLeadsForReviewJob;
+use App\Jobs\Crm\SendLeadFollowUpReminderJob;
 use App\Jobs\Marketing\ProcessScheduledCampaignsJob;
+use App\Models\Crm\Lead;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -110,3 +114,25 @@ Artisan::command('i18n:audit-hardcoded {--path=* : Relative paths to scan} {--fa
 
     return $this->option('fail') ? 1 : 0;
 })->purpose('Audit potential hardcoded user-facing strings for i18n cleanup');
+
+Schedule::call(function (): void {
+    Lead::query()
+        ->whereHas('qualification', function ($query): void {
+            $query->whereIn('status', [
+                ContactQualificationStatus::Contacting->value,
+                ContactQualificationStatus::FollowUp->value,
+            ])->whereNotNull('next_follow_up_at')
+                ->where('next_follow_up_at', '<=', now());
+        })
+        ->orderBy('id')
+        ->pluck('id')
+        ->each(
+            fn (int $leadId) => SendLeadFollowUpReminderJob::dispatch($leadId)
+                ->onQueue('crm')
+        );
+})->everyFifteenMinutes()->name('send-lead-follow-up-reminders')->withoutOverlapping();
+
+Schedule::job(
+    new MarkStaleLeadsForReviewJob(staleAfterDays: 3),
+    queue: 'crm',
+)->name('mark-stale-leads-for-review')->dailyAt('08:00')->withoutOverlapping();

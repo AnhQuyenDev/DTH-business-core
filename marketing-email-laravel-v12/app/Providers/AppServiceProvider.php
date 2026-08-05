@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Contracts\Tax\TaxCodeVerificationProvider;
+use App\Events\Crm\ContactQualificationTransitioned;
 use App\Events\Crm\LeadAssigned;
+use App\Listeners\Crm\RecordContactQualificationTransitionAudit;
 use App\Listeners\Crm\RecordLeadAssignmentAudit;
 use App\Listeners\LogSuccessfulLogin;
 use App\Models\Crm\CustomerAssignment;
@@ -32,10 +34,8 @@ class AppServiceProvider extends ServiceProvider
 
         // ─── Event Listeners ────────────────────────────────────────────
         Event::listen(Login::class, LogSuccessfulLogin::class);
-        Event::listen(
-            LeadAssigned::class,
-            RecordLeadAssignmentAudit::class
-        );
+        Event::listen(LeadAssigned::class, RecordLeadAssignmentAudit::class);
+        Event::listen(ContactQualificationTransitioned::class, RecordContactQualificationTransitionAudit::class);
         // ─── Marketing View Gates ───────────────────────────────────────
         Gate::define('marketing.view-contacts', fn (User $user) => $user->isAnyMarketingUser());
         Gate::define('marketing.view-tags', fn (User $user) => $user->isAnyMarketingUser());
@@ -86,7 +86,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('crm.rebalance-customers', fn (User $user) => $user->isAdmin());
         Gate::define('crm.verify-business-tax', fn (User $user) => $user->isAdmin());
         Gate::define('crm.view-all-customers', fn (User $user) => $user->isMarketingManager() || $user->isCustomerServiceManager() || $user->isAdmin());
-
+        Gate::define('crm.process-lead', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager() || $user->role === 'customer_service_staff');
+        Gate::define('crm.archive-lead', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager());
         // ─── Sales / Quotation Gates ────────────────────────────────────
         Gate::define('sales.view-services', fn (User $user) => $user->isAnyMarketingUser());
         Gate::define('sales.manage-services', fn (User $user) => $user->isAdmin());

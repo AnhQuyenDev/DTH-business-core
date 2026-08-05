@@ -48,6 +48,23 @@ enum ContactQualificationStatus: string
 
     public function isTerminal(): bool
     {
-        return in_array($this, [self::Converted, self::Duplicate, self::Spam, self::Archived], true);
+        return in_array($this, [
+            self::Unqualified,
+            self::Converted,
+            self::Duplicate,
+            self::Spam,
+            self::Archived,
+        ], true);
+    }
+
+    public function isOpen(): bool
+    {
+        return in_array($this, [
+            self::New,
+            self::Assigned,
+            self::Contacting,
+            self::FollowUp,
+            self::Qualified,
+        ], true);
     }
 }

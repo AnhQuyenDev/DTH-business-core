@@ -7,6 +7,7 @@ use App\Enums\Crm\ContactType;
 use App\Enums\Crm\LeadIntakeStatus;
 use App\Enums\Crm\StaffEmploymentStatus;
 use App\Filament\Resources\LeadResource\Pages;
+use App\Filament\Resources\LeadResource\RelationManagers\LeadActivitiesRelationManager;
 use App\Filament\Resources\LeadResource\RelationManagers\QualificationNotesRelationManager;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
@@ -127,7 +128,31 @@ class LeadResource extends Resource
                             : ContactQualificationStatus::tryFrom((string) $state)?->label() ?? __('action.not_applicable')),
                     TextEntry::make('qualification.next_follow_up_at')
                         ->label(__('field.next_follow_up'))
+                        ->dateTime('d/m/Y H:i')
+                        ->color(fn ($state): string => $state && $state->isPast() ? 'danger' : 'gray'
+                        ),
+                    TextEntry::make('qualification.first_contacted_at')
+                        ->label(__('field.first_contacted_at'))
                         ->dateTime('d/m/Y H:i'),
+
+                    TextEntry::make('qualification.last_contacted_at')
+                        ->label(__('field.last_contacted_at'))
+                        ->dateTime('d/m/Y H:i'),
+
+                    TextEntry::make('qualification.qualification_result')
+                        ->label(__('field.qualification_result'))
+                        ->badge()
+                        ->formatStateUsing(
+                            fn ($state): string => $state?->label()
+                                ?? __('action.not_applicable')
+                        ),
+
+                    TextEntry::make('qualification.score')
+                        ->label(__('field.score')),
+
+                    TextEntry::make('qualification.priority')
+                        ->label(__('field.priority'))
+                        ->badge(),
                     TextEntry::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i'),
                 ])->columns(2),
             ]);
@@ -232,6 +257,28 @@ class LeadResource extends Resource
         return Gate::allows('crm.reassign-lead');
     }
 
+    public static function canProcessLead(Lead $lead): bool
+    {
+        if (! Gate::allows('crm.process-lead')) {
+            return false;
+        }
+
+        $user = auth()->user();
+
+        if ($user?->isAdmin() || $user?->isCustomerServiceManager()) {
+            return true;
+        }
+
+        return $user?->role === 'customer_service_staff'
+            && $user->staff?->id !== null
+            && $lead->assigned_staff_id === $user->staff->id;
+    }
+
+    public static function canArchiveLead(Lead $lead): bool
+    {
+        return Gate::allows('crm.archive-lead');
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -275,7 +322,9 @@ class LeadResource extends Resource
                     ->label(__('field.next_follow_up'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->color(fn ($state): string => $state && $state->isPast() ? 'danger' : 'gray'
+                    ),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label(__('field.created_at'))
                     ->dateTime('d/m/Y H:i')
@@ -294,13 +343,26 @@ class LeadResource extends Resource
                     ->label(__('field.status'))
                     ->options(ContactQualificationStatus::options())
                     ->query(fn (Builder $query, array $data) => $query
-                        ->when(
-                            filled($data['value'] ?? null),
-                            fn (Builder $query, string $value) => $query->whereHas(
-                                'qualification',
-                                fn (Builder $query) => $query->where('status', $value)
-                            )
-                        )),
+                    ->when(
+                        filled($data['value'] ?? null),
+                        fn (Builder $query, string $value) => $query->whereHas(
+                            'qualification',
+                            fn (Builder $query) => $query->where('status', $value)
+                        )
+                    )),
+                Tables\Filters\Filter::make('overdue_follow_up')
+                    ->label(__('filter.overdue_follow_up'))
+                    ->query(fn (Builder $query): Builder => $query->whereHas(
+                        'qualification',
+                        fn (Builder $query): Builder => $query
+                            ->whereNotNull('next_follow_up_at')
+                            ->where('next_follow_up_at', '<', now())
+                    )),
+
+                Tables\Filters\Filter::make('stale_review_required')
+                    ->label(__('filter.stale_review_required'))
+                    ->query(fn (Builder $query): Builder => $query
+                        ->whereNotNull('metadata->stale_review_required_at')),
             ])
             ->actions([
                 ActionGroup::make([
@@ -365,6 +427,7 @@ class LeadResource extends Resource
     public static function getRelations(): array
     {
         return [
+            LeadActivitiesRelationManager::class,
             QualificationNotesRelationManager::class,
         ];
     }
