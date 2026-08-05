@@ -8,6 +8,7 @@ use App\Enums\Crm\StaffEmploymentStatus;
 use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\Staff;
 use App\Models\User;
+use App\Services\Crm\CustomerDistributionService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,12 +17,12 @@ class StaffObserver
 {
     public function saving(Staff $staff): void
     {
-        if (!$staff->isDirty('employment_status')) {
+        if (! $staff->isDirty('employment_status')) {
             return;
         }
 
         $original = $staff->getOriginal('employment_status');
-        $current  = $staff->employment_status;
+        $current = $staff->employment_status;
 
         Log::debug('StaffObserver.saving triggered', [
             'staff_id' => $staff->id,
@@ -31,11 +32,12 @@ class StaffObserver
             'is_dirty' => $staff->isDirty('employment_status'),
         ]);
 
-        if (!is_string($original) || !$current instanceof StaffEmploymentStatus) {
+        if (! is_string($original) || ! $current instanceof StaffEmploymentStatus) {
             Log::warning('StaffObserver: invalid types', [
                 'original_type' => gettype($original),
                 'current_type' => gettype($current),
             ]);
+
             return;
         }
 
@@ -50,7 +52,7 @@ class StaffObserver
             'isInactiveGoActive' => $isInactiveGoActive,
         ]);
 
-        if (!$isActiveGoInactive && !$isInactiveGoActive) {
+        if (! $isActiveGoInactive && ! $isInactiveGoActive) {
             return;
         }
 
@@ -103,7 +105,7 @@ class StaffObserver
                     ? 'Auto-distributed: staff resigned'
                     : 'Auto-distributed: staff inactive';
 
-                app(\App\Services\Crm\CustomerDistributionService::class)->distribute(
+                app(CustomerDistributionService::class)->distribute(
                     type: DistributionBatchType::StaffAbsence,
                     strategy: DistributionStrategy::LeastLoaded,
                     customerIds: $customerIds,
@@ -121,10 +123,10 @@ class StaffObserver
 
             foreach ($ownerAssignments as $assignment) {
                 $assignment->update([
-                    'status'           => 'ended',
-                    'ended_at'         => now(),
+                    'status' => 'ended',
+                    'ended_at' => now(),
                     'ended_by_user_id' => $userId,
-                    'note'             => $isPermanent ? 'Staff resigned' : 'Staff inactive',
+                    'note' => $isPermanent ? 'Staff resigned' : 'Staff inactive',
                 ]);
             }
         }
@@ -158,19 +160,20 @@ class StaffObserver
 
         if ($supportAssignments->isEmpty()) {
             Log::info('StaffObserver: no support assignments to restore', ['staff_id' => $staff->id]);
+
             return;
         }
 
         foreach ($supportAssignments as $assignment) {
             $assignment->update([
-                'status'           => 'ended',
-                'ended_at'         => now(),
+                'status' => 'ended',
+                'ended_at' => now(),
                 'ended_by_user_id' => $userId,
-                'note'             => 'Staff returned from inactive',
+                'note' => 'Staff returned from inactive',
             ]);
         }
 
-        app(\App\Services\Crm\CustomerDistributionService::class)->distribute(
+        app(CustomerDistributionService::class)->distribute(
             type: DistributionBatchType::StaffReturn,
             strategy: DistributionStrategy::LeastLoaded,
             customerIds: $customerIds,

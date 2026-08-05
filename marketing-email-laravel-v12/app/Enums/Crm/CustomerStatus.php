@@ -25,11 +25,11 @@ enum CustomerStatus: string
     {
         return match ($this) {
             self::Potential => __('enum.status.potential'),
-            self::Active    => __('enum.status.active'),
-            self::Inactive  => __('enum.status.inactive'),
-            self::Churned   => __('enum.customer_status.churned'),
-            self::Blocked   => __('enum.status.blocked'),
-            self::Archived  => __('enum.status.archived'),
+            self::Active => __('enum.status.active'),
+            self::Inactive => __('enum.status.inactive'),
+            self::Churned => __('enum.customer_status.churned'),
+            self::Blocked => __('enum.status.blocked'),
+            self::Archived => __('enum.status.archived'),
         };
     }
 

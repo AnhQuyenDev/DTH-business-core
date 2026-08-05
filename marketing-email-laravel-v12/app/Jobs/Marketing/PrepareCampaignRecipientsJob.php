@@ -24,16 +24,13 @@ class PrepareCampaignRecipientsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public int $campaignId)
-    {
-    }
+    public function __construct(public int $campaignId) {}
 
     public function handle(
         CampaignAudienceService $audienceService,
         TemplateRenderService $templateRenderService,
         CampaignLandingPageService $campaignLandingPageService
-    ): void
-    {
+    ): void {
         $campaign = Campaign::query()->with(['template', 'sendingAccount', 'landingPage'])->findOrFail($this->campaignId);
 
         if (! in_array($campaign->status, [CampaignStatus::Preparing->value, CampaignStatus::Sending->value, CampaignStatus::Scheduled->value], true)) {
@@ -113,7 +110,7 @@ class PrepareCampaignRecipientsJob implements ShouldQueue
             $rendered = $templateRenderService->render(
                 template: $template,
                 customer: $customer,
-                unsubscribeUrl: url('/m/unsubscribe/' . $recipient->unsubscribe_token),
+                unsubscribeUrl: url('/m/unsubscribe/'.$recipient->unsubscribe_token),
                 subjectOverride: $campaign->subject,
                 extraPlaceholders: $extraPlaceholders,
             );

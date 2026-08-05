@@ -12,12 +12,12 @@ class CustomFieldFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'          => $this->faker->unique()->words(2, true),
-            'type'          => $this->faker->randomElement(['text', 'number', 'date', 'boolean']),
-            'options'       => null,
-            'is_required'   => false,
+            'name' => $this->faker->unique()->words(2, true),
+            'type' => $this->faker->randomElement(['text', 'number', 'date', 'boolean']),
+            'options' => null,
+            'is_required' => false,
             'is_filterable' => true,
-            'sort_order'    => $this->faker->numberBetween(0, 100),
+            'sort_order' => $this->faker->numberBetween(0, 100),
         ];
     }
 }

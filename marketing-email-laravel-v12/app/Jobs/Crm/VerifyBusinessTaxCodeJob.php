@@ -2,7 +2,10 @@
 
 namespace App\Jobs\Crm;
 
+use App\Contracts\Tax\TaxCodeVerificationProvider;
+use App\Enums\Crm\TaxVerificationStatus;
 use App\Models\Crm\BusinessContactProfile;
+use App\Services\Crm\CompanyTaxVerificationSyncService;
 use App\Services\Crm\TaxCodeVerificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,6 +18,7 @@ class VerifyBusinessTaxCodeJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 60;
 
     public function __construct(
@@ -28,10 +32,13 @@ class VerifyBusinessTaxCodeJob implements ShouldQueue
         $this->profile->update([
             'tax_verification_status' => $result->status->value,
             'tax_verified_at' => now(),
-            'tax_verification_provider' => class_basename(app(\App\Contracts\Tax\TaxCodeVerificationProvider::class)),
+            'tax_verification_provider' => class_basename(app(TaxCodeVerificationProvider::class)),
             'tax_verification_data' => $result->rawData,
             'tax_verification_message' => $result->message,
         ]);
+
+        app(CompanyTaxVerificationSyncService::class)
+            ->syncFromProfile($this->profile->fresh());
 
         if ($result->status->isVerified() && $result->companyName) {
             if (blank($this->profile->company_name)) {
@@ -43,8 +50,8 @@ class VerifyBusinessTaxCodeJob implements ShouldQueue
     public function failed(\Throwable $e): void
     {
         $this->profile->update([
-            'tax_verification_status' => \App\Enums\Crm\TaxVerificationStatus::Error->value,
-            'tax_verification_message' => 'Verification job failed: ' . $e->getMessage(),
+            'tax_verification_status' => TaxVerificationStatus::Error->value,
+            'tax_verification_message' => 'Verification job failed: '.$e->getMessage(),
         ]);
     }
 }

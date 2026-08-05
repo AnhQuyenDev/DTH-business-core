@@ -30,10 +30,10 @@ class ListEmailTemplates extends ListRecords
                     TextInput::make('name')->label(__('field.name'))->required()->maxLength(255),
                     Select::make('category_id')
                         ->label(__('field.category'))
-                        ->options(\App\Models\Marketing\EmailTemplateCategory::query()->pluck('name', 'id')->toArray())
+                        ->options(EmailTemplateCategory::query()->pluck('name', 'id')->toArray())
                         ->searchable()
                         ->preload()
-                        ->default(fn () => \App\Models\Marketing\EmailTemplateCategory::where('slug', 'marketing')->first()?->id)
+                        ->default(fn () => EmailTemplateCategory::where('slug', 'marketing')->first()?->id)
                         ->required(),
                     TextInput::make('subject')->label(__('field.subject'))->required()->maxLength(255),
                     TextInput::make('preheader')->label(__('field.preheader'))->maxLength(255),

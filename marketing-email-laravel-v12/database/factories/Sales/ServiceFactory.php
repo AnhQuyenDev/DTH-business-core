@@ -12,7 +12,8 @@ class ServiceFactory extends Factory
 
     public function definition(): array
     {
-        $code = 'SV' . strtoupper(fake()->bothify('??###'));
+        $code = 'SV'.strtoupper(fake()->bothify('??###'));
+
         return [
             'service_code' => $code,
             'name' => fake()->words(3, true),

@@ -5,6 +5,8 @@ namespace App\Filament\Actions;
 use App\Enums\Crm\CustomerAssignmentStatus;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
 
@@ -20,7 +22,7 @@ class ReleaseCustomerAction
             ->modalDescription(__('action.release_customer_desc'))
             ->modalSubmitActionLabel(__('action.release_customer'))
             ->form([
-                \Filament\Forms\Components\Select::make('reason')
+                Select::make('reason')
                     ->label(__('field.release_reason'))
                     ->options([
                         'customer_refused' => __('enum.assignment_reason.customer_refused'),
@@ -30,7 +32,7 @@ class ReleaseCustomerAction
                         'other' => __('enum.assignment_reason.other'),
                     ])
                     ->required(),
-                \Filament\Forms\Components\Textarea::make('note')
+                Textarea::make('note')
                     ->label(__('field.note')),
             ])
             ->visible(function (Customer $record): bool {
@@ -42,6 +44,7 @@ class ReleaseCustomerAction
                 if (! $staff) {
                     return false;
                 }
+
                 return CustomerAssignment::query()
                     ->where('customer_id', $record->id)
                     ->where('staff_id', $staff->id)
@@ -66,7 +69,7 @@ class ReleaseCustomerAction
                         'ends_at' => $now,
                         'ended_at' => $now,
                         'ended_by_user_id' => $user->id,
-                        'note' => ($data['reason'] ?? '') . ($data['note'] ? ': ' . $data['note'] : ''),
+                        'note' => ($data['reason'] ?? '').($data['note'] ? ': '.$data['note'] : ''),
                     ]);
 
                 Notification::make()

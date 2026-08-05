@@ -136,7 +136,7 @@ class CampaignResource extends Resource
             TextColumn::make('template.name')->label(__('field.email_template')),
             TextColumn::make('landingPage.name')->label(__('field.landing_page'))->toggleable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
-                ->formatStateUsing(fn (?string $state): string => $state ? __('enum.campaign_status.' . $state) : '')
+                ->formatStateUsing(fn (?string $state): string => $state ? __('enum.campaign_status.'.$state) : '')
                 ->color(fn (?string $state): string => match ($state) {
                     'sent' => 'success',
                     'sending', 'preparing', 'scheduled', 'testing' => 'info',

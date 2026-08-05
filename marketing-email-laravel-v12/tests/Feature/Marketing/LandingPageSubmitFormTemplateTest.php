@@ -110,7 +110,7 @@ class LandingPageSubmitFormTemplateTest extends TestCase
     {
         $page = $this->createLandingPageWithBothForms();
 
-        $response = $this->post('/lp/' . $page->slug . '/submit', [
+        $response = $this->post('/lp/'.$page->slug.'/submit', [
             '_token' => csrf_token(),
             'submission_type' => 'personal',
             'personal_email' => 'personal@test.com',
@@ -128,7 +128,7 @@ class LandingPageSubmitFormTemplateTest extends TestCase
         $submission = LandingPageSubmission::where('landing_page_id', $page->id)
             ->where('submission_type', 'personal')
             ->first();
-        
+
         $this->assertNotNull($submission);
         $this->assertEquals($page->forms()->where('form_type', 'personal')->first()->form_template_id, $submission->landing_form_template_id);
     }
@@ -137,7 +137,7 @@ class LandingPageSubmitFormTemplateTest extends TestCase
     {
         $page = $this->createLandingPageWithBothForms();
 
-        $response = $this->post('/lp/' . $page->slug . '/submit', [
+        $response = $this->post('/lp/'.$page->slug.'/submit', [
             '_token' => csrf_token(),
             'submission_type' => 'business',
             'company_name' => 'Test Company',
@@ -156,7 +156,7 @@ class LandingPageSubmitFormTemplateTest extends TestCase
         $submission = LandingPageSubmission::where('landing_page_id', $page->id)
             ->where('submission_type', 'business')
             ->first();
-        
+
         $this->assertNotNull($submission);
         $this->assertEquals($page->forms()->where('form_type', 'business')->first()->form_template_id, $submission->landing_form_template_id);
     }
@@ -165,7 +165,7 @@ class LandingPageSubmitFormTemplateTest extends TestCase
     {
         $page = $this->createLandingPageWithBothForms();
 
-        $response = $this->post('/lp/' . $page->slug . '/submit', [
+        $response = $this->post('/lp/'.$page->slug.'/submit', [
             '_token' => csrf_token(),
             'submission_type' => 'personal',
             'personal_email' => 'personal@test.com',
@@ -173,7 +173,7 @@ class LandingPageSubmitFormTemplateTest extends TestCase
 
         // Should redirect to thank you page with personal success message
         $response->assertRedirect(route('marketing.landing-pages.public.thank-you', $page->slug));
-        
+
         $this->assertEquals('Cảm ơn cá nhân!', session('success_message'));
     }
 
@@ -181,7 +181,7 @@ class LandingPageSubmitFormTemplateTest extends TestCase
     {
         $page = $this->createLandingPageWithBothForms();
 
-        $response = $this->post('/lp/' . $page->slug . '/submit', [
+        $response = $this->post('/lp/'.$page->slug.'/submit', [
             '_token' => csrf_token(),
             'submission_type' => 'business',
             'company_name' => 'Test Company',
@@ -197,7 +197,7 @@ class LandingPageSubmitFormTemplateTest extends TestCase
         $page = $this->createLandingPageWithBothForms();
 
         // Submit personal
-        $this->post('/lp/' . $page->slug . '/submit', [
+        $this->post('/lp/'.$page->slug.'/submit', [
             '_token' => csrf_token(),
             'submission_type' => 'personal',
             'personal_email' => 'personal@test.com',
@@ -205,11 +205,11 @@ class LandingPageSubmitFormTemplateTest extends TestCase
 
         $personalSubmission = LandingPageSubmission::where('submission_type', 'personal')->first();
         $personalFormTemplateId = $page->forms()->where('form_type', 'personal')->first()->form_template_id;
-        
+
         $this->assertEquals($personalFormTemplateId, $personalSubmission->landing_form_template_id);
 
         // Submit business
-        $this->post('/lp/' . $page->slug . '/submit', [
+        $this->post('/lp/'.$page->slug.'/submit', [
             '_token' => csrf_token(),
             'submission_type' => 'business',
             'company_name' => 'Test Company',
@@ -218,7 +218,7 @@ class LandingPageSubmitFormTemplateTest extends TestCase
 
         $businessSubmission = LandingPageSubmission::where('submission_type', 'business')->first();
         $businessFormTemplateId = $page->forms()->where('form_type', 'business')->first()->form_template_id;
-        
+
         $this->assertEquals($businessFormTemplateId, $businessSubmission->landing_form_template_id);
     }
 }

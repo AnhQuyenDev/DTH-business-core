@@ -7,7 +7,6 @@ use App\Enums\Marketing\EmailEventType;
 use App\Mail\MarketingCampaignMail;
 use App\Models\Marketing\Campaign;
 use App\Models\Marketing\CampaignRecipient;
-use App\Models\Marketing\Contact;
 use App\Models\Marketing\EmailEvent;
 use App\Models\Marketing\SendingAccount;
 use Illuminate\Support\Facades\Config;
@@ -33,6 +32,7 @@ class EmailSendingService
 
         if (! $campaign || ! $campaign->template || ! $campaign->sendingAccount) {
             $this->markFailed($recipient, 'Campaign, template or sending account not found.');
+
             return;
         }
 
@@ -40,11 +40,13 @@ class EmailSendingService
 
         if (! $contact || blank($contact->email)) {
             $this->markFailed($recipient, 'Contact has no email.');
+
             return;
         }
 
         if ($this->suppression->isSuppressed($contact->email)) {
             $this->markSkipped($recipient, 'Email is suppressed.');
+
             return;
         }
 

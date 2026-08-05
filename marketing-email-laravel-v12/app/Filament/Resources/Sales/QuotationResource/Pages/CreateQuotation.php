@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Sales\QuotationResource\Pages;
 use App\Filament\Resources\Sales\QuotationResource;
 use App\Models\Crm\Customer;
 use App\Models\Sales\PriceBook;
-use App\Models\User;
 use App\Services\Sales\QuotationCreationService;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;

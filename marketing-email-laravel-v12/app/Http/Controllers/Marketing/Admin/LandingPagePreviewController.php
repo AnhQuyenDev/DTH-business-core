@@ -11,6 +11,7 @@ class LandingPagePreviewController extends Controller
     public function preview(LandingPage $landingPage)
     {
         $html = app(LandingPageRenderService::class)->render($landingPage);
+
         return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
     }
 }

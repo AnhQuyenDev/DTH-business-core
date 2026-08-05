@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Http;
 class SyncVnBanks extends Command
 {
     protected $signature = 'sales:sync-vn-banks';
+
     protected $description = 'Sync Vietnamese bank list from VietQR API (fallback to built-in list)';
 
     private const FALLBACK = [
@@ -74,7 +75,7 @@ class SyncVnBanks extends Command
             );
         }
 
-        $this->info('Synced ' . count($banks) . ' banks.');
+        $this->info('Synced '.count($banks).' banks.');
 
         return self::SUCCESS;
     }
@@ -84,7 +85,7 @@ class SyncVnBanks extends Command
         try {
             $response = Http::timeout(10)->get('https://api.vietqr.io/v2/banks');
 
-            if (!$response->ok()) {
+            if (! $response->ok()) {
                 return [];
             }
 

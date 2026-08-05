@@ -15,6 +15,7 @@ use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class ServiceResource extends Resource
 {
@@ -47,12 +48,12 @@ class ServiceResource extends Resource
         return auth()->user()?->can('sales.manage-services') ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return auth()->user()?->can('sales.manage-services') ?? false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return auth()->user()?->can('sales.manage-services') ?? false;
     }
@@ -89,14 +90,14 @@ class ServiceResource extends Resource
             TextColumn::make('sort_order')->label(__('field.sort_order'))->sortable(),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable()->toggleable(),
         ])
-        ->bulkActions([
-            BulkActionGroup::make([
-                DeleteBulkAction::make()
-                    ->label(__('action.bulk_delete'))
-                    ->modalHeading(__('action.bulk_delete'))
-                    ->requiresConfirmation(),
-            ]),
-        ]);
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->label(__('action.bulk_delete'))
+                        ->modalHeading(__('action.bulk_delete'))
+                        ->requiresConfirmation(),
+                ]),
+            ]);
     }
 
     public static function getPages(): array

@@ -6,13 +6,14 @@ use App\Filament\Resources\EmailTemplateCategoryResource\Pages;
 use App\Models\Marketing\EmailTemplateCategory;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class EmailTemplateCategoryResource extends Resource
 {
@@ -52,12 +53,12 @@ class EmailTemplateCategoryResource extends Resource
         return auth()->user()?->isAdmin() ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return auth()->user()?->isAdmin() ?? false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return auth()->user()?->isAdmin() ?? false;
     }

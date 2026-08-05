@@ -62,7 +62,7 @@ class DashboardCustomerStatsWidget extends BaseWidget
                 ->icon('heroicon-o-x-circle')
                 ->color('danger'),
             Stat::make(__('dashboard.customer.processing'), number_format($totalActive))
-                ->description(__('dashboard.customer.processed') . ': ' . number_format($totalProcessed))
+                ->description(__('dashboard.customer.processed').': '.number_format($totalProcessed))
                 ->icon('heroicon-o-queue-list')
                 ->color('primary'),
         ];

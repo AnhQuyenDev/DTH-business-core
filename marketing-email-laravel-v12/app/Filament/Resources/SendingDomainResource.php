@@ -5,12 +5,12 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\SendingDomainResource\Pages;
 use App\Models\Marketing\SendingDomain;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Section;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -97,7 +97,7 @@ class SendingDomainResource extends Resource
         return $table->columns([
             TextColumn::make('domain')->label(__('field.domain'))->searchable()->sortable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
-                ->formatStateUsing(fn ($state): string => $state ? __('field.verification_' . (string) $state) : __('common.not_available'))
+                ->formatStateUsing(fn ($state): string => $state ? __('field.verification_'.(string) $state) : __('common.not_available'))
                 ->color(fn ($state): string => match ($state) {
                     'unknown' => 'info',
                     'pending' => 'warning',
@@ -106,7 +106,7 @@ class SendingDomainResource extends Resource
                     default => 'gray',
                 }),
             TextColumn::make('spf_status')->label(__('field.spf_status'))->badge()
-                ->formatStateUsing(fn ($state): string => $state ? __('field.verification_' . (string) $state) : __('common.not_available'))
+                ->formatStateUsing(fn ($state): string => $state ? __('field.verification_'.(string) $state) : __('common.not_available'))
                 ->color(fn ($state): string => match ($state) {
                     'unknown' => 'info',
                     'pending' => 'warning',
@@ -115,7 +115,7 @@ class SendingDomainResource extends Resource
                     default => 'gray',
                 }),
             TextColumn::make('dkim_status')->label(__('field.dkim_status'))->badge()
-                ->formatStateUsing(fn ($state): string => $state ? __('field.verification_' . (string) $state) : __('common.not_available'))
+                ->formatStateUsing(fn ($state): string => $state ? __('field.verification_'.(string) $state) : __('common.not_available'))
                 ->color(fn ($state): string => match ($state) {
                     'unknown' => 'info',
                     'pending' => 'warning',
@@ -124,7 +124,7 @@ class SendingDomainResource extends Resource
                     default => 'gray',
                 }),
             TextColumn::make('dmarc_status')->label(__('field.dmarc_status'))->badge()
-                ->formatStateUsing(fn ($state): string => $state ? __('field.verification_' . (string) $state) : __('common.not_available'))
+                ->formatStateUsing(fn ($state): string => $state ? __('field.verification_'.(string) $state) : __('common.not_available'))
                 ->color(fn ($state): string => match ($state) {
                     'unknown' => 'info',
                     'pending' => 'warning',

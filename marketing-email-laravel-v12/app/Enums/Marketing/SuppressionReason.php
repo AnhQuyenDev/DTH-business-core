@@ -24,12 +24,12 @@ enum SuppressionReason: string
     public function label(): string
     {
         return match ($this) {
-            self::Unsubscribe   => __('enum.suppression_reason.unsubscribe'),
-            self::Bounce        => __('enum.suppression_reason.bounce'),
-            self::Complaint     => __('enum.suppression_reason.complaint'),
-            self::Manual        => __('enum.suppression_reason.manual'),
-            self::InvalidEmail  => __('enum.suppression_reason.invalid_email'),
-            self::DoNotContact  => __('enum.suppression_reason.do_not_contact'),
+            self::Unsubscribe => __('enum.suppression_reason.unsubscribe'),
+            self::Bounce => __('enum.suppression_reason.bounce'),
+            self::Complaint => __('enum.suppression_reason.complaint'),
+            self::Manual => __('enum.suppression_reason.manual'),
+            self::InvalidEmail => __('enum.suppression_reason.invalid_email'),
+            self::DoNotContact => __('enum.suppression_reason.do_not_contact'),
         };
     }
 }

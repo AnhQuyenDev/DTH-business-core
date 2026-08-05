@@ -17,6 +17,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
@@ -26,7 +27,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-use Filament\Tables\Actions\Action;
+
 class FormTemplateResource extends Resource
 {
     protected static ?string $model = FormTemplate::class;
@@ -81,10 +82,8 @@ class FormTemplateResource extends Resource
                     Select::make('audience_type')
                         ->label(__('field.form_type'))
                         ->options([
-                            FormAudienceType::Personal->value =>
-                                FormAudienceType::Personal->label(),
-                            FormAudienceType::Business->value =>
-                                FormAudienceType::Business->label(),
+                            FormAudienceType::Personal->value => FormAudienceType::Personal->label(),
+                            FormAudienceType::Business->value => FormAudienceType::Business->label(),
                         ])
                         ->default(FormAudienceType::Personal->value)
                         ->required()
@@ -180,16 +179,16 @@ class FormTemplateResource extends Resource
 
                     $value = (string) $state;
 
-                    return $value !== '' ? __('field.form_type.' . $value) : __('common.not_available');
+                    return $value !== '' ? __('field.form_type.'.$value) : __('common.not_available');
                 })
                 ->color(function ($state): string {
                     $value = $state instanceof FormAudienceType ? $state->value : (string) $state;
 
                     return match ($value) {
-                    'personal' => 'info',
-                    'business' => 'warning',
-                    'generic' => 'gray',
-                    default => 'gray',
+                        'personal' => 'info',
+                        'business' => 'warning',
+                        'generic' => 'gray',
+                        default => 'gray',
                     };
                 }),
             TextColumn::make('status')
@@ -202,16 +201,16 @@ class FormTemplateResource extends Resource
 
                     $value = (string) $state;
 
-                    return $value !== '' ? __('enum.form_template_status.' . Str::lower($value)) : __('common.not_available');
+                    return $value !== '' ? __('enum.form_template_status.'.Str::lower($value)) : __('common.not_available');
                 })
                 ->color(function ($state): string {
                     $value = $state instanceof FormTemplateStatus ? $state->value : (string) $state;
 
                     return match ($value) {
-                    'active' => 'success',
-                    'draft' => 'gray',
-                    'archived' => 'danger',
-                    default => 'gray',
+                        'active' => 'success',
+                        'draft' => 'gray',
+                        'archived' => 'danger',
+                        default => 'gray',
                     };
                 }),
             TextColumn::make('version')->label(__('field.version'))->sortable(),
@@ -222,11 +221,10 @@ class FormTemplateResource extends Resource
                     ->label('Xem trước')
                     ->icon('heroicon-o-eye')
                     ->url(
-                        fn (FormTemplate $record): string =>
-                            route(
-                                'marketing.form-templates.preview',
-                                $record
-                            )
+                        fn (FormTemplate $record): string => route(
+                            'marketing.form-templates.preview',
+                            $record
+                        )
                     )
                     ->openUrlInNewTab(),
                 EditAction::make(),

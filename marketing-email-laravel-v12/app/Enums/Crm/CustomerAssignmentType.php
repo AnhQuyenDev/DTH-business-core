@@ -20,7 +20,7 @@ enum CustomerAssignmentType: string
     public function label(): string
     {
         return match ($this) {
-            self::Owner   => __('enum.assignment_type.owner'),
+            self::Owner => __('enum.assignment_type.owner'),
             self::Support => __('enum.assignment_type.support'),
         };
     }

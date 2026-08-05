@@ -28,16 +28,16 @@ enum CampaignRecipientStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Pending       => __('enum.campaign_recipient_status.pending'),
-            self::Queued        => __('enum.campaign_recipient_status.queued'),
-            self::Sent          => __('enum.campaign_recipient_status.sent'),
-            self::Delivered     => __('enum.campaign_recipient_status.delivered'),
-            self::Opened        => __('enum.campaign_recipient_status.opened'),
-            self::Clicked       => __('enum.campaign_recipient_status.clicked'),
-            self::Failed        => __('enum.campaign_recipient_status.failed'),
-            self::Bounced       => __('enum.campaign_recipient_status.bounced'),
-            self::Unsubscribed  => __('enum.campaign_recipient_status.unsubscribed'),
-            self::Skipped       => __('enum.campaign_recipient_status.skipped'),
+            self::Pending => __('enum.campaign_recipient_status.pending'),
+            self::Queued => __('enum.campaign_recipient_status.queued'),
+            self::Sent => __('enum.campaign_recipient_status.sent'),
+            self::Delivered => __('enum.campaign_recipient_status.delivered'),
+            self::Opened => __('enum.campaign_recipient_status.opened'),
+            self::Clicked => __('enum.campaign_recipient_status.clicked'),
+            self::Failed => __('enum.campaign_recipient_status.failed'),
+            self::Bounced => __('enum.campaign_recipient_status.bounced'),
+            self::Unsubscribed => __('enum.campaign_recipient_status.unsubscribed'),
+            self::Skipped => __('enum.campaign_recipient_status.skipped'),
         };
     }
 }

@@ -7,12 +7,12 @@ use App\Enums\Sales\DiscountType;
 use App\Enums\Sales\QuotationStatus;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
+use App\Models\Sales\BankAccount;
 use App\Models\Sales\PriceBook;
 use App\Models\Sales\PriceBookItem;
 use App\Models\Sales\Quotation;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class QuotationCreationService
@@ -50,7 +50,7 @@ class QuotationCreationService
                 'assigned_staff_id' => $staff?->id,
                 'price_book_id' => $priceBook->id,
                 'bank_account_id' => $params['bank_account_id'] ?? null,
-                'title' => $params['title'] ?? 'Báo giá ' . $customer->display_name,
+                'title' => $params['title'] ?? 'Báo giá '.$customer->display_name,
                 'version' => 1,
                 'quotation_date' => $params['quotation_date'] ?? now()->toDateString(),
                 'valid_until' => $params['valid_until'] ?? now()->addDays(30)->toDateString(),
@@ -143,17 +143,21 @@ class QuotationCreationService
 
     private function validateAssignment(Customer $customer, User $user): void
     {
-        if ($user->isAdmin() || $user->isCustomerServiceManager()) return;
+        if ($user->isAdmin() || $user->isCustomerServiceManager()) {
+            return;
+        }
 
         $staff = $user->staff;
-        if (!$staff) throw new \RuntimeException('User has no staff profile.');
+        if (! $staff) {
+            throw new \RuntimeException('User has no staff profile.');
+        }
 
         $hasAssignment = CustomerAssignment::where('customer_id', $customer->id)
             ->where('staff_id', $staff->id)
             ->where('status', 'active')
             ->exists();
 
-        if (!$hasAssignment) {
+        if (! $hasAssignment) {
             throw new \RuntimeException('You are not assigned to this customer.');
         }
     }
@@ -161,10 +165,10 @@ class QuotationCreationService
     private function validatePriceBookAccess(User $user, PriceBook $priceBook, Customer $customer): void
     {
         $customerType = $customer->customer_type ?? 'personal';
-        if (!in_array($priceBook->audience_type->value, [$customerType, 'both'], true)) {
+        if (! in_array($priceBook->audience_type->value, [$customerType, 'both'], true)) {
             throw new \InvalidArgumentException('Price book audience type does not match customer.');
         }
-        if (!$this->priceBookAccess->canCreateQuotation($user, $priceBook)) {
+        if (! $this->priceBookAccess->canCreateQuotation($user, $priceBook)) {
             throw new \RuntimeException('You do not have permission to use this price book.');
         }
     }
@@ -198,12 +202,13 @@ class QuotationCreationService
 
             $this->validateDiscountLimit($pbi, $result[array_key_last($result)]);
         }
+
         return $result;
     }
 
     private function validateDiscountLimit(?PriceBookItem $pbi, array $data): void
     {
-        if (!$pbi || $pbi->maximum_discount_value === null || (float) $pbi->maximum_discount_value <= 0) {
+        if (! $pbi || $pbi->maximum_discount_value === null || (float) $pbi->maximum_discount_value <= 0) {
             return;
         }
 
@@ -220,7 +225,7 @@ class QuotationCreationService
             default => 0,
         };
 
-        if (!$this->pricingService->validateDiscountLimit($discountAmount, (float) $pbi->maximum_discount_value)) {
+        if (! $this->pricingService->validateDiscountLimit($discountAmount, (float) $pbi->maximum_discount_value)) {
             throw new \InvalidArgumentException(sprintf(
                 'Discount exceeds the maximum allowed (%s %s) for the price book item.',
                 $pbi->maximum_discount_value,
@@ -259,11 +264,11 @@ class QuotationCreationService
     {
         $bankAccount = null;
         if (isset($params['bank_account_id']) && filled($params['bank_account_id'])) {
-            $bankAccount = \App\Models\Sales\BankAccount::find($params['bank_account_id']);
+            $bankAccount = BankAccount::find($params['bank_account_id']);
         }
 
-        if (!$bankAccount) {
-            $bankAccount = \App\Models\Sales\BankAccount::query()
+        if (! $bankAccount) {
+            $bankAccount = BankAccount::query()
                 ->where('status', 'active')
                 ->orderByDesc('is_default')
                 ->orderBy('id')

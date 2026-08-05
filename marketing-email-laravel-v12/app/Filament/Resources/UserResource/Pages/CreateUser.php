@@ -49,7 +49,7 @@ class CreateUser extends CreateRecord
     protected function afterCreate(): void
     {
         $nextId = (Staff::withTrashed()->max('id') ?? 0) + 1;
-        $employeeCode = 'EMP-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        $employeeCode = 'EMP-'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
         $staff = Staff::create([
             'user_id' => $this->record->id,

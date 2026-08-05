@@ -11,7 +11,7 @@ class LogSuccessfulLogin
 {
     public function handle(Login $event): void
     {
-        $cacheKey = 'login_logged_' . $event->user->id;
+        $cacheKey = 'login_logged_'.$event->user->id;
         if (Cache::has($cacheKey)) {
             return;
         }

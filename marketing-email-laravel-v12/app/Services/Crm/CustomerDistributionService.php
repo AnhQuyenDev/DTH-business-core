@@ -11,7 +11,6 @@ use App\Enums\Crm\DistributionStrategy;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\CustomerDistributionBatch;
-use App\Models\Crm\CustomerDistributionItem;
 use App\Models\Crm\Staff;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Collection;
@@ -51,7 +50,7 @@ final class CustomerDistributionService
                 ->values();
 
             $batch = CustomerDistributionBatch::create([
-                'batch_code' => 'DIST-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6)),
+                'batch_code' => 'DIST-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
                 'type' => $type->value,
                 'status' => DistributionBatchStatus::Processing->value,
                 'source_staff_id' => $sourceStaffId,
@@ -128,7 +127,7 @@ final class CustomerDistributionService
 
                 $assignedCount++;
 
-                $this->auditLog->log('customer.' . $assignmentType . '_assigned', $customer, [], [
+                $this->auditLog->log('customer.'.$assignmentType.'_assigned', $customer, [], [
                     'staff_id' => $targetStaff->id,
                     'assignment_type' => $assignmentType,
                     'batch_id' => $batch->id,
@@ -159,6 +158,7 @@ final class CustomerDistributionService
             DistributionStrategy::LeastLoaded => function (int $index, Customer $customer, Collection $staff, Collection $loads) {
                 $minLoad = $loads->only($staff->pluck('id'))->min();
                 $candidates = $staff->filter(fn (Staff $s) => ($loads[$s->id] ?? 0) === $minLoad);
+
                 return $candidates->sortBy('id')->first();
             },
             DistributionStrategy::Weighted => function (int $index, Customer $customer, Collection $staff, Collection $loads) {
@@ -167,6 +167,7 @@ final class CustomerDistributionService
                 ]);
                 $minLoad = $weighted->min();
                 $candidates = $staff->filter(fn (Staff $s) => ($weighted[$s->id] ?? 0) === $minLoad);
+
                 return $candidates->sortBy('id')->first();
             },
             DistributionStrategy::Manual => function (int $index, Customer $customer, Collection $staff, Collection $loads) {

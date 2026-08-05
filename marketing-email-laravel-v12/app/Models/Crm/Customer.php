@@ -5,12 +5,11 @@ namespace App\Models\Crm;
 use App\Enums\Crm\CustomerAssignmentStatus;
 use App\Enums\Crm\CustomerConsentStatus;
 use App\Enums\Crm\CustomerStatus;
-use App\Models\Marketing\Contact;
 use App\Models\Marketing\CampaignRecipient;
+use App\Models\Marketing\Contact;
 use App\Models\Marketing\EmailEvent;
 use App\Models\Marketing\SuppressionEntry;
 use App\Models\Marketing\Tag;
-use App\Models\Marketing\ContactList;
 use App\Models\Sales\Quotation;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 
 class Customer extends Model
 {
@@ -65,7 +65,7 @@ class Customer extends Model
                     'status' => CustomerAssignmentStatus::Ended->value,
                     'ends_at' => now(),
                     'ended_at' => now(),
-                    'ended_by_user_id' => \Illuminate\Support\Facades\Auth::id(),
+                    'ended_by_user_id' => Auth::id(),
                     'note' => 'Khách hàng đã bị xoá',
                 ]);
         });

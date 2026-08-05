@@ -12,6 +12,7 @@ use App\Models\Marketing\EmailTemplate;
 use App\Models\Marketing\SendingAccount;
 use App\Services\Marketing\EmailSendingService;
 use App\Services\Marketing\TemplateRenderService;
+use App\Services\Sales\QuotationEmailCrmSyncer;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -71,7 +72,7 @@ class CustomerCareEmailService
 
         $htmlWithTracking = $this->injectTracking($htmlBody, $token);
 
-        $mailerName = 'care_' . $account->id;
+        $mailerName = 'care_'.$account->id;
         $config = $account->config_encrypted ?? [];
 
         $this->emailSending->configureSmtpMailer(
@@ -133,7 +134,7 @@ class CustomerCareEmailService
             'staff_id' => $staffId,
             'interaction_type' => 'email',
             'subject' => $subject,
-             'content' => Str::limit(\App\Services\Sales\QuotationEmailCrmSyncer::cleanHtmlForContent($htmlBody), 1000),
+            'content' => Str::limit(QuotationEmailCrmSyncer::cleanHtmlForContent($htmlBody), 1000),
             'outcome' => __('page.customer_care.email_outcome'),
             'status' => 'completed',
             'interaction_at' => now(),
@@ -179,7 +180,7 @@ class CustomerCareEmailService
             if (! $account) {
                 throw new \RuntimeException(
                     __('page.customer_care.email_no_department_account', [
-                        'department' => $staff->department?->name ?? ('#' . $staff->department_id),
+                        'department' => $staff->department?->name ?? ('#'.$staff->department_id),
                     ])
                 );
             }
@@ -239,7 +240,7 @@ class CustomerCareEmailService
 
     private function injectTracking(string $html, string $token): string
     {
-        $openUrl = route('care.track.open', ['token' => $token]) . '.gif';
+        $openUrl = route('care.track.open', ['token' => $token]).'.gif';
         $clickBase = route('care.track.click', ['token' => $token]);
 
         $html = (string) preg_replace_callback(
@@ -249,13 +250,13 @@ class CustomerCareEmailService
                     return $m[0];
                 }
 
-                return $m[1] . $clickBase . '?u=' . urlencode($m[2]) . $m[3];
+                return $m[1].$clickBase.'?u='.urlencode($m[2]).$m[3];
             },
             $html
         );
 
-        $pixel = '<img src="' . $openUrl . '" width="1" height="1" style="display:none" alt="" />';
+        $pixel = '<img src="'.$openUrl.'" width="1" height="1" style="display:none" alt="" />';
 
-        return $html . $pixel;
+        return $html.$pixel;
     }
 }

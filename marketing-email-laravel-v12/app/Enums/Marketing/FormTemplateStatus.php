@@ -21,8 +21,8 @@ enum FormTemplateStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Draft    => __('enum.form_template_status.draft'),
-            self::Active   => __('enum.form_template_status.active'),
+            self::Draft => __('enum.form_template_status.draft'),
+            self::Active => __('enum.form_template_status.active'),
             self::Archived => __('enum.form_template_status.archived'),
         };
     }

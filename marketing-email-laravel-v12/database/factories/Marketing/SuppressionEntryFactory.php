@@ -12,10 +12,10 @@ class SuppressionEntryFactory extends Factory
     public function definition(): array
     {
         return [
-            'email'      => $this->faker->unique()->safeEmail(),
-            'reason'     => 'manual',
-            'source'     => 'manual',
-            'note'       => $this->faker->sentence(),
+            'email' => $this->faker->unique()->safeEmail(),
+            'reason' => 'manual',
+            'source' => 'manual',
+            'note' => $this->faker->sentence(),
             'created_by' => null,
         ];
     }

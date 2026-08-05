@@ -21,7 +21,7 @@ enum ContactStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Active   => __('enum.contact_status.active'),
+            self::Active => __('enum.contact_status.active'),
             self::Inactive => __('enum.contact_status.inactive'),
             self::Archived => __('enum.contact_status.archived'),
         };

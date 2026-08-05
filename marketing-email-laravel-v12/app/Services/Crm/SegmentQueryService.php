@@ -2,7 +2,6 @@
 
 namespace App\Services\Crm;
 
-use App\Enums\Crm\CustomerConsentStatus;
 use App\Models\Crm\Customer;
 use App\Models\Marketing\Segment;
 use Illuminate\Database\Eloquent\Builder;

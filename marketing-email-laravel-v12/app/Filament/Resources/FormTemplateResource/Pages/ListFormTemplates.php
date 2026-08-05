@@ -4,6 +4,7 @@ namespace App\Filament\Resources\FormTemplateResource\Pages;
 
 use App\Enums\Marketing\FormAudienceType;
 use App\Filament\Resources\FormTemplateResource;
+use App\Services\Marketing\FormTemplateImportService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -11,8 +12,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
-use App\Services\Marketing\FormTemplateImportService;
 use Throwable;
+
 class ListFormTemplates extends ListRecords
 {
     protected static string $resource = FormTemplateResource::class;
@@ -31,10 +32,8 @@ class ListFormTemplates extends ListRecords
                     Select::make('audience_type')
                         ->label(__('field.form_type'))
                         ->options([
-                            FormAudienceType::Personal->value =>
-                                FormAudienceType::Personal->label(),
-                            FormAudienceType::Business->value =>
-                                FormAudienceType::Business->label(),
+                            FormAudienceType::Personal->value => FormAudienceType::Personal->label(),
+                            FormAudienceType::Business->value => FormAudienceType::Business->label(),
                         ])
                         ->default(FormAudienceType::Personal->value)
                         ->required(),

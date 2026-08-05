@@ -9,9 +9,6 @@ use App\Models\Marketing\Contact;
 use App\Models\Marketing\FormField;
 use App\Models\Marketing\FormTemplate;
 use App\Models\Marketing\LandingPage;
-use App\Models\Marketing\LandingPageSubmission;
-use App\Models\Marketing\LandingPageView;
-use App\Models\Marketing\Tag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -22,60 +19,60 @@ class LandingPagePublicTest extends TestCase
     private function makeLandingPage(array $overrides = []): LandingPage
     {
         $formTemplate = FormTemplate::create([
-            'name'               => 'Test Form',
-            'slug'               => 'test-form',
+            'name' => 'Test Form',
+            'slug' => 'test-form',
             'submit_button_text' => 'Submit',
-            'status'             => 'active',
-            'auto_tag_names'     => ['Test Tag'],
-            'auto_list_names'    => ['Test List'],
-            'auto_create_tags'   => true,
-            'auto_create_lists'  => true,
+            'status' => 'active',
+            'auto_tag_names' => ['Test Tag'],
+            'auto_list_names' => ['Test List'],
+            'auto_create_tags' => true,
+            'auto_create_lists' => true,
         ]);
 
         FormField::create([
             'landing_form_template_id' => $formTemplate->id,
-            'label'           => 'Email',
-            'field_key'       => 'email',
-            'field_type'      => 'email',
-            'is_required'     => true,
+            'label' => 'Email',
+            'field_key' => 'email',
+            'field_type' => 'email',
+            'is_required' => true,
             'contact_mapping' => 'personal.email',
-            'sort_order'      => 1,
+            'sort_order' => 1,
         ]);
         FormField::create([
             'landing_form_template_id' => $formTemplate->id,
-            'label'           => 'Tên',
-            'field_key'       => 'first_name',
-            'field_type'      => 'text',
-            'is_required'     => true,
+            'label' => 'Tên',
+            'field_key' => 'first_name',
+            'field_type' => 'text',
+            'is_required' => true,
             'contact_mapping' => 'personal.first_name',
-            'sort_order'      => 2,
+            'sort_order' => 2,
         ]);
 
         $defaults = [
             'landing_form_template_id' => $formTemplate->id,
-            'name'                     => 'Test Landing Page',
-            'slug'                     => 'test-landing-page',
-            'headline'                 => 'Hello World',
-            'html_body'                => '<!DOCTYPE html><html><head><title>{{page_title}}</title></head><body><h1>{{headline}}</h1>{{form}}</body></html>',
-            'status'                   => LandingPageStatus::Published,
-            'published_at'             => now(),
-            'auto_tag_names'           => ['Test Tag'],
-            'auto_list_names'          => ['Test List'],
-            'auto_create_tags'         => true,
-            'auto_create_lists'        => true,
-            'auto_create_segment'      => false,
+            'name' => 'Test Landing Page',
+            'slug' => 'test-landing-page',
+            'headline' => 'Hello World',
+            'html_body' => '<!DOCTYPE html><html><head><title>{{page_title}}</title></head><body><h1>{{headline}}</h1>{{form}}</body></html>',
+            'status' => LandingPageStatus::Published,
+            'published_at' => now(),
+            'auto_tag_names' => ['Test Tag'],
+            'auto_list_names' => ['Test List'],
+            'auto_create_tags' => true,
+            'auto_create_lists' => true,
+            'auto_create_segment' => false,
         ];
 
         $page = LandingPage::create(array_merge($defaults, $overrides));
 
         LandingPageForm::create([
-            'landing_page_id'    => $page->id,
-            'form_template_id'   => $formTemplate->id,
-            'form_type'          => 'personal',
-            'display_mode'       => 'single',
-            'is_default'         => true,
-            'sort_order'         => 1,
-            'status'             => 'active',
+            'landing_page_id' => $page->id,
+            'form_template_id' => $formTemplate->id,
+            'form_type' => 'personal',
+            'display_mode' => 'single',
+            'is_default' => true,
+            'sort_order' => 1,
+            'status' => 'active',
         ]);
 
         return $page;
@@ -85,7 +82,7 @@ class LandingPagePublicTest extends TestCase
     {
         $page = $this->makeLandingPage();
 
-        $response = $this->get('/lp/' . $page->slug);
+        $response = $this->get('/lp/'.$page->slug);
         $response->assertStatus(200);
         $response->assertSee('Hello World');
     }
@@ -94,7 +91,7 @@ class LandingPagePublicTest extends TestCase
     {
         $page = $this->makeLandingPage(['status' => LandingPageStatus::Draft, 'published_at' => null]);
 
-        $this->get('/lp/' . $page->slug)->assertStatus(404);
+        $this->get('/lp/'.$page->slug)->assertStatus(404);
     }
 
     public function test_nonexistent_landing_page_returns_404(): void
@@ -106,7 +103,7 @@ class LandingPagePublicTest extends TestCase
     {
         $page = $this->makeLandingPage();
 
-        $this->get('/lp/' . $page->slug);
+        $this->get('/lp/'.$page->slug);
 
         $this->assertDatabaseHas('landing_page_views', [
             'landing_page_id' => $page->id,
@@ -119,9 +116,9 @@ class LandingPagePublicTest extends TestCase
 
         $query = '?utm_source=facebook&utm_medium=paid_social&utm_campaign=summer_sale&utm_content=video_1&utm_term=retarget';
 
-        $this->get('/lp/' . $page->slug . $query)->assertStatus(200);
+        $this->get('/lp/'.$page->slug.$query)->assertStatus(200);
 
-        $this->post('/lp/' . $page->slug . '/submit' . $query, [
+        $this->post('/lp/'.$page->slug.'/submit'.$query, [
             '_token' => csrf_token(),
             'email' => 'utm-tracking@example.test',
             'first_name' => 'UTM',
@@ -151,9 +148,9 @@ class LandingPagePublicTest extends TestCase
     {
         $page = $this->makeLandingPage();
 
-        $response = $this->post('/lp/' . $page->slug . '/submit', [
-            '_token'     => csrf_token(),
-            'email'      => 'newlead@example.test',
+        $response = $this->post('/lp/'.$page->slug.'/submit', [
+            '_token' => csrf_token(),
+            'email' => 'newlead@example.test',
             'first_name' => 'Nguyen',
         ]);
 
@@ -162,7 +159,7 @@ class LandingPagePublicTest extends TestCase
         $this->assertDatabaseHas('personal_contact_profiles', ['email' => 'newlead@example.test']);
         $this->assertDatabaseHas('landing_page_submissions', [
             'landing_page_id' => $page->id,
-            'contact_action'  => 'created',
+            'contact_action' => 'created',
         ]);
     }
 
@@ -173,20 +170,20 @@ class LandingPagePublicTest extends TestCase
         $existing = Contact::create(['contact_type' => 'personal']);
         PersonalContactProfile::create([
             'contact_id' => $existing->id,
-            'email'      => 'existing@example.test',
+            'email' => 'existing@example.test',
             'first_name' => 'Old',
         ]);
 
-        $this->post('/lp/' . $page->slug . '/submit', [
-            '_token'     => csrf_token(),
-            'email'      => 'existing@example.test',
+        $this->post('/lp/'.$page->slug.'/submit', [
+            '_token' => csrf_token(),
+            'email' => 'existing@example.test',
             'first_name' => 'NewName',
         ]);
 
         $this->assertDatabaseCount('contacts', 1);
         $this->assertDatabaseHas('landing_page_submissions', [
             'normalized_email' => 'existing@example.test',
-            'contact_action'   => 'updated',
+            'contact_action' => 'updated',
         ]);
     }
 
@@ -194,9 +191,9 @@ class LandingPagePublicTest extends TestCase
     {
         $page = $this->makeLandingPage();
 
-        $this->post('/lp/' . $page->slug . '/submit', [
-            '_token'     => csrf_token(),
-            'email'      => 'tagtest@example.test',
+        $this->post('/lp/'.$page->slug.'/submit', [
+            '_token' => csrf_token(),
+            'email' => 'tagtest@example.test',
             'first_name' => 'Tag',
         ]);
 
@@ -206,7 +203,7 @@ class LandingPagePublicTest extends TestCase
         $this->assertNotNull($contact);
         $this->assertDatabaseHas('personal_contact_profiles', [
             'contact_id' => $contact->id,
-            'email'      => 'tagtest@example.test',
+            'email' => 'tagtest@example.test',
         ]);
     }
 
@@ -214,9 +211,9 @@ class LandingPagePublicTest extends TestCase
     {
         $page = $this->makeLandingPage();
 
-        $this->post('/lp/' . $page->slug . '/submit', [
-            '_token'     => csrf_token(),
-            'email'      => 'listtest@example.test',
+        $this->post('/lp/'.$page->slug.'/submit', [
+            '_token' => csrf_token(),
+            'email' => 'listtest@example.test',
             'first_name' => 'List',
         ]);
 
@@ -224,7 +221,7 @@ class LandingPagePublicTest extends TestCase
         $this->assertNotNull($contact);
         $this->assertDatabaseHas('personal_contact_profiles', [
             'contact_id' => $contact->id,
-            'email'      => 'listtest@example.test',
+            'email' => 'listtest@example.test',
         ]);
         $this->assertDatabaseHas('contact_lists', ['name' => 'Test List']);
     }
@@ -233,16 +230,16 @@ class LandingPagePublicTest extends TestCase
     {
         $page = $this->makeLandingPage();
 
-        $this->post('/lp/' . $page->slug . '/submit', [
-            '_token'     => csrf_token(),
-            'email'      => 'sub@example.test',
+        $this->post('/lp/'.$page->slug.'/submit', [
+            '_token' => csrf_token(),
+            'email' => 'sub@example.test',
             'first_name' => 'Sub',
         ]);
 
         $this->assertDatabaseHas('landing_page_submissions', [
-            'landing_page_id'  => $page->id,
+            'landing_page_id' => $page->id,
             'normalized_email' => 'sub@example.test',
-            'status'           => 'processed',
+            'status' => 'processed',
         ]);
     }
 
@@ -251,7 +248,7 @@ class LandingPagePublicTest extends TestCase
         $page = $this->makeLandingPage();
 
         $response = $this->withSession(['success_message' => 'Cảm ơn!'])
-            ->get('/lp/' . $page->slug . '/thank-you');
+            ->get('/lp/'.$page->slug.'/thank-you');
 
         $response->assertStatus(200);
         $response->assertSee('Cảm ơn!');

@@ -6,8 +6,8 @@ use App\Enums\Crm\InteractionStatus;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerInteraction;
 use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Illuminate\Database\Eloquent\Model;
 use Saade\FilamentFullCalendar\Actions;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
@@ -18,7 +18,7 @@ class StaffScheduleWidget extends FullCalendarWidget
 
     protected static ?int $sort = 1;
 
-    public Model | string | null $model = CustomerInteraction::class;
+    public Model|string|null $model = CustomerInteraction::class;
 
     public function config(): array
     {
@@ -39,7 +39,7 @@ class StaffScheduleWidget extends FullCalendarWidget
     {
         $staff = auth()->user()?->staff;
 
-        if (!$staff) {
+        if (! $staff) {
             return [];
         }
 
@@ -53,7 +53,7 @@ class StaffScheduleWidget extends FullCalendarWidget
             ->get()
             ->map(fn (CustomerInteraction $interaction) => [
                 'id' => (string) $interaction->id,
-                'title' => $interaction->subject . ' - ' . ($interaction->customer?->display_name ?: ''),
+                'title' => $interaction->subject.' - '.($interaction->customer?->display_name ?: ''),
                 'start' => $interaction->next_follow_up_at->toIso8601String(),
                 'backgroundColor' => $interaction->next_follow_up_at->isPast() ? '#ef4444' : '#22c55e',
                 'borderColor' => $interaction->next_follow_up_at->isPast() ? '#ef4444' : '#22c55e',
@@ -61,7 +61,7 @@ class StaffScheduleWidget extends FullCalendarWidget
                 'extendedProps' => [
                     'status' => $interaction->status->value,
                     'customer' => $interaction->customer?->display_name,
-                    'type' => __('enum.interaction_type.' . $interaction->interaction_type),
+                    'type' => __('enum.interaction_type.'.$interaction->interaction_type),
                 ],
             ])
             ->all();
@@ -154,6 +154,7 @@ class StaffScheduleWidget extends FullCalendarWidget
                     $data['staff_id'] = auth()->user()?->staff?->id;
                     $data['interaction_at'] ??= now();
                     $data['status'] ??= InteractionStatus::Scheduled->value;
+
                     return $data;
                 }),
         ];
@@ -165,13 +166,14 @@ class StaffScheduleWidget extends FullCalendarWidget
             Actions\EditAction::make()
                 ->mutateFormDataUsing(function (array $data) {
                     $data['staff_id'] = auth()->user()?->staff?->id;
+
                     return $data;
                 }),
             Actions\DeleteAction::make(),
         ];
     }
 
-    protected function viewAction(): \Filament\Actions\Action
+    protected function viewAction(): Action
     {
         return Actions\ViewAction::make();
     }
@@ -180,6 +182,6 @@ class StaffScheduleWidget extends FullCalendarWidget
     {
         $user = auth()->user();
 
-        return $user && !$user->isAdmin() && $user->staff !== null;
+        return $user && ! $user->isAdmin() && $user->staff !== null;
     }
 }

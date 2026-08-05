@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\BusinessContactResource\Pages;
 use App\Enums\Crm\TaxVerificationStatus;
+use App\Filament\Resources\BusinessContactResource\Pages;
 use App\Models\Crm\BusinessContactProfile;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;

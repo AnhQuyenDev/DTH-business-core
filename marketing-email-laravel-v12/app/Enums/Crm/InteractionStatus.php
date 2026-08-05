@@ -13,10 +13,10 @@ enum InteractionStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Scheduled   => __('enum.interaction_status.scheduled'),
-            self::Completed   => __('enum.interaction_status.completed'),
-            self::Cancelled   => __('enum.interaction_status.cancelled'),
-            self::NoShow      => __('enum.interaction_status.no_show'),
+            self::Scheduled => __('enum.interaction_status.scheduled'),
+            self::Completed => __('enum.interaction_status.completed'),
+            self::Cancelled => __('enum.interaction_status.cancelled'),
+            self::NoShow => __('enum.interaction_status.no_show'),
             self::Rescheduled => __('enum.interaction_status.rescheduled'),
         };
     }

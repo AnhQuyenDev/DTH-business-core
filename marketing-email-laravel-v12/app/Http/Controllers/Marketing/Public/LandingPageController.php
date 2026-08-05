@@ -2,20 +2,16 @@
 
 namespace App\Http\Controllers\Marketing\Public;
 
-use App\Enums\Crm\ContactType;
 use App\Http\Controllers\Controller;
-use App\Models\Crm\ContactQualification;
-use App\Models\Crm\PersonalContactProfile;
-use App\Models\Crm\BusinessContactProfile;
-use App\Models\Marketing\Contact;
 use App\Models\Marketing\LandingPage;
 use App\Services\Marketing\LandingPageRenderService;
 use App\Services\Marketing\LandingPageSubmissionService;
 use App\Services\Marketing\LandingPageTrackingService;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Str;
 
 class LandingPageController extends Controller
 {
@@ -25,7 +21,7 @@ class LandingPageController extends Controller
         private readonly LandingPageTrackingService $trackingService,
     ) {}
 
-    public function show(Request $request, string $slug): Response|\Illuminate\Http\RedirectResponse
+    public function show(Request $request, string $slug): Response|RedirectResponse
     {
         $landingPage = LandingPage::where('slug', $slug)->first();
 
@@ -42,7 +38,7 @@ class LandingPageController extends Controller
         return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
     }
 
-    public function submit(Request $request, string $slug): \Illuminate\Http\RedirectResponse
+    public function submit(Request $request, string $slug): RedirectResponse
     {
         $landingPage = LandingPage::where('slug', $slug)->first();
 
@@ -78,14 +74,14 @@ class LandingPageController extends Controller
             );
     }
 
-    public function thankYou(Request $request, string $slug): \Illuminate\Contracts\View\View
+    public function thankYou(Request $request, string $slug): View
     {
         $landingPage = LandingPage::where('slug', $slug)->first();
 
         $successMessage = session('success_message', 'Cảm ơn! Thông tin của bạn đã được ghi nhận.');
 
         return view('marketing.landing-pages.thank-you', [
-            'landingPage'    => $landingPage,
+            'landingPage' => $landingPage,
             'successMessage' => $successMessage,
         ]);
     }

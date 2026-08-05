@@ -24,11 +24,11 @@ enum TaxVerificationStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Pending      => __('enum.tax.pending'),
-            self::Verified     => __('enum.tax.verified'),
-            self::NotFound     => __('enum.tax.not_found'),
-            self::Mismatch     => __('enum.tax.mismatch'),
-            self::Error        => __('enum.tax.error'),
+            self::Pending => __('enum.tax.pending'),
+            self::Verified => __('enum.tax.verified'),
+            self::NotFound => __('enum.tax.not_found'),
+            self::Mismatch => __('enum.tax.mismatch'),
+            self::Error => __('enum.tax.error'),
             self::ManualReview => __('enum.tax.manual_review'),
         };
     }

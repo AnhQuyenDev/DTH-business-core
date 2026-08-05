@@ -12,15 +12,15 @@ class SendingAccountFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'             => $this->faker->company() . ' Mail',
-            'provider'         => 'log',
-            'from_name'        => $this->faker->name(),
-            'from_email'       => $this->faker->companyEmail(),
-            'reply_to'         => null,
+            'name' => $this->faker->company().' Mail',
+            'provider' => 'log',
+            'from_name' => $this->faker->name(),
+            'from_email' => $this->faker->companyEmail(),
+            'reply_to' => null,
             'config_encrypted' => ['mailer' => 'log'],
-            'daily_limit'      => 1000,
-            'hourly_limit'     => 100,
-            'status'           => 'active',
+            'daily_limit' => 1000,
+            'hourly_limit' => 100,
+            'status' => 'active',
         ];
     }
 

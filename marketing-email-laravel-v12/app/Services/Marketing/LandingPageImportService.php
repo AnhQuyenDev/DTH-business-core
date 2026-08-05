@@ -11,8 +11,7 @@ final class LandingPageImportService
     public function __construct(
         private readonly LandingPageRenderService $renderer,
         private readonly LandingPageThemeService $themeService,
-    ) {
-    }
+    ) {}
 
     public function import(
         array $data,
@@ -40,10 +39,8 @@ final class LandingPageImportService
             return LandingPage::query()->create([
                 'name' => (string) $data['name'],
                 'slug' => (string) $data['slug'],
-                'marketing_campaign_id' =>
-                    $data['marketing_campaign_id'] ?? null,
-                'campaign_id' =>
-                    $data['campaign_id'] ?? null,
+                'marketing_campaign_id' => $data['marketing_campaign_id'] ?? null,
+                'campaign_id' => $data['campaign_id'] ?? null,
                 'html_body' => $preparedHtml,
                 'theme_tokens' => $themeTokens,
                 'status' => 'draft',

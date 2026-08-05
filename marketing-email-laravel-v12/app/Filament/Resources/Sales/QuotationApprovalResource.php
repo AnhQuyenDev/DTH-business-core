@@ -8,10 +8,10 @@ use App\Models\Sales\QuotationApproval;
 use App\Services\Sales\QuotationApprovalService;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\ActionGroup;
 
 class QuotationApprovalResource extends Resource
 {

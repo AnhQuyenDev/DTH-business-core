@@ -5,6 +5,7 @@ namespace App\Services\Sales;
 use App\Enums\Sales\QuotationEmailStatus;
 use App\Jobs\Sales\SendQuotationEmailJob;
 use App\Models\Sales\Quotation;
+use App\Models\Sales\QuotationDocument;
 use App\Models\Sales\QuotationEmailLog;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
@@ -53,26 +54,28 @@ class QuotationMailService
     {
         $options['subject'] ??= sprintf('[%s] %s (gửi lại)', $quotation->quotation_code, $quotation->title);
         $options['body'] ??= $this->buildResentEmailBody($quotation);
+
         return $this->send($quotation, $user, $recipientEmail, $options);
     }
 
     private function validateSend(Quotation $quotation, string $recipientEmail): void
     {
-        if (!$quotation->status->canSend()) {
+        if (! $quotation->status->canSend()) {
             throw new \InvalidArgumentException('Quotation cannot be sent in its current status.');
         }
 
-        if (!filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+        if (! filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
             throw new \InvalidArgumentException('Invalid recipient email address.');
         }
     }
 
-    private function ensurePdfExists(Quotation $quotation): ?\App\Models\Sales\QuotationDocument
+    private function ensurePdfExists(Quotation $quotation): ?QuotationDocument
     {
         $doc = $this->pdfService->getLatestPdf($quotation);
-        if (!$doc) {
+        if (! $doc) {
             return $this->pdfService->generate($quotation);
         }
+
         return $doc;
     }
 

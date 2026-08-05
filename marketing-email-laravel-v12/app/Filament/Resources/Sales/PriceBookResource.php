@@ -7,7 +7,9 @@ use App\Enums\Sales\DiscountType;
 use App\Enums\Sales\PriceBookStatus;
 use App\Enums\Sales\TaxMode;
 use App\Filament\Resources\Sales\PriceBookResource\Pages;
+use App\Filament\Resources\Sales\PriceBookResource\RelationManagers\PriceBookAccessRuleRelationManager;
 use App\Models\Sales\PriceBook;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
@@ -23,6 +25,7 @@ use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class PriceBookResource extends Resource
 {
@@ -55,12 +58,12 @@ class PriceBookResource extends Resource
         return auth()->user()?->can('sales.manage-price-books') ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return auth()->user()?->can('sales.manage-price-books') ?? false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return auth()->user()?->can('sales.manage-price-books') ?? false;
     }
@@ -125,7 +128,7 @@ class PriceBookResource extends Resource
                     ->columns(12)
                     ->defaultItems(0)
                     ->addActionLabel(__('action.add_item'))
-                    ->deleteAction(fn (\Filament\Forms\Components\Actions\Action $action) => $action->label(__('action.delete_item')))
+                    ->deleteAction(fn (Action $action) => $action->label(__('action.delete_item')))
                     ->addable()
                     ->deletable()
                     ->reorderable(),
@@ -150,20 +153,20 @@ class PriceBookResource extends Resource
             TextColumn::make('valid_until')->label(__('field.valid_until'))->date()->sortable(),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable()->toggleable(),
         ])
-        ->bulkActions([
-            BulkActionGroup::make([
-                DeleteBulkAction::make()
-                    ->label(__('action.bulk_delete'))
-                    ->modalHeading(__('action.bulk_delete'))
-                    ->requiresConfirmation(),
-            ]),
-        ]);
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->label(__('action.bulk_delete'))
+                        ->modalHeading(__('action.bulk_delete'))
+                        ->requiresConfirmation(),
+                ]),
+            ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            \App\Filament\Resources\Sales\PriceBookResource\RelationManagers\PriceBookAccessRuleRelationManager::class,
+            PriceBookAccessRuleRelationManager::class,
         ];
     }
 

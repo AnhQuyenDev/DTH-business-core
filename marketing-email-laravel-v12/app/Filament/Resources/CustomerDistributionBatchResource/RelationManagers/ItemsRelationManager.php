@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CustomerDistributionBatchResource\RelationManagers;
 
+use App\Enums\Crm\CustomerAssignmentReason;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -53,7 +54,7 @@ class ItemsRelationManager extends RelationManager
                     }),
                 Tables\Columns\TextColumn::make('reason')
                     ->label(__('field.reason'))
-                    ->formatStateUsing(fn (string $state): string => \App\Enums\Crm\CustomerAssignmentReason::tryFrom($state)?->label() ?? $state),
+                    ->formatStateUsing(fn (string $state): string => CustomerAssignmentReason::tryFrom($state)?->label() ?? $state),
             ])
             ->filters([])
             ->headerActions([])

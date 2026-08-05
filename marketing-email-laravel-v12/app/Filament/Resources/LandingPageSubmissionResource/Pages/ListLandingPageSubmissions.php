@@ -71,6 +71,7 @@ class ListLandingPageSubmissions extends ListRecords
                             ->title(__('notification.no_unassigned'))
                             ->info()
                             ->send();
+
                         return;
                     }
 

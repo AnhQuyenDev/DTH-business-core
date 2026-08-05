@@ -12,10 +12,10 @@ class ContactListFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'        => $this->faker->unique()->words(3, true),
+            'name' => $this->faker->unique()->words(3, true),
             'description' => $this->faker->sentence(),
-            'type'        => $this->faker->randomElement(['newsletter', 'promotion', 'event']),
-            'status'      => 'active',
+            'type' => $this->faker->randomElement(['newsletter', 'promotion', 'event']),
+            'status' => 'active',
         ];
     }
 }

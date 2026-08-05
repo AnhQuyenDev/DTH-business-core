@@ -12,7 +12,6 @@ use App\Models\Crm\Department;
 use App\Models\Crm\Position;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\Contact;
-use App\Models\Marketing\EmailEvent;
 use App\Models\Marketing\SendingAccount;
 use App\Models\User;
 use App\Services\Crm\CustomerCareEmailService;
@@ -160,7 +159,7 @@ class RoleAccessAndCareFlowTest extends TestCase
         $user = $this->makeUser($role);
         $staff = Staff::query()->create([
             'user_id' => $user->id,
-            'employee_code' => 'EMP' . $user->id,
+            'employee_code' => 'EMP'.$user->id,
             'full_name' => $user->name,
             'department_id' => $department->id,
             'employment_status' => 'active',
@@ -189,7 +188,7 @@ class RoleAccessAndCareFlowTest extends TestCase
 
         $service = app(CustomerCareEmailService::class);
 
-        Mail::fake(['care_' . $account->id]);
+        Mail::fake(['care_'.$account->id]);
 
         $service->send(
             $customer,
@@ -199,7 +198,7 @@ class RoleAccessAndCareFlowTest extends TestCase
             staffId: $staff->id,
         );
 
-        Mail::mailer('care_' . $account->id)->assertSent(MarketingCampaignMail::class, 1);
+        Mail::mailer('care_'.$account->id)->assertSent(MarketingCampaignMail::class, 1);
 
         $this->assertDatabaseHas('email_events', ['customer_id' => $customer->id, 'event_type' => 'sent']);
         $this->assertDatabaseHas('customer_interactions', [

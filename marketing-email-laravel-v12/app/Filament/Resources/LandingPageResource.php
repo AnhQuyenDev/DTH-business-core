@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\Marketing\FormAudienceType;
+use App\Enums\Marketing\FormTemplateStatus;
 use App\Enums\Marketing\LandingPageStatus;
 use App\Filament\Resources\LandingPageResource\Pages;
 use App\Filament\Resources\LandingPageResource\RelationManagers\UtmUrlsRelationManager;
@@ -9,10 +11,12 @@ use App\Models\Marketing\FormTemplate;
 use App\Models\Marketing\LandingPage;
 use App\Models\Marketing\LandingPageUtmUrl;
 use App\Support\UtmOptions;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -28,10 +32,7 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use App\Enums\Marketing\FormAudienceType;
-use App\Enums\Marketing\FormTemplateStatus;
-use Filament\Forms\Components\Tabs;
-use Filament\Forms\Components\ColorPicker;
+
 class LandingPageResource extends Resource
 {
     protected static ?string $model = LandingPage::class;
@@ -108,19 +109,18 @@ class LandingPageResource extends Resource
                                     )
                                         ->label('Mẫu Form cá nhân')
                                         ->options(
-                                            fn (): array =>
-                                                FormTemplate::query()
-                                                    ->where(
-                                                        'audience_type',
-                                                        FormAudienceType::Personal->value
-                                                    )
-                                                    ->where(
-                                                        'status',
-                                                        FormTemplateStatus::Active->value
-                                                    )
-                                                    ->orderBy('name')
-                                                    ->pluck('name', 'id')
-                                                    ->all()
+                                            fn (): array => FormTemplate::query()
+                                                ->where(
+                                                    'audience_type',
+                                                    FormAudienceType::Personal->value
+                                                )
+                                                ->where(
+                                                    'status',
+                                                    FormTemplateStatus::Active->value
+                                                )
+                                                ->orderBy('name')
+                                                ->pluck('name', 'id')
+                                                ->all()
                                         )
                                         ->searchable()
                                         ->preload()
@@ -139,19 +139,18 @@ class LandingPageResource extends Resource
                                     )
                                         ->label('Mẫu Form doanh nghiệp')
                                         ->options(
-                                            fn (): array =>
-                                                FormTemplate::query()
-                                                    ->where(
-                                                        'audience_type',
-                                                        FormAudienceType::Business->value
-                                                    )
-                                                    ->where(
-                                                        'status',
-                                                        FormTemplateStatus::Active->value
-                                                    )
-                                                    ->orderBy('name')
-                                                    ->pluck('name', 'id')
-                                                    ->all()
+                                            fn (): array => FormTemplate::query()
+                                                ->where(
+                                                    'audience_type',
+                                                    FormAudienceType::Business->value
+                                                )
+                                                ->where(
+                                                    'status',
+                                                    FormTemplateStatus::Active->value
+                                                )
+                                                ->orderBy('name')
+                                                ->pluck('name', 'id')
+                                                ->all()
                                         )
                                         ->searchable()
                                         ->preload()
@@ -264,140 +263,141 @@ class LandingPageResource extends Resource
                         'utmUrls' => $record->utmUrls()->latest()->get(),
                     ])),
                 ActionGroup::make([
-                Action::make('publish')
-                    ->label(__('action.publish'))
-                    ->icon('heroicon-o-check-badge')
-                    ->color('success')
-                    ->visible(fn (LandingPage $record): bool => ($record->status?->value ?? $record->status) !== 'published')
-                    ->action(function (LandingPage $record): void {
-                        if (! $record->campaign_id && ! $record->marketing_campaign_id) {
-                            Notification::make()->title(__('notification.failed'))->body(__('notification.landing_page_requires_campaign'))->danger()->send();
-                            return;
-                        }
-                        $hasPersonalForm = $record->forms()
-                            ->where('form_type', 'personal')
-                            ->where('status', 'active')
-                            ->whereHas('formTemplate', function ($query): void {
-                                $query->where('status', 'active');
-                            })
-                            ->exists();
+                    Action::make('publish')
+                        ->label(__('action.publish'))
+                        ->icon('heroicon-o-check-badge')
+                        ->color('success')
+                        ->visible(fn (LandingPage $record): bool => ($record->status?->value ?? $record->status) !== 'published')
+                        ->action(function (LandingPage $record): void {
+                            if (! $record->campaign_id && ! $record->marketing_campaign_id) {
+                                Notification::make()->title(__('notification.failed'))->body(__('notification.landing_page_requires_campaign'))->danger()->send();
 
-                        $hasBusinessForm = $record->forms()
-                            ->where('form_type', 'business')
-                            ->where('status', 'active')
-                            ->whereHas('formTemplate', function ($query): void {
-                                $query->where('status', 'active');
-                            })
-                            ->exists();
-
-                        if (! $hasPersonalForm || ! $hasBusinessForm) {
-                            $missing = [];
-
-                            if (! $hasPersonalForm) {
-                                $missing[] = 'Form cá nhân';
+                                return;
                             }
+                            $hasPersonalForm = $record->forms()
+                                ->where('form_type', 'personal')
+                                ->where('status', 'active')
+                                ->whereHas('formTemplate', function ($query): void {
+                                    $query->where('status', 'active');
+                                })
+                                ->exists();
 
-                            if (! $hasBusinessForm) {
-                                $missing[] = 'Form doanh nghiệp';
+                            $hasBusinessForm = $record->forms()
+                                ->where('form_type', 'business')
+                                ->where('status', 'active')
+                                ->whereHas('formTemplate', function ($query): void {
+                                    $query->where('status', 'active');
+                                })
+                                ->exists();
+
+                            if (! $hasPersonalForm || ! $hasBusinessForm) {
+                                $missing = [];
+
+                                if (! $hasPersonalForm) {
+                                    $missing[] = 'Form cá nhân';
+                                }
+
+                                if (! $hasBusinessForm) {
+                                    $missing[] = 'Form doanh nghiệp';
+                                }
+
+                                Notification::make()
+                                    ->title('Chưa thể xuất bản Landing Page')
+                                    ->body(
+                                        'Thiếu: '.implode(', ', $missing).'.'
+                                    )
+                                    ->danger()
+                                    ->send();
+
+                                return;
                             }
+                            $record->update([
+                                'status' => LandingPageStatus::Published->value,
+                                'published_at' => now(),
+                            ]);
+
+                            Notification::make()->title(__('notification.landing_published'))->success()->send();
+                        }),
+                    Action::make('unpublish')
+                        ->label(__('action.unpublish'))
+                        ->icon('heroicon-o-no-symbol')
+                        ->color('warning')
+                        ->visible(fn (LandingPage $record): bool => ($record->status?->value ?? $record->status) === 'published')
+                        ->action(function (LandingPage $record): void {
+                            $record->update([
+                                'status' => LandingPageStatus::Draft->value,
+                                'published_at' => null,
+                            ]);
+
+                            Notification::make()->title(__('notification.landing_unpublished'))->success()->send();
+                        }),
+                    Action::make('generate_url')
+                        ->label(__('action.generate_url'))
+                        ->icon('heroicon-o-link')
+                        ->form([
+                            Select::make('utm_source')
+                                ->label(__('field.utm_source'))
+                                ->options(UtmOptions::source())
+                                ->searchable()
+                                ->required(),
+                            Select::make('utm_medium')
+                                ->label(__('field.utm_medium'))
+                                ->options(UtmOptions::medium())
+                                ->searchable()
+                                ->required(),
+                            TextInput::make('utm_campaign')->label(__('field.utm_campaign'))->required(),
+                            TextInput::make('utm_content')->label(__('field.utm_content')),
+                            TextInput::make('utm_term')->label(__('field.utm_term')),
+                        ])
+                        ->action(function (LandingPage $record, array $data): void {
+                            $base = route('marketing.landing-pages.public.show', $record->slug);
+                            $query = http_build_query(array_filter([
+                                'utm_source' => $data['utm_source'] ?? null,
+                                'utm_medium' => $data['utm_medium'] ?? null,
+                                'utm_campaign' => $data['utm_campaign'] ?? null,
+                                'utm_content' => $data['utm_content'] ?? null,
+                                'utm_term' => $data['utm_term'] ?? null,
+                            ]));
+                            $generatedUrl = $base.($query ? ('?'.$query) : '');
+
+                            LandingPageUtmUrl::query()->create([
+                                'landing_page_id' => $record->id,
+                                'utm_source' => $data['utm_source'] ?? null,
+                                'utm_medium' => $data['utm_medium'] ?? null,
+                                'utm_campaign' => $data['utm_campaign'] ?? null,
+                                'utm_content' => $data['utm_content'] ?? null,
+                                'utm_term' => $data['utm_term'] ?? null,
+                                'url' => $generatedUrl,
+                            ]);
 
                             Notification::make()
-                                ->title('Chưa thể xuất bản Landing Page')
-                                ->body(
-                                    'Thiếu: '.implode(', ', $missing).'.'
-                                )
-                                ->danger()
+                                ->title(__('notification.url_generated'))
+                                ->body($generatedUrl)
+                                ->success()
                                 ->send();
-
-                            return;
-                        }
-                        $record->update([
-                            'status' => LandingPageStatus::Published->value,
-                            'published_at' => now(),
-                        ]);
-
-                        Notification::make()->title(__('notification.landing_published'))->success()->send();
-                    }),
-                Action::make('unpublish')
-                    ->label(__('action.unpublish'))
-                    ->icon('heroicon-o-no-symbol')
-                    ->color('warning')
-                    ->visible(fn (LandingPage $record): bool => ($record->status?->value ?? $record->status) === 'published')
-                    ->action(function (LandingPage $record): void {
-                        $record->update([
-                            'status' => LandingPageStatus::Draft->value,
-                            'published_at' => null,
-                        ]);
-
-                        Notification::make()->title(__('notification.landing_unpublished'))->success()->send();
-                    }),
-                Action::make('generate_url')
-                    ->label(__('action.generate_url'))
-                    ->icon('heroicon-o-link')
-                    ->form([
-                        Select::make('utm_source')
-                            ->label(__('field.utm_source'))
-                            ->options(UtmOptions::source())
-                            ->searchable()
-                            ->required(),
-                        Select::make('utm_medium')
-                            ->label(__('field.utm_medium'))
-                            ->options(UtmOptions::medium())
-                            ->searchable()
-                            ->required(),
-                        TextInput::make('utm_campaign')->label(__('field.utm_campaign'))->required(),
-                        TextInput::make('utm_content')->label(__('field.utm_content')),
-                        TextInput::make('utm_term')->label(__('field.utm_term')),
-                    ])
-                    ->action(function (LandingPage $record, array $data): void {
-                        $base = route('marketing.landing-pages.public.show', $record->slug);
-                        $query = http_build_query(array_filter([
-                            'utm_source' => $data['utm_source'] ?? null,
-                            'utm_medium' => $data['utm_medium'] ?? null,
-                            'utm_campaign' => $data['utm_campaign'] ?? null,
-                            'utm_content' => $data['utm_content'] ?? null,
-                            'utm_term' => $data['utm_term'] ?? null,
-                        ]));
-                        $generatedUrl = $base . ($query ? ('?' . $query) : '');
-
-                        LandingPageUtmUrl::query()->create([
-                            'landing_page_id' => $record->id,
-                            'utm_source' => $data['utm_source'] ?? null,
-                            'utm_medium' => $data['utm_medium'] ?? null,
-                            'utm_campaign' => $data['utm_campaign'] ?? null,
-                            'utm_content' => $data['utm_content'] ?? null,
-                            'utm_term' => $data['utm_term'] ?? null,
-                            'url' => $generatedUrl,
-                        ]);
-
-                        Notification::make()
-                            ->title(__('notification.url_generated'))
-                            ->body($generatedUrl)
-                            ->success()
-                            ->send();
-                    }),
-                Action::make('copy_link')
-                    ->label(__('action.copy_link'))
-                    ->icon('heroicon-o-link')
-                    ->action(function (LandingPage $record): void {
-                        $url = route('marketing.landing-pages.public.show', $record->slug);
-                        Notification::make()
-                            ->title(__('notification.link_copied'))
-                            ->body($url)
-                            ->success()
-                            ->send();
-                    }),
-                Action::make('public_link')
-                    ->label(__('action.public_link'))
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (LandingPage $record): string => route('marketing.landing-pages.public.show', $record->slug), shouldOpenInNewTab: true),
-                Action::make('preview')
-                    ->label(__('action.preview'))
-                    ->icon('heroicon-o-eye')
-                    ->url(fn (LandingPage $record): string => route('marketing.landing-pages.preview', $record), shouldOpenInNewTab: true),
-                EditAction::make(),
-                DeleteAction::make(),
-            ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
+                        }),
+                    Action::make('copy_link')
+                        ->label(__('action.copy_link'))
+                        ->icon('heroicon-o-link')
+                        ->action(function (LandingPage $record): void {
+                            $url = route('marketing.landing-pages.public.show', $record->slug);
+                            Notification::make()
+                                ->title(__('notification.link_copied'))
+                                ->body($url)
+                                ->success()
+                                ->send();
+                        }),
+                    Action::make('public_link')
+                        ->label(__('action.public_link'))
+                        ->icon('heroicon-o-arrow-top-right-on-square')
+                        ->url(fn (LandingPage $record): string => route('marketing.landing-pages.public.show', $record->slug), shouldOpenInNewTab: true),
+                    Action::make('preview')
+                        ->label(__('action.preview'))
+                        ->icon('heroicon-o-eye')
+                        ->url(fn (LandingPage $record): string => route('marketing.landing-pages.preview', $record), shouldOpenInNewTab: true),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

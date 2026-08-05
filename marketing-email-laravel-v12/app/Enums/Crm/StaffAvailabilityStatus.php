@@ -25,10 +25,10 @@ enum StaffAvailabilityStatus: string
     {
         return match ($this) {
             self::Working => __('enum.availability.working'),
-            self::Absent  => __('enum.availability.absent'),
-            self::Leave   => __('enum.availability.leave'),
-            self::Sick    => __('enum.availability.sick'),
-            self::Remote  => __('enum.availability.remote'),
+            self::Absent => __('enum.availability.absent'),
+            self::Leave => __('enum.availability.leave'),
+            self::Sick => __('enum.availability.sick'),
+            self::Remote => __('enum.availability.remote'),
             self::HalfDay => __('enum.availability.half_day'),
         };
     }

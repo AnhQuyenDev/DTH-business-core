@@ -47,18 +47,18 @@ class DashboardStaffWorkloadWidget extends BaseWidget
 
         return [
             Stat::make(__('Đang làm việc'), number_format($active))
-                ->description(__('Có mặt') . ': ' . number_format($available) . ' / ' . __('Nghỉ phép') . ': ' . number_format($onLeave))
+                ->description(__('Có mặt').': '.number_format($available).' / '.__('Nghỉ phép').': '.number_format($onLeave))
                 ->icon('heroicon-o-users')
                 ->color('success'),
-            Stat::make(__('Tạm nghỉ / Đã nghỉ việc'), number_format($inactive) . ' / ' . number_format($resigned))
+            Stat::make(__('Tạm nghỉ / Đã nghỉ việc'), number_format($inactive).' / '.number_format($resigned))
                 ->icon('heroicon-o-pause-circle')
                 ->color('warning'),
             Stat::make(__('Tổng khách hàng quản lý'), number_format($totalManaging))
-                ->description(__('Trung bình') . ': ' . number_format($avgManaging) . ' ' . __('khách hàng/nhân viên'))
+                ->description(__('Trung bình').': '.number_format($avgManaging).' '.__('khách hàng/nhân viên'))
                 ->icon('heroicon-o-user-group')
                 ->color('primary'),
             Stat::make(__('Tổng khách hàng hỗ trợ'), number_format($totalSupporting))
-                ->description(__('Trung bình') . ': ' . number_format($avgSupporting) . ' ' . __('khách hàng/nhân viên'))
+                ->description(__('Trung bình').': '.number_format($avgSupporting).' '.__('khách hàng/nhân viên'))
                 ->icon('heroicon-o-hand-raised')
                 ->color('info'),
         ];

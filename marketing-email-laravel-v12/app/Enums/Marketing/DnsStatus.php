@@ -22,10 +22,10 @@ enum DnsStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Unknown  => __('enum.dns_status.unknown'),
-            self::Pending  => __('enum.dns_status.pending'),
+            self::Unknown => __('enum.dns_status.unknown'),
+            self::Pending => __('enum.dns_status.pending'),
             self::Verified => __('enum.dns_status.verified'),
-            self::Failed   => __('enum.dns_status.failed'),
+            self::Failed => __('enum.dns_status.failed'),
         };
     }
 }

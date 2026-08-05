@@ -5,6 +5,7 @@ namespace App\Models\Crm;
 use App\Enums\Crm\CompanyLifecycleStage;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\LandingPageSubmission;
+use App\Services\Crm\CompanyNormalizationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -42,6 +43,34 @@ class Company extends Model
             'lifecycle_stage' => CompanyLifecycleStage::class,
             'metadata' => 'array',
         ];
+    }
+
+    public function businessProfiles(): HasMany
+    {
+        return $this->hasMany(BusinessContactProfile::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Company $company): void {
+            $normalizer = app(CompanyNormalizationService::class);
+
+            $company->normalized_name = $normalizer->normalizeName(
+                $company->legal_name
+            ) ?? '';
+
+            $company->tax_code = $normalizer->normalizeTaxCode(
+                $company->tax_code
+            );
+
+            $company->email_domain = $normalizer->normalizeDomain(
+                $company->email_domain
+            );
+
+            $company->normalized_phone = $normalizer->normalizePhone(
+                $company->phone ?? $company->normalized_phone
+            );
+        });
     }
 
     public function contacts(): BelongsToMany

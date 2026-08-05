@@ -7,12 +7,13 @@ use App\Models\Crm\Department;
 use App\Models\Marketing\SendingAccount;
 use App\Services\Marketing\SendingAccountService;
 use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Section;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -103,7 +104,7 @@ class SendingAccountResource extends Resource
             TextColumn::make('department.name')->label(__('field.department'))->badge()->placeholder(__('common.not_available')),
             TextColumn::make('from_email')->label(__('field.from_email'))->searchable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
-                ->formatStateUsing(fn ($state): string => $state ? __('field.status_' . (string) $state) : __('common.not_available'))
+                ->formatStateUsing(fn ($state): string => $state ? __('field.status_'.(string) $state) : __('common.not_available'))
                 ->color(fn ($state): string => match ($state) {
                     'active' => 'success',
                     'inactive' => 'danger',
@@ -113,7 +114,7 @@ class SendingAccountResource extends Resource
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable(),
         ])
             ->headerActions([
-                \Filament\Tables\Actions\Action::make('send_test')
+                Action::make('send_test')
                     ->label(__('action.send_test'))
                     ->icon('heroicon-o-paper-airplane')
                     ->form([

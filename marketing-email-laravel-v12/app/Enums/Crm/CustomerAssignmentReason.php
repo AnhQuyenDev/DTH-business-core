@@ -26,12 +26,12 @@ enum CustomerAssignmentReason: string
     {
         return match ($this) {
             self::InitialDistribution => __('enum.assignment_reason.initial_distribution'),
-            self::NewCustomer         => __('enum.assignment_reason.new_customer'),
-            self::Manual              => __('enum.assignment_reason.manual'),
-            self::StaffAbsence        => __('enum.assignment_reason.staff_absence'),
-            self::StaffReturn         => __('enum.assignment_reason.staff_return'),
-            self::Rebalance           => __('enum.assignment_reason.rebalance'),
-            self::Transfer            => __('enum.assignment_reason.transfer'),
+            self::NewCustomer => __('enum.assignment_reason.new_customer'),
+            self::Manual => __('enum.assignment_reason.manual'),
+            self::StaffAbsence => __('enum.assignment_reason.staff_absence'),
+            self::StaffReturn => __('enum.assignment_reason.staff_return'),
+            self::Rebalance => __('enum.assignment_reason.rebalance'),
+            self::Transfer => __('enum.assignment_reason.transfer'),
         };
     }
 }

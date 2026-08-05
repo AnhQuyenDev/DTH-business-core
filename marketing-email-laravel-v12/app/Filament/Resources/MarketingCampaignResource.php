@@ -101,7 +101,7 @@ class MarketingCampaignResource extends Resource
             TextColumn::make('name')->label(__('field.name'))->searchable()->sortable(),
             TextColumn::make('slug')->label(__('field.slug'))->searchable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
-                ->formatStateUsing(fn (?string $state): string => $state ? __('field.status_' . $state) : '—')
+                ->formatStateUsing(fn (?string $state): string => $state ? __('field.status_'.$state) : '—')
                 ->color(fn (?string $state): string => match ($state) {
                     'active' => 'success',
                     'paused' => 'warning',

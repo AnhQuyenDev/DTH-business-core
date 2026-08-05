@@ -9,7 +9,6 @@ use App\Models\Marketing\CampaignRecipient;
 use App\Models\Marketing\EmailEvent;
 use App\Models\Marketing\TrackedLink;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 
 class EmailTrackingController extends Controller
 {

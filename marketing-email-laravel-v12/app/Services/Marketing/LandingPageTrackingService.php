@@ -17,16 +17,16 @@ class LandingPageTrackingService
 
         return LandingPageView::create([
             'landing_page_id' => $landingPage->id,
-            'session_id'      => $request->session()->getId(),
-            'ip_address'      => $request->ip(),
-            'user_agent'      => $request->userAgent(),
-            'referrer'        => $request->headers->get('referer'),
-            'utm_source'      => $utm['utm_source'] ?? null,
-            'utm_medium'      => $utm['utm_medium'] ?? null,
-            'utm_campaign'    => $utm['utm_campaign'] ?? null,
-            'utm_content'     => $utm['utm_content'] ?? null,
-            'utm_term'        => $utm['utm_term'] ?? null,
-            'viewed_at'       => now(),
+            'session_id' => $request->session()->getId(),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'referrer' => $request->headers->get('referer'),
+            'utm_source' => $utm['utm_source'] ?? null,
+            'utm_medium' => $utm['utm_medium'] ?? null,
+            'utm_campaign' => $utm['utm_campaign'] ?? null,
+            'utm_content' => $utm['utm_content'] ?? null,
+            'utm_term' => $utm['utm_term'] ?? null,
+            'viewed_at' => now(),
         ]);
     }
 
@@ -38,11 +38,11 @@ class LandingPageTrackingService
     public function extractUtm(Request $request): array
     {
         return [
-            'utm_source'   => $request->query('utm_source'),
-            'utm_medium'   => $request->query('utm_medium'),
+            'utm_source' => $request->query('utm_source'),
+            'utm_medium' => $request->query('utm_medium'),
             'utm_campaign' => $request->query('utm_campaign'),
-            'utm_content'  => $request->query('utm_content'),
-            'utm_term'     => $request->query('utm_term'),
+            'utm_content' => $request->query('utm_content'),
+            'utm_term' => $request->query('utm_term'),
         ];
     }
 }

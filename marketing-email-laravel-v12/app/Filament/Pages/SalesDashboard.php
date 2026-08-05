@@ -26,6 +26,7 @@ class SalesDashboard extends Page
     public static function canAccess(): bool
     {
         $user = auth()->user();
+
         return $user && ($user->isAdmin() || $user->isCustomerServiceManager());
     }
 
@@ -99,7 +100,7 @@ class SalesDashboard extends Page
             ])
             ->orWhere(function ($q) {
                 $q->where('status', QuotationStatus::Accepted)
-                  ->where('payment_status', 'unpaid');
+                    ->where('payment_status', 'unpaid');
             })
             ->groupBy('assigned_staff_id')
             ->with('assignedStaff.user')

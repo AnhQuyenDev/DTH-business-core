@@ -18,7 +18,10 @@ class QuotationPolicy
             return true;
         }
         $staff = $user->staff;
-        if (!$staff) return false;
+        if (! $staff) {
+            return false;
+        }
+
         return $quotation->assigned_staff_id === $staff->id
             || $quotation->created_by === $user->id;
     }
@@ -30,14 +33,22 @@ class QuotationPolicy
 
     public function update(User $user, Quotation $quotation): bool
     {
-        if (!$quotation->status->isEditable()) return false;
-        if ($user->isAdmin()) return true;
+        if (! $quotation->status->isEditable()) {
+            return false;
+        }
+        if ($user->isAdmin()) {
+            return true;
+        }
+
         return $quotation->created_by === $user->id;
     }
 
     public function delete(User $user, Quotation $quotation): bool
     {
-        if ($quotation->status->isTerminal()) return false;
+        if ($quotation->status->isTerminal()) {
+            return false;
+        }
+
         return $user->isAdmin() || $quotation->created_by === $user->id;
     }
 

@@ -9,7 +9,6 @@ use App\Filament\Resources\CustomerResource;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\CustomerInteraction;
-use App\Models\Marketing\EmailTemplate;
 use App\Models\Sales\Quotation;
 use App\Services\Crm\CustomerCareEmailService;
 use App\Services\Crm\CustomerCareService;
@@ -24,6 +23,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Throwable;
 
@@ -51,7 +51,7 @@ class CustomerCarePage extends Page implements HasTable
 
     public string $emailBody = '';
 
-    /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    /** @var array<int, TemporaryUploadedFile> */
     public array $emailAttachments = [];
 
     public string $callType = 'call';
@@ -152,7 +152,7 @@ class CustomerCarePage extends Page implements HasTable
                 TextColumn::make('priority')
                     ->label(__('field.priority'))
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => $state ? __('field.priority.' . $state) : '—')
+                    ->formatStateUsing(fn (?string $state): string => $state ? __('field.priority.'.$state) : '—')
                     ->color(fn (?string $state): string => match ($state) {
                         'vip' => 'danger',
                         'high' => 'warning',
@@ -389,7 +389,7 @@ class CustomerCarePage extends Page implements HasTable
             'ends_at' => now(),
             'ended_at' => now(),
             'ended_by_user_id' => $user->id,
-            'note' => filled($this->releaseNote) ? $this->releaseNote : __('enum.assignment_reason.' . $this->releaseReason),
+            'note' => filled($this->releaseNote) ? $this->releaseNote : __('enum.assignment_reason.'.$this->releaseReason),
         ]);
 
         $this->releaseReason = null;

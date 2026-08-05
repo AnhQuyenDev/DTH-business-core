@@ -21,8 +21,8 @@ enum CustomerAssignmentStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Active    => __('enum.assignment_status.active'),
-            self::Ended     => __('enum.assignment_status.ended'),
+            self::Active => __('enum.assignment_status.active'),
+            self::Ended => __('enum.assignment_status.ended'),
             self::Cancelled => __('enum.assignment_status.cancelled'),
         };
     }

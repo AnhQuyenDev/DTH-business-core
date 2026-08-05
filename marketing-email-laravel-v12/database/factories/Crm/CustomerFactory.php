@@ -14,7 +14,7 @@ class CustomerFactory extends Factory
     public function definition(): array
     {
         return [
-            'customer_code' => 'CUS-' . fake()->unique()->numerify('####'),
+            'customer_code' => 'CUS-'.fake()->unique()->numerify('####'),
             'customer_type' => fake()->randomElement(['personal', 'business']),
             'display_name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),

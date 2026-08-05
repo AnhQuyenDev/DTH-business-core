@@ -32,15 +32,15 @@ class CampaignFlowTest extends TestCase
         $contact = Contact::query()->create(['contact_type' => 'personal']);
 
         $customer = Customer::query()->create([
-            'customer_code'  => 'CUS-MAI-TRAN',
-            'contact_id'     => $contact->id,
-            'customer_type'  => 'personal',
-            'display_name'   => 'Mai Tran',
-            'first_name'     => 'Mai',
-            'last_name'      => 'Tran',
-            'email'          => 'mai@example.test',
+            'customer_code' => 'CUS-MAI-TRAN',
+            'contact_id' => $contact->id,
+            'customer_type' => 'personal',
+            'display_name' => 'Mai Tran',
+            'first_name' => 'Mai',
+            'last_name' => 'Tran',
+            'email' => 'mai@example.test',
             'consent_status' => CustomerConsentStatus::Subscribed,
-            'status'         => CustomerStatus::Active,
+            'status' => CustomerStatus::Active,
         ]);
 
         $template = EmailTemplate::query()->create([

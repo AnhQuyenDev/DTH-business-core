@@ -59,7 +59,7 @@ class QuotationPaymentService
         $currentValue = $current?->value ?? 'unpaid';
         $allowed = self::VALID_TRANSITIONS[$currentValue] ?? [];
 
-        if (!in_array($target->value, $allowed, true)) {
+        if (! in_array($target->value, $allowed, true)) {
             throw new \InvalidArgumentException(
                 "Cannot transition payment from {$currentValue} to {$target->value}"
             );
@@ -69,7 +69,9 @@ class QuotationPaymentService
     private function handlePaid(Quotation $quotation, User $user): void
     {
         $customer = $quotation->customer;
-        if (!$customer) return;
+        if (! $customer) {
+            return;
+        }
 
         $customer->update([
             'status' => CustomerStatus::Active,

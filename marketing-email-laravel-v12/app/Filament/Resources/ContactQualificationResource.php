@@ -148,7 +148,7 @@ class ContactQualificationResource extends Resource
                 }),
             TextColumn::make('priority')
                 ->badge()
-                ->formatStateUsing(fn ($state): string => __('field.priority.' . Str::lower((string) $state)))
+                ->formatStateUsing(fn ($state): string => __('field.priority.'.Str::lower((string) $state)))
                 ->color(function ($state): string {
                     return match (Str::lower((string) $state)) {
                         'vip' => 'danger',

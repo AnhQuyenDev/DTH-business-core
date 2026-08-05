@@ -2,14 +2,25 @@
 
 namespace App\Filament\Resources\Sales;
 
+use App\Enums\Sales\DiscountType;
 use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
 use App\Filament\Resources\Sales\QuotationResource\Pages;
+use App\Filament\Resources\Sales\QuotationResource\RelationManagers\ApprovalsRelationManager;
+use App\Filament\Resources\Sales\QuotationResource\RelationManagers\ConfirmationsRelationManager;
+use App\Filament\Resources\Sales\QuotationResource\RelationManagers\DocumentsRelationManager;
+use App\Filament\Resources\Sales\QuotationResource\RelationManagers\EmailLogsRelationManager;
+use App\Filament\Resources\Sales\QuotationResource\RelationManagers\ItemsRelationManager;
+use App\Models\Crm\Customer;
+use App\Models\Marketing\EmailTemplate;
 use App\Models\Sales\PriceBook;
 use App\Models\Sales\PriceBookItem;
 use App\Models\Sales\Quotation;
+use App\Services\Sales\PriceBookAccessService;
 use App\Services\Sales\PriceBookResolverService;
 use App\Services\Sales\QuotationApprovalService;
+use App\Services\Sales\QuotationMailService;
+use App\Services\Sales\QuotationTemplateRenderer;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Hidden;
@@ -23,14 +34,15 @@ use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\ActionGroup;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 class QuotationResource extends Resource
@@ -64,12 +76,12 @@ class QuotationResource extends Resource
         return auth()->user()?->can('sales.create-quotations') ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return auth()->user()?->can('sales.create-quotations') ?? false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return auth()->user()?->can('sales.cancel-quotations') ?? false;
     }
@@ -79,7 +91,7 @@ class QuotationResource extends Resource
         $user = auth()->user();
         $customerType = 'personal';
 
-        $priceBooks = app(\App\Services\Sales\PriceBookAccessService::class)
+        $priceBooks = app(PriceBookAccessService::class)
             ->getAccessiblePriceBooks($user, $customerType);
 
         return $form->schema([
@@ -122,7 +134,7 @@ class QuotationResource extends Resource
                         Grid::make(4)->schema([
                             TextInput::make('unit_price')->label(__('field.unit_price'))->numeric()->required()->prefix('VND'),
                             Select::make('discount_type')->label(__('field.discount_type'))
-                                ->options(['' => __('field.none'), ...\App\Enums\Sales\DiscountType::options()]),
+                                ->options(['' => __('field.none'), ...DiscountType::options()]),
                             TextInput::make('discount_value')->label(__('field.discount_value'))->numeric()->default(0),
                             TextInput::make('vat_rate')->label(__('field.vat_rate'))->numeric()->default(10)->suffix('%'),
                         ]),
@@ -175,12 +187,12 @@ class QuotationResource extends Resource
                     ->form([
                         Select::make('customer_id')
                             ->label(__('field.customer'))
-                            ->options(\App\Models\Crm\Customer::query()->orderBy('display_name')->pluck('display_name', 'id'))
+                            ->options(Customer::query()->orderBy('display_name')->pluck('display_name', 'id'))
                             ->searchable()
                             ->preload()
                             ->default(fn (Quotation $q) => $q->customer_id)
                             ->live()
-                            ->afterStateUpdated(fn (Set $set, ?string $state) => $set('recipient_email', \App\Models\Crm\Customer::find($state)?->email)),
+                            ->afterStateUpdated(fn (Set $set, ?string $state) => $set('recipient_email', Customer::find($state)?->email)),
                         TextInput::make('recipient_email')
                             ->label(__('field.recipient_email'))
                             ->email()
@@ -188,20 +200,20 @@ class QuotationResource extends Resource
                             ->default(fn (Quotation $q) => $q->customer?->email),
                         Select::make('template_id')
                             ->label(__('field.email_template'))
-                            ->options(\App\Models\Marketing\EmailTemplate::query()->whereHas('categoryRelation', fn ($q) => $q->where('slug', 'quotation'))->where('status', 'active')->pluck('name', 'id'))
+                            ->options(EmailTemplate::query()->whereHas('categoryRelation', fn ($q) => $q->where('slug', 'quotation'))->where('status', 'active')->pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->helperText(__('field.email_template_helper'))
                             ->live()
                             ->afterStateUpdated(function (Set $set, ?string $state, Quotation $record) {
-                                if (!$state) {
+                                if (! $state) {
                                     return;
                                 }
-                                $template = \App\Models\Marketing\EmailTemplate::find($state);
-                                if (!$template) {
+                                $template = EmailTemplate::find($state);
+                                if (! $template) {
                                     return;
                                 }
-                                $rendered = app(\App\Services\Sales\QuotationTemplateRenderer::class)->render($template, $record);
+                                $rendered = app(QuotationTemplateRenderer::class)->render($template, $record);
                                 $set('subject', $rendered['subject']);
                                 $set('body', $rendered['body']);
                             }),
@@ -213,7 +225,7 @@ class QuotationResource extends Resource
                             ->rows(12),
                     ])
                     ->action(function (array $data, Quotation $q) {
-                        app(\App\Services\Sales\QuotationMailService::class)->send($q, auth()->user(), $data['recipient_email'], [
+                        app(QuotationMailService::class)->send($q, auth()->user(), $data['recipient_email'], [
                             'subject' => $data['subject'] ?? null,
                             'body' => $data['body'] ?? null,
                         ]);
@@ -222,7 +234,7 @@ class QuotationResource extends Resource
                     ->visible(fn (Quotation $q): bool => $q->status->canSend() && auth()->user()->can('sales.send-quotations')),
                 Action::make('cancel')->label(__('action.cancel'))->icon('heroicon-o-x-circle')->color('danger')
                     ->action(fn (Quotation $q) => app(QuotationApprovalService::class)->logCancellation($q, auth()->user()))
-                    ->visible(fn (Quotation $q): bool => !$q->status->isTerminal()),
+                    ->visible(fn (Quotation $q): bool => ! $q->status->isTerminal()),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->bulkActions([
@@ -273,11 +285,11 @@ class QuotationResource extends Resource
     public static function getRelations(): array
     {
         return [
-            \App\Filament\Resources\Sales\QuotationResource\RelationManagers\ItemsRelationManager::class,
-            \App\Filament\Resources\Sales\QuotationResource\RelationManagers\ConfirmationsRelationManager::class,
-            \App\Filament\Resources\Sales\QuotationResource\RelationManagers\EmailLogsRelationManager::class,
-            \App\Filament\Resources\Sales\QuotationResource\RelationManagers\DocumentsRelationManager::class,
-            \App\Filament\Resources\Sales\QuotationResource\RelationManagers\ApprovalsRelationManager::class,
+            ItemsRelationManager::class,
+            ConfirmationsRelationManager::class,
+            EmailLogsRelationManager::class,
+            DocumentsRelationManager::class,
+            ApprovalsRelationManager::class,
         ];
     }
 
@@ -298,7 +310,7 @@ class QuotationResource extends Resource
         }
 
         $priceBook = PriceBook::find($priceBookId);
-        if (!$priceBook) {
+        if (! $priceBook) {
             return [];
         }
 
@@ -309,6 +321,7 @@ class QuotationResource extends Resource
                 ->danger()
                 ->title(__('notification.price_book_no_items'))
                 ->send();
+
             return [];
         }
 
@@ -336,7 +349,7 @@ class QuotationResource extends Resource
         }
 
         $staff = $user->staff;
-        if (!$staff) {
+        if (! $staff) {
             return $query->whereRaw('0 = 1');
         }
 

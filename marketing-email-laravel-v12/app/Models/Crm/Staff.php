@@ -145,6 +145,7 @@ class Staff extends Model
         if ($this->customer_capacity === null) {
             return true;
         }
+
         return $this->currentLoad() < $this->customer_capacity;
     }
 }

@@ -33,7 +33,7 @@ class CampaignLandingPageServiceTest extends TestCase
         $url = $service->getCampaignLink($campaign);
 
         $this->assertStringContainsString('/lp/lp-email', $url);
-        $this->assertStringContainsString('cid=' . $campaign->id, $url);
+        $this->assertStringContainsString('cid='.$campaign->id, $url);
         $this->assertStringContainsString('utm_source=email', $url);
         $this->assertStringContainsString('utm_medium=email', $url);
         $this->assertStringContainsString('utm_campaign=Summer%20Sale%202026', $url);

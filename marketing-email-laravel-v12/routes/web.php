@@ -1,12 +1,12 @@
 <?php
 
 use App\Http\Controllers\Marketing\Admin\EmailTemplatePreviewController;
+use App\Http\Controllers\Marketing\Admin\FormTemplatePreviewController;
 use App\Http\Controllers\Marketing\Admin\LandingPagePreviewController;
 use App\Http\Controllers\Marketing\Admin\LandingPageUtmUrlController;
 use App\Http\Controllers\Marketing\Public\EmailTrackingController;
 use App\Http\Controllers\Marketing\Public\LandingPageController;
 use App\Http\Controllers\Marketing\Public\UnsubscribeController;
-use App\Http\Controllers\Marketing\Admin\FormTemplatePreviewController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Sales\QuotationPublicController;
 use Illuminate\Support\Facades\Route;

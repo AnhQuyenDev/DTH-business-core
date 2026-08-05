@@ -4,9 +4,9 @@ namespace App\Enums\Marketing;
 
 enum LandingPageStatus: string
 {
-    case Draft     = 'draft';
+    case Draft = 'draft';
     case Published = 'published';
-    case Archived  = 'archived';
+    case Archived = 'archived';
 
     public static function values(): array
     {
@@ -21,9 +21,9 @@ enum LandingPageStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Draft     => __('enum.landing_page_status.draft'),
+            self::Draft => __('enum.landing_page_status.draft'),
             self::Published => __('enum.landing_page_status.published'),
-            self::Archived  => __('enum.landing_page_status.archived'),
+            self::Archived => __('enum.landing_page_status.archived'),
         };
     }
 }

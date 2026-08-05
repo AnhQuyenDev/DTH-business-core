@@ -12,13 +12,13 @@ class SendingDomainFactory extends Factory
     public function definition(): array
     {
         return [
-            'domain'       => $this->faker->unique()->domainName(),
-            'status'       => 'pending',
-            'spf_status'   => 'pending',
-            'dkim_status'  => 'pending',
+            'domain' => $this->faker->unique()->domainName(),
+            'status' => 'pending',
+            'spf_status' => 'pending',
+            'dkim_status' => 'pending',
             'dmarc_status' => 'pending',
-            'notes'        => null,
-            'verified_at'  => null,
+            'notes' => null,
+            'verified_at' => null,
         ];
     }
 }

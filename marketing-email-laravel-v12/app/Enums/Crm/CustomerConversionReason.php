@@ -21,7 +21,7 @@ enum CustomerConversionReason: string
     {
         return match ($this) {
             self::ConfirmedNeed => __('enum.conversion_reason.confirmed_need'),
-            self::Purchased     => __('enum.conversion_reason.purchased'),
+            self::Purchased => __('enum.conversion_reason.purchased'),
         };
     }
 }

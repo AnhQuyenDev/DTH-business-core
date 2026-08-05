@@ -3,13 +3,12 @@
 namespace App\Services\Marketing;
 
 use App\Models\Marketing\FormField;
-use App\Models\Marketing\LandingPage;
 use App\Models\Marketing\FormTemplate;
+use App\Models\Marketing\LandingPage;
 
 class LandingPageRenderService
 {
-    public function __construct(private readonly LandingPageThemeService $themeService) {
-    }
+    public function __construct(private readonly LandingPageThemeService $themeService) {}
 
     public function render(
         LandingPage $landingPage,
@@ -67,18 +66,12 @@ class LandingPageRenderService
         $ctaText = e($landingPage->cta_text ?? '');
 
         $html = strtr($html, [
-            '{{page_title}}' =>
-                e($landingPage->page_title ?? $landingPage->name),
-            '{{headline}}' =>
-                e($landingPage->headline ?? ''),
-            '{{subheadline}}' =>
-                e($landingPage->subheadline ?? ''),
-            '{{content}}' =>
-                $landingPage->content ?? '',
-            '{{cta_text}}' =>
-                $ctaText,
-            '{{company_name}}' =>
-                e(config('app.name', 'Company')),
+            '{{page_title}}' => e($landingPage->page_title ?? $landingPage->name),
+            '{{headline}}' => e($landingPage->headline ?? ''),
+            '{{subheadline}}' => e($landingPage->subheadline ?? ''),
+            '{{content}}' => $landingPage->content ?? '',
+            '{{cta_text}}' => $ctaText,
+            '{{company_name}}' => e(config('app.name', 'Company')),
         ]);
 
         $themeCss = $this->formThemeCss();
@@ -209,7 +202,7 @@ class LandingPageRenderService
                     1
                 ) ?? $body;
             }
-            
+
             $inject = '<input type="hidden" name="form_template_id" value="'.$formTemplate->id.'">'."\n";
             $inject .= '<input type="hidden" name="submission_type" value="'.$formType.'">'."\n";
             $body = preg_replace(
@@ -529,7 +522,7 @@ HTML;
         return $body;
     }
 
-    public function sanitizeImportedHtml(string $html, bool $replaceForms = true): string 
+    public function sanitizeImportedHtml(string $html, bool $replaceForms = true): string
     {
         $html = preg_replace_callback(
             '/<script\b(?!\s*src\s*=)[^>]*>.*?<\/script>/is',
@@ -594,7 +587,7 @@ HTML;
 
         return $html;
     }
-    
+
     public function prepareImportedLandingPageHtml(string $html): string
     {
         $html = $this->sanitizeImportedHtml($html, false);
@@ -921,7 +914,7 @@ HTML;
         $sectionId = 'lp-forms-section-'.$landingPage->id;
 
         $personalTab = filled($personalForm)
-            ? <<<HTML
+            ? <<<'HTML'
     <button
         type="button"
         class="lp-form-tab is-active"
@@ -933,7 +926,7 @@ HTML;
             : '';
 
         $businessTab = filled($businessForm)
-            ? <<<HTML
+            ? <<<'HTML'
     <button
         type="button"
         class="lp-form-tab"
@@ -1284,12 +1277,11 @@ HTML;
                 */
                 $css = preg_replace_callback(
                     '/&#(?:x[0-9a-f]+|\d+);/i',
-                    static fn (array $entity): string =>
-                        html_entity_decode(
-                            $entity[0],
-                            ENT_QUOTES | ENT_HTML5,
-                            'UTF-8'
-                        ),
+                    static fn (array $entity): string => html_entity_decode(
+                        $entity[0],
+                        ENT_QUOTES | ENT_HTML5,
+                        'UTF-8'
+                    ),
                     $css
                 ) ?? $css;
 

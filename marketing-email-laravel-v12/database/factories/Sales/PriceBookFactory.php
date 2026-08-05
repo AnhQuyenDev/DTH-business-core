@@ -15,7 +15,7 @@ class PriceBookFactory extends Factory
     public function definition(): array
     {
         return [
-            'price_book_code' => 'PB' . strtoupper(fake()->bothify('??###')),
+            'price_book_code' => 'PB'.strtoupper(fake()->bothify('??###')),
             'name' => fake()->words(3, true),
             'audience_type' => AudienceType::Both,
             'currency' => 'VND',

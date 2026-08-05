@@ -9,11 +9,11 @@ use App\Filament\Resources\StaffResource;
 use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\Staff;
 use App\Models\User;
+use App\Services\Crm\CustomerDistributionService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class EditStaff extends EditRecord
 {
@@ -24,6 +24,7 @@ class EditStaff extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $this->originalEmploymentStatus = $this->record->getRawOriginal('employment_status');
+
         return $data;
     }
 
@@ -32,7 +33,7 @@ class EditStaff extends EditRecord
         $staff = $this->record;
         $current = $staff->employment_status;
 
-        if (!$this->originalEmploymentStatus || !$current instanceof StaffEmploymentStatus) {
+        if (! $this->originalEmploymentStatus || ! $current instanceof StaffEmploymentStatus) {
             return;
         }
 
@@ -42,7 +43,7 @@ class EditStaff extends EditRecord
         $isInactiveGoActive = $this->originalEmploymentStatus === StaffEmploymentStatus::Inactive->value
             && $current->value === StaffEmploymentStatus::Active->value;
 
-        if (!$isActiveGoInactive && !$isInactiveGoActive) {
+        if (! $isActiveGoInactive && ! $isInactiveGoActive) {
             return;
         }
 
@@ -86,7 +87,7 @@ class EditStaff extends EditRecord
                 ? 'Auto-distributed: staff resigned'
                 : 'Auto-distributed: staff inactive';
 
-            app(\App\Services\Crm\CustomerDistributionService::class)->distribute(
+            app(CustomerDistributionService::class)->distribute(
                 type: DistributionBatchType::StaffAbsence,
                 strategy: DistributionStrategy::LeastLoaded,
                 customerIds: $customerIds,
@@ -100,10 +101,10 @@ class EditStaff extends EditRecord
 
         foreach ($ownerAssignments as $assignment) {
             $assignment->update([
-                'status'           => 'ended',
-                'ended_at'         => now(),
+                'status' => 'ended',
+                'ended_at' => now(),
                 'ended_by_user_id' => $userId,
-                'note'             => $isPermanent ? 'Staff resigned' : 'Staff inactive',
+                'note' => $isPermanent ? 'Staff resigned' : 'Staff inactive',
             ]);
         }
     }
@@ -123,14 +124,14 @@ class EditStaff extends EditRecord
 
         foreach ($supportAssignments as $assignment) {
             $assignment->update([
-                'status'           => 'ended',
-                'ended_at'         => now(),
+                'status' => 'ended',
+                'ended_at' => now(),
                 'ended_by_user_id' => $userId,
-                'note'             => 'Staff returned from inactive',
+                'note' => 'Staff returned from inactive',
             ]);
         }
 
-        app(\App\Services\Crm\CustomerDistributionService::class)->distribute(
+        app(CustomerDistributionService::class)->distribute(
             type: DistributionBatchType::StaffReturn,
             strategy: DistributionStrategy::LeastLoaded,
             customerIds: $customerIds,

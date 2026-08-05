@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Marketing;
 
-use App\Models\Marketing\LandingPage;
 use App\Models\User;
 use App\Services\Marketing\LandingPageImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,6 +12,7 @@ class ImportLandingPageTest extends TestCase
     use RefreshDatabase;
 
     private LandingPageImportService $service;
+
     private User $user;
 
     protected function setUp(): void
@@ -64,7 +64,7 @@ HTML;
         $this->assertStringNotContainsString('Triển Khai Máy Chủ Ngay', $page->html_body);
         $this->assertStringNotContainsString('tabs', strtolower($page->html_body));
         $this->assertStringNotContainsString('<form', strtolower($page->html_body));
-        
+
         // Hero and pricing should remain
         $this->assertStringContainsString('VPS Hosting', $page->html_body);
         $this->assertStringContainsString('B&#7843;ng gi', $page->html_body);
@@ -160,7 +160,7 @@ HTML;
         $this->assertStringContainsString('Features', $page->html_body);
         $this->assertStringContainsString('Header', $page->html_body);
         $this->assertStringContainsString('Footer', $page->html_body);
-        
+
         // Form section should be gone
         $this->assertStringNotContainsString('form-section', strtolower($page->html_body));
     }

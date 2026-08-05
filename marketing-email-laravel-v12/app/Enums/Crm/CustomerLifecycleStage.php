@@ -26,12 +26,12 @@ enum CustomerLifecycleStage: string
     {
         return match ($this) {
             self::NewCustomer => __('enum.lifecycle.new_customer'),
-            self::Onboarding  => __('enum.lifecycle.onboarding'),
-            self::Nurturing   => __('enum.lifecycle.nurturing'),
-            self::Purchasing  => __('enum.lifecycle.purchasing'),
-            self::Retained    => __('enum.lifecycle.retained'),
-            self::AtRisk      => __('enum.lifecycle.at_risk'),
-            self::Churned     => __('enum.lifecycle.churned'),
+            self::Onboarding => __('enum.lifecycle.onboarding'),
+            self::Nurturing => __('enum.lifecycle.nurturing'),
+            self::Purchasing => __('enum.lifecycle.purchasing'),
+            self::Retained => __('enum.lifecycle.retained'),
+            self::AtRisk => __('enum.lifecycle.at_risk'),
+            self::Churned => __('enum.lifecycle.churned'),
         };
     }
 }

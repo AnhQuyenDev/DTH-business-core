@@ -138,7 +138,7 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('customer_type')
                     ->label(__('field.customer_type'))
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => __('enum.customer_type.' . Str::lower((string) $state)))
+                    ->formatStateUsing(fn ($state): string => __('enum.customer_type.'.Str::lower((string) $state)))
                     ->color(fn ($state): string => Str::lower((string) $state) === 'business' ? 'warning' : 'info'),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('field.status'))

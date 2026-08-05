@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class ProcessQuotationReminders extends Command
 {
     protected $signature = 'sales:process-reminders';
+
     protected $description = 'Expire old quotations and create follow-up reminders';
 
     public function handle(): int

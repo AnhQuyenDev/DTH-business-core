@@ -22,10 +22,10 @@ enum DistributionStrategy: string
     public function label(): string
     {
         return match ($this) {
-            self::RoundRobin  => __('enum.distribution_strategy.round_robin'),
+            self::RoundRobin => __('enum.distribution_strategy.round_robin'),
             self::LeastLoaded => __('enum.distribution_strategy.least_loaded'),
-            self::Weighted    => __('enum.distribution_strategy.weighted'),
-            self::Manual      => __('enum.distribution_strategy.manual'),
+            self::Weighted => __('enum.distribution_strategy.weighted'),
+            self::Manual => __('enum.distribution_strategy.manual'),
         };
     }
 

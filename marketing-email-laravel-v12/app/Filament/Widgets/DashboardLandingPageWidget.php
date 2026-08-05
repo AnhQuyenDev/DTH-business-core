@@ -37,19 +37,19 @@ class DashboardLandingPageWidget extends BaseWidget
 
         return [
             Stat::make(__('dashboard.landing_page.total'), number_format($totalLP))
-                ->description(__('dashboard.landing_page.published') . ': ' . number_format($publishedLP) . ' / ' . __('dashboard.landing_page.draft') . ': ' . number_format($draftLP))
+                ->description(__('dashboard.landing_page.published').': '.number_format($publishedLP).' / '.__('dashboard.landing_page.draft').': '.number_format($draftLP))
                 ->icon('heroicon-o-globe-alt')
                 ->color('primary'),
             Stat::make(__('dashboard.landing_page.views'), number_format($totalViews))
-                ->description(__('dashboard.landing_page.unique_views') . ': ' . number_format($uniqueViews))
+                ->description(__('dashboard.landing_page.unique_views').': '.number_format($uniqueViews))
                 ->icon('heroicon-o-eye')
                 ->color('info'),
             Stat::make(__('dashboard.landing_page.submissions'), number_format($totalSubmissions))
-                ->description(__('dashboard.landing_page.today') . ': ' . number_format($todaySubmissions))
+                ->description(__('dashboard.landing_page.today').': '.number_format($todaySubmissions))
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('success'),
             Stat::make(__('dashboard.landing_page.conversion_rate'), "{$conversionRate}%")
-                ->description(__('dashboard.landing_page.personal') . ': ' . number_format($personalSubmissions) . ' / ' . __('dashboard.landing_page.business') . ': ' . number_format($businessSubmissions))
+                ->description(__('dashboard.landing_page.personal').': '.number_format($personalSubmissions).' / '.__('dashboard.landing_page.business').': '.number_format($businessSubmissions))
                 ->icon('heroicon-o-arrow-trending-up')
                 ->color('warning'),
         ];

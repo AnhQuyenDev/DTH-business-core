@@ -24,7 +24,7 @@ class QuotationEmailCrmSyncer
         ?int $emailLogId = null,
         ?int $staffId = null,
     ): void {
-        if (!$quotation->customer) {
+        if (! $quotation->customer) {
             return;
         }
 
@@ -60,7 +60,7 @@ class QuotationEmailCrmSyncer
     ): void {
         $customer = $quotation->customer;
 
-        if (!$customer) {
+        if (! $customer) {
             return;
         }
 

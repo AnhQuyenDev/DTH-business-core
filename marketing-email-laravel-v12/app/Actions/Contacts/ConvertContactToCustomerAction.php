@@ -10,14 +10,12 @@ use App\Enums\Crm\CustomerConsentStatus;
 use App\Enums\Crm\CustomerConversionReason;
 use App\Enums\Crm\CustomerStatus;
 use App\Enums\Crm\QualificationResult;
-use App\Models\Crm\ContactQualification;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\Contact;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 final readonly class ConvertContactToCustomerAction
 {

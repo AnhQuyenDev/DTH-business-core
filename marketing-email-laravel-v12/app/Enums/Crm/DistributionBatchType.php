@@ -24,12 +24,12 @@ enum DistributionBatchType: string
     public function label(): string
     {
         return match ($this) {
-            self::Initial      => __('enum.distribution_batch_type.initial'),
-            self::NewCustomer  => __('enum.distribution_batch_type.new_customer'),
+            self::Initial => __('enum.distribution_batch_type.initial'),
+            self::NewCustomer => __('enum.distribution_batch_type.new_customer'),
             self::StaffAbsence => __('enum.distribution_batch_type.staff_absence'),
-            self::StaffReturn  => __('enum.distribution_batch_type.staff_return'),
-            self::Rebalance    => __('enum.distribution_batch_type.rebalance'),
-            self::Manual       => __('enum.distribution_batch_type.manual'),
+            self::StaffReturn => __('enum.distribution_batch_type.staff_return'),
+            self::Rebalance => __('enum.distribution_batch_type.rebalance'),
+            self::Manual => __('enum.distribution_batch_type.manual'),
         };
     }
 

@@ -21,9 +21,9 @@ enum SendingAccountStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Active   => __('enum.sending_account_status.active'),
+            self::Active => __('enum.sending_account_status.active'),
             self::Inactive => __('enum.sending_account_status.inactive'),
-            self::Testing  => __('enum.sending_account_status.testing'),
+            self::Testing => __('enum.sending_account_status.testing'),
         };
     }
 }

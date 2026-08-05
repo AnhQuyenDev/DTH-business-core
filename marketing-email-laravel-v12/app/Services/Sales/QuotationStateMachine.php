@@ -18,12 +18,13 @@ class QuotationStateMachine
     public function canTransition(QuotationStatus $current, QuotationStatus $target): bool
     {
         $allowed = self::$transitions[$current->value] ?? [];
+
         return in_array($target->value, $allowed, true);
     }
 
     public function validateTransition(QuotationStatus $current, QuotationStatus $target): void
     {
-        if (!$this->canTransition($current, $target)) {
+        if (! $this->canTransition($current, $target)) {
             throw new \InvalidArgumentException(
                 "Cannot transition from {$current->value} to {$target->value}"
             );

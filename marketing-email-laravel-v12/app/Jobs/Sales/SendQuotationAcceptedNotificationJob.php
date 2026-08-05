@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Sales;
 
+use App\Mail\Sales\QuotationAcceptedMail;
 use App\Models\Sales\Quotation;
 use App\Services\Sales\QuotationInteractionService;
 use Illuminate\Bus\Queueable;
@@ -11,7 +12,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\Sales\QuotationAcceptedMail;
 
 class SendQuotationAcceptedNotificationJob implements ShouldQueue
 {
@@ -32,6 +32,7 @@ class SendQuotationAcceptedNotificationJob implements ShouldQueue
                 'quotation_id' => $this->quotation->id,
                 'code' => $this->quotation->quotation_code,
             ]);
+
             return;
         }
 

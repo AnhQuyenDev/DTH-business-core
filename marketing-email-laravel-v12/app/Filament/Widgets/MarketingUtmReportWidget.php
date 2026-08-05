@@ -12,7 +12,7 @@ class MarketingUtmReportWidget extends Widget
 {
     protected static string $view = 'filament.widgets.utm-report-widget';
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public ?int $landingPageId = null;
 

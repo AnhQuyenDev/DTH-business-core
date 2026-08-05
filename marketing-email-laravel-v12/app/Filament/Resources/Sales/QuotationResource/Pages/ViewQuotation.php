@@ -4,14 +4,16 @@ namespace App\Filament\Resources\Sales\QuotationResource\Pages;
 
 use App\Enums\Sales\QuotationStatus;
 use App\Filament\Resources\Sales\QuotationResource;
-use App\Models\Sales\Quotation;
+use App\Models\Crm\Customer;
+use App\Models\Marketing\EmailTemplate;
 use App\Services\Sales\QuotationApprovalService;
 use App\Services\Sales\QuotationMailService;
 use App\Services\Sales\QuotationPdfService;
+use App\Services\Sales\QuotationTemplateRenderer;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Set;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -54,12 +56,12 @@ class ViewQuotation extends ViewRecord
                 ->form([
                     Select::make('customer_id')
                         ->label(__('field.customer'))
-                        ->options(\App\Models\Crm\Customer::query()->orderBy('display_name')->pluck('display_name', 'id'))
+                        ->options(Customer::query()->orderBy('display_name')->pluck('display_name', 'id'))
                         ->searchable()
                         ->preload()
                         ->default($q->customer_id)
                         ->live()
-                        ->afterStateUpdated(fn (Set $set, ?string $state) => $set('recipient_email', \App\Models\Crm\Customer::find($state)?->email)),
+                        ->afterStateUpdated(fn (Set $set, ?string $state) => $set('recipient_email', Customer::find($state)?->email)),
                     TextInput::make('recipient_email')
                         ->label(__('field.recipient_email'))
                         ->email()
@@ -67,20 +69,20 @@ class ViewQuotation extends ViewRecord
                         ->default($q->customer?->email),
                     Select::make('template_id')
                         ->label(__('field.email_template'))
-                        ->options(\App\Models\Marketing\EmailTemplate::query()->whereHas('categoryRelation', fn ($q) => $q->where('slug', 'quotation'))->where('status', 'active')->pluck('name', 'id'))
+                        ->options(EmailTemplate::query()->whereHas('categoryRelation', fn ($q) => $q->where('slug', 'quotation'))->where('status', 'active')->pluck('name', 'id'))
                         ->searchable()
                         ->preload()
                         ->helperText(__('field.email_template_helper'))
                         ->live()
                         ->afterStateUpdated(function (Set $set, ?string $state) use ($q) {
-                            if (!$state) {
+                            if (! $state) {
                                 return;
                             }
-                            $template = \App\Models\Marketing\EmailTemplate::find($state);
-                            if (!$template) {
+                            $template = EmailTemplate::find($state);
+                            if (! $template) {
                                 return;
                             }
-                            $rendered = app(\App\Services\Sales\QuotationTemplateRenderer::class)->render($template, $q);
+                            $rendered = app(QuotationTemplateRenderer::class)->render($template, $q);
                             $set('subject', $rendered['subject']);
                             $set('body', $rendered['body']);
                         }),
@@ -105,10 +107,10 @@ class ViewQuotation extends ViewRecord
                     app(QuotationPdfService::class)->generate($q);
                     $this->redirect($this->getUrl(['record' => $this->record]));
                 })
-                ->visible(fn () => !$q->status->isTerminal()),
+                ->visible(fn () => ! $q->status->isTerminal()),
 
             Action::make('cancel')->label(__('action.cancel'))->color('danger')
-                ->visible(fn () => !$q->status->isTerminal() && auth()->user()->can('sales.cancel-quotations'))
+                ->visible(fn () => ! $q->status->isTerminal() && auth()->user()->can('sales.cancel-quotations'))
                 ->action(function () use ($q) {
                     app(QuotationApprovalService::class)->logCancellation($q, auth()->user());
                     $this->redirect($this->getUrl(['record' => $this->record]));

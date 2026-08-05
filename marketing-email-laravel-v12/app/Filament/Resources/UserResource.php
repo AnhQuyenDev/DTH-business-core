@@ -91,7 +91,7 @@ class UserResource extends Resource
             TextColumn::make('name')->label(__('field.name'))->searchable()->sortable(),
             TextColumn::make('email')->label(__('field.email'))->searchable()->sortable(),
             TextColumn::make('role')->label(__('field.role'))->badge()
-                ->formatStateUsing(fn (?string $state): string => $state ? __('enum.role.' . $state) : '')
+                ->formatStateUsing(fn (?string $state): string => $state ? __('enum.role.'.$state) : '')
                 ->color(fn (?string $state): string => match ($state) {
                     'admin' => 'danger',
                     'marketing_manager', 'customer_service_manager' => 'warning',

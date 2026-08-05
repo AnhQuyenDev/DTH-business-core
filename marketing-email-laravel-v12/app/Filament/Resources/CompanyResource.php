@@ -21,7 +21,6 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
 
 class CompanyResource extends Resource
 {
@@ -49,28 +48,6 @@ class CompanyResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('resource.company.plural');
-    }
-
-    public static function canViewAny(): bool
-    {
-        $user = auth()->user();
-
-        return ($user?->isAdmin() || $user?->isCustomerServiceManager() || $user?->isCustomerServiceStaff()) ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        return false;
-    }
-
-    public static function canEdit(Model $record): bool
-    {
-        return auth()->user()?->isAdmin() ?? false;
-    }
-
-    public static function canDelete(Model $record): bool
-    {
-        return auth()->user()?->isAdmin() ?? false;
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -178,5 +155,45 @@ class CompanyResource extends Resource
             'view' => Pages\ViewCompany::route('/{record}'),
             'edit' => Pages\EditCompany::route('/{record}/edit'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return config('business_flow.v2_enabled')
+            && static::userCanViewCompanies();
+    }
+
+    public static function canViewAny(): bool
+    {
+        return config('business_flow.v2_enabled')
+            && static::userCanViewCompanies();
+    }
+
+    public static function canCreate(): bool
+    {
+        return config('business_flow.v2_enabled')
+            && (auth()->user()?->isAdmin() ?? false);
+    }
+
+    public static function canEdit($record): bool
+    {
+        return static::canCreate();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return static::canCreate();
+    }
+
+    private static function userCanViewCompanies(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null
+            && (
+                $user->isAdmin()
+                || $user->isCustomerServiceManager()
+                || $user->isCustomerServiceStaff()
+            );
     }
 }

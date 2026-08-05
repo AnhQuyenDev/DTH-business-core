@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\SegmentResource\Pages;
-use App\Models\Crm\Customer;
+use App\Models\Crm\Staff;
 use App\Models\Marketing\ContactList;
 use App\Models\Marketing\Segment;
 use App\Models\Marketing\Tag;
@@ -16,10 +16,14 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class SegmentResource extends Resource
 {
@@ -31,6 +35,7 @@ class SegmentResource extends Resource
     {
         return __('navigation.group.marketing');
     }
+
     public static function getNavigationLabel(): string
     {
         return __('resource.segment.singular');
@@ -58,12 +63,12 @@ class SegmentResource extends Resource
         return auth()->user()?->can('marketing.manage-segments') ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return auth()->user()?->can('marketing.manage-segments') ?? false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return auth()->user()?->can('marketing.manage-segments') ?? false;
     }
@@ -105,7 +110,7 @@ class SegmentResource extends Resource
                                 ])
                                 ->required()
                                 ->live()
-                                ->afterStateUpdated(fn (\Filament\Forms\Set $set) => $set('value', null)),
+                                ->afterStateUpdated(fn (Set $set) => $set('value', null)),
                             Select::make('operator')
                                 ->label(__('field.operator'))
                                 ->options([
@@ -120,10 +125,10 @@ class SegmentResource extends Resource
                                 ->label(__('field.days'))
                                 ->numeric()
                                 ->minValue(1)
-                                ->visible(fn (\Filament\Forms\Get $get) => $get('field') === 'converted_within_days')
-                                ->required(fn (\Filament\Forms\Get $get) => $get('field') === 'converted_within_days'),
+                                ->visible(fn (Get $get) => $get('field') === 'converted_within_days')
+                                ->required(fn (Get $get) => $get('field') === 'converted_within_days'),
                             Select::make('value')
-                                ->label(fn (\Filament\Forms\Get $get) => match ($get('field')) {
+                                ->label(fn (Get $get) => match ($get('field')) {
                                     'has_customer_tag' => __('field.tags'),
                                     'in_customer_list' => __('field.lists'),
                                     'customer_status_equals' => __('field.status'),
@@ -134,29 +139,29 @@ class SegmentResource extends Resource
                                     'business_tax_verified' => __('field.verified'),
                                     default => __('field.value'),
                                 })
-                                ->options(fn (\Filament\Forms\Get $get) => match ($get('field')) {
+                                ->options(fn (Get $get) => match ($get('field')) {
                                     'has_customer_tag' => Tag::query()->orderBy('name')->pluck('name', 'id'),
                                     'in_customer_list' => ContactList::query()->orderBy('name')->pluck('name', 'id'),
                                     'customer_status_equals' => ['potential' => __('enum.status.potential'), 'active' => __('enum.status.active'), 'inactive' => __('enum.status.inactive'), 'blocked' => __('enum.status.blocked'), 'archived' => __('enum.status.archived')],
                                     'customer_lifecycle_equals' => ['new_customer' => __('enum.lifecycle.new_customer'), 'engaging' => __('enum.lifecycle.engaging'), 'negotiating' => __('enum.lifecycle.negotiating'), 'active_customer' => __('enum.lifecycle.active_customer'), 'dormant' => __('enum.lifecycle.dormant'), 'lost' => __('enum.lifecycle.lost')],
                                     'customer_type_equals' => ['personal' => __('enum.customer_type.personal'), 'business' => __('enum.customer_type.business')],
-                                    'customer_owner_equals' => \App\Models\Crm\Staff::query()->orderBy('full_name')->pluck('full_name', 'id'),
+                                    'customer_owner_equals' => Staff::query()->orderBy('full_name')->pluck('full_name', 'id'),
                                     'consent_status_equals' => ['subscribed' => __('enum.consent.subscribed'), 'unsubscribed' => __('enum.consent.unsubscribed'), 'pending' => __('enum.consent.pending'), 'bounced' => __('enum.consent.bounced')],
                                     'business_tax_verified' => ['verified' => __('enum.tax.verified'), 'unverified' => __('enum.tax.unverified')],
                                     default => [],
                                 })
-                                ->searchable(fn (\Filament\Forms\Get $get) => in_array($get('field'), ['has_customer_tag', 'in_customer_list', 'customer_owner_equals']))
-                                ->visible(fn (\Filament\Forms\Get $get) => in_array($get('field'), ['has_customer_tag', 'in_customer_list', 'customer_status_equals', 'customer_lifecycle_equals', 'customer_type_equals', 'customer_owner_equals', 'consent_status_equals', 'business_tax_verified']))
-                                ->required(fn (\Filament\Forms\Get $get) => in_array($get('field'), ['has_customer_tag', 'in_customer_list', 'customer_status_equals', 'customer_lifecycle_equals', 'customer_type_equals', 'customer_owner_equals', 'consent_status_equals', 'business_tax_verified']))
+                                ->searchable(fn (Get $get) => in_array($get('field'), ['has_customer_tag', 'in_customer_list', 'customer_owner_equals']))
+                                ->visible(fn (Get $get) => in_array($get('field'), ['has_customer_tag', 'in_customer_list', 'customer_status_equals', 'customer_lifecycle_equals', 'customer_type_equals', 'customer_owner_equals', 'consent_status_equals', 'business_tax_verified']))
+                                ->required(fn (Get $get) => in_array($get('field'), ['has_customer_tag', 'in_customer_list', 'customer_status_equals', 'customer_lifecycle_equals', 'customer_type_equals', 'customer_owner_equals', 'consent_status_equals', 'business_tax_verified']))
                                 ->columnSpan(2),
                             DatePicker::make('value_from')
                                 ->label(__('field.from'))
-                                ->visible(fn (\Filament\Forms\Get $get) => $get('field') === 'converted_between_dates')
-                                ->required(fn (\Filament\Forms\Get $get) => $get('field') === 'converted_between_dates'),
+                                ->visible(fn (Get $get) => $get('field') === 'converted_between_dates')
+                                ->required(fn (Get $get) => $get('field') === 'converted_between_dates'),
                             DatePicker::make('value_to')
                                 ->label(__('field.to'))
-                                ->visible(fn (\Filament\Forms\Get $get) => $get('field') === 'converted_between_dates')
-                                ->required(fn (\Filament\Forms\Get $get) => $get('field') === 'converted_between_dates'),
+                                ->visible(fn (Get $get) => $get('field') === 'converted_between_dates')
+                                ->required(fn (Get $get) => $get('field') === 'converted_between_dates'),
                         ])->columns(4),
                     ])
                     ->columnSpanFull(),
@@ -170,7 +175,7 @@ class SegmentResource extends Resource
             TextColumn::make('name')->label(__('field.name'))->searchable()->sortable(),
             TextColumn::make('slug')->label(__('field.slug'))->searchable()->toggleable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
-                ->formatStateUsing(fn (?string $state): string => $state ? __('field.status_' . $state) : __('common.not_available'))
+                ->formatStateUsing(fn (?string $state): string => $state ? __('field.status_'.$state) : __('common.not_available'))
                 ->color(fn (?string $state): string => match ($state) {
                     'active' => 'success',
                     'inactive' => 'danger',
@@ -179,7 +184,7 @@ class SegmentResource extends Resource
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable(),
         ])
             ->headerActions([
-                \Filament\Tables\Actions\Action::make('preview_count')
+                Action::make('preview_count')
                     ->label(__('action.preview_count'))
                     ->icon('heroicon-o-eye')
                     ->form([
@@ -199,7 +204,7 @@ class SegmentResource extends Resource
                             ->success()
                             ->send();
                     }),
-                \Filament\Tables\Actions\Action::make('preview_sample')
+                Action::make('preview_sample')
                     ->label(__('action.preview_sample'))
                     ->icon('heroicon-o-list-bullet')
                     ->form([

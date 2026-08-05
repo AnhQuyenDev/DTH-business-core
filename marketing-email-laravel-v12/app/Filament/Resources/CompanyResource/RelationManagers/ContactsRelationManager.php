@@ -3,12 +3,15 @@
 namespace App\Filament\Resources\CompanyResource\RelationManagers;
 
 use App\Enums\Crm\CompanyContactDecisionRole;
+use App\Models\Marketing\Contact;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables\Actions\CreateAction;
-use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\AttachAction;
+use Filament\Tables\Actions\DetachAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -17,52 +20,123 @@ class ContactsRelationManager extends RelationManager
 {
     protected static string $relationship = 'contacts';
 
-    public static function getTitle(Model $ownerRecord, string $pageClass): string
-    {
+    public static function getTitle(
+        Model $ownerRecord,
+        string $pageClass
+    ): string {
         return __('relation.title.company_contacts');
-    }
-
-    public function getLabel(): string
-    {
-        return __('relation.title.company_contacts');
-    }
-
-    public function form(Form $form): Form
-    {
-        return $form->schema([
-            Select::make('id')
-                ->label(__('field.contact'))
-                ->relationship('contacts', 'id')
-                ->getOptionLabelFromRecordUsing(fn ($record) => $record->full_name)
-                ->required(),
-            TextInput::make('job_title')->label(__('field.job_title')),
-            TextInput::make('department')->label(__('field.department')),
-            Select::make('decision_role')
-                ->label(__('field.decision_role'))
-                ->options(collect(CompanyContactDecisionRole::cases())->mapWithKeys(fn ($case) => [$case->value => ucfirst(str_replace('_', ' ', $case->value))])),
-        ]);
     }
 
     public function table(Table $table): Table
     {
+        $decisionRoleOptions = collect(
+            CompanyContactDecisionRole::cases()
+        )->mapWithKeys(
+            fn (CompanyContactDecisionRole $role): array => [
+                $role->value => $role->label(),
+            ]
+        )->all();
+
         return $table
             ->columns([
-                TextColumn::make('full_name')->label(__('field.contact'))->searchable(),
-                TextColumn::make('pivot.job_title')->label(__('field.job_title'))->searchable(),
-                TextColumn::make('pivot.department')->label(__('field.department'))->searchable(),
-                TextColumn::make('pivot.decision_role')->label(__('field.decision_role'))->badge(),
-                TextColumn::make('pivot.is_primary')->label(__('field.is_primary'))->badge()
-                    ->formatStateUsing(fn ($state): string => $state ? 'Có' : 'Không')
-                    ->color(fn ($state): string => $state ? 'success' : 'gray'),
-                TextColumn::make('pivot.is_active')->label(__('field.is_active'))->badge()
-                    ->formatStateUsing(fn ($state): string => $state ? 'Hoạt động' : 'Không hoạt động')
-                    ->color(fn ($state): string => $state ? 'success' : 'gray'),
+                TextColumn::make('full_name')
+                    ->label(__('field.contact')),
+                TextColumn::make('pivot.job_title')
+                    ->label(__('field.job_title')),
+                TextColumn::make('pivot.department')
+                    ->label(__('field.department')),
+                TextColumn::make('pivot.decision_role')
+                    ->label(__('field.decision_role'))
+                    ->badge()
+                    ->formatStateUsing(
+                        fn (?string $state): string => CompanyContactDecisionRole::tryFrom(
+                            (string) $state
+                        )?->label() ?? 'Khác'
+                    ),
+                IconColumn::make('pivot.is_primary')
+                    ->label(__('field.is_primary'))
+                    ->boolean(),
+                IconColumn::make('pivot.is_active')
+                    ->label(__('field.is_active'))
+                    ->boolean(),
             ])
             ->headerActions([
-                CreateAction::make()->label(__('action.add_contact_to_company')),
+                AttachAction::make()
+                    ->label(__('action.add_contact_to_company'))
+                    ->preloadRecordSelect()
+                    ->form(fn (AttachAction $action): array => [
+                        $action->getRecordSelect()
+                            ->label(__('field.contact'))
+                            ->getOptionLabelFromRecordUsing(
+                                fn (Contact $record): string => $record->full_name
+                                    ?: 'Contact #'.$record->id
+                            )
+                            ->searchable(),
+                        TextInput::make('job_title')
+                            ->label(__('field.job_title')),
+                        TextInput::make('department')
+                            ->label(__('field.department')),
+                        Select::make('decision_role')
+                            ->label(__('field.decision_role'))
+                            ->options($decisionRoleOptions)
+                            ->default(
+                                CompanyContactDecisionRole::Other->value
+                            )
+                            ->required(),
+                        Toggle::make('is_primary')
+                            ->label(__('field.is_primary'))
+                            ->default(false),
+                        Toggle::make('is_active')
+                            ->label(__('field.is_active'))
+                            ->default(true),
+                    ])
+                    ->visible(
+                        fn (): bool => auth()->user()?->isAdmin() ?? false
+                    ),
             ])
             ->actions([
-                EditAction::make(),
+                Action::make('edit_membership')
+                    ->label(__('action.edit'))
+                    ->icon('heroicon-o-pencil-square')
+                    ->fillForm(fn (Contact $record): array => [
+                        'job_title' => $record->pivot?->job_title,
+                        'department' => $record->pivot?->department,
+                        'decision_role' => $record->pivot?->decision_role,
+                        'is_primary' => (bool) $record->pivot?->is_primary,
+                        'is_active' => (bool) $record->pivot?->is_active,
+                    ])
+                    ->form([
+                        TextInput::make('job_title'),
+                        TextInput::make('department'),
+                        Select::make('decision_role')
+                            ->options($decisionRoleOptions)
+                            ->required(),
+                        Toggle::make('is_primary'),
+                        Toggle::make('is_active'),
+                    ])
+                    ->action(function (
+                        Contact $record,
+                        array $data
+                    ): void {
+                        if (($data['is_primary'] ?? false) === true) {
+                            $this->getOwnerRecord()
+                                ->contacts()
+                                ->newPivotStatement()
+                                ->where('company_id', $this->getOwnerRecord()->id)
+                                ->update(['is_primary' => false]);
+                        }
+
+                        $this->getOwnerRecord()
+                            ->contacts()
+                            ->updateExistingPivot($record->id, $data);
+                    })
+                    ->visible(
+                        fn (): bool => auth()->user()?->isAdmin() ?? false
+                    ),
+                DetachAction::make()
+                    ->visible(
+                        fn (): bool => auth()->user()?->isAdmin() ?? false
+                    ),
             ]);
     }
 }

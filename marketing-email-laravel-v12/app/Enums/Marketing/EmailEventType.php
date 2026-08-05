@@ -28,16 +28,16 @@ enum EmailEventType: string
     public function label(): string
     {
         return match ($this) {
-            self::Queued        => __('enum.email_event.queued'),
-            self::Sent          => __('enum.email_event.sent'),
-            self::Delivered     => __('enum.email_event.delivered'),
-            self::Opened        => __('enum.email_event.opened'),
-            self::Clicked       => __('enum.email_event.clicked'),
-            self::Failed        => __('enum.email_event.failed'),
-            self::Bounced       => __('enum.email_event.bounced'),
-            self::Complained    => __('enum.email_event.complained'),
-            self::Unsubscribed  => __('enum.email_event.unsubscribed'),
-            self::Skipped       => __('enum.email_event.skipped'),
+            self::Queued => __('enum.email_event.queued'),
+            self::Sent => __('enum.email_event.sent'),
+            self::Delivered => __('enum.email_event.delivered'),
+            self::Opened => __('enum.email_event.opened'),
+            self::Clicked => __('enum.email_event.clicked'),
+            self::Failed => __('enum.email_event.failed'),
+            self::Bounced => __('enum.email_event.bounced'),
+            self::Complained => __('enum.email_event.complained'),
+            self::Unsubscribed => __('enum.email_event.unsubscribed'),
+            self::Skipped => __('enum.email_event.skipped'),
         };
     }
 }

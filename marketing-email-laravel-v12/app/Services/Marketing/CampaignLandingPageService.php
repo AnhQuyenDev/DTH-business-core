@@ -12,7 +12,7 @@ class CampaignLandingPageService
     {
         $campaign->update(['landing_page_id' => $lp->id]);
 
-        if (!$lp->campaign_id) {
+        if (! $lp->campaign_id) {
             $lp->update(['campaign_id' => $campaign->id]);
         }
     }
@@ -21,7 +21,7 @@ class CampaignLandingPageService
     {
         if ($campaign->landing_page_id) {
             $lp = $campaign->landingPage;
-            if (!$lp || !$lp->isPublished()) {
+            if (! $lp || ! $lp->isPublished()) {
                 throw new \InvalidArgumentException('Landing Page phải được publish trước khi gửi campaign.');
             }
         }
@@ -33,10 +33,11 @@ class CampaignLandingPageService
         if (! $template) {
             return null;
         }
-        $body = $template->html_body . ' ' . ($template->text_body ?? '');
+        $body = $template->html_body.' '.($template->text_body ?? '');
         if (! Str::contains($body, '{{landing_page_url}}')) {
             return __('helper.template_missing_landing_url');
         }
+
         return null;
     }
 
@@ -46,7 +47,7 @@ class CampaignLandingPageService
 
         $utmCampaign = trim((string) ($campaign->name ?? ''));
         if ($utmCampaign === '') {
-            $utmCampaign = 'campaign-' . $campaign->id;
+            $utmCampaign = 'campaign-'.$campaign->id;
         }
 
         return route('marketing.landing-pages.public.show', [

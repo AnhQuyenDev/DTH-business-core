@@ -20,6 +20,8 @@ use App\Models\Marketing\LandingPageSubmission;
 use App\Models\Marketing\Segment;
 use App\Models\Marketing\Tag;
 use App\Services\Crm\CompanyCodeGenerator;
+use App\Services\Crm\CompanyContactLinkService;
+use App\Services\Crm\CompanyNormalizationService;
 use App\Services\Crm\CompanyResolutionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -107,10 +109,13 @@ class LandingPageSubmissionService
             ]);
 
             if ($resolvedType === 'business' && isset($profile)) {
-                $company = $this->resolveCompany($contact, $profile, $validatedData, $formTemplate, $submission);
-                if ($company) {
-                    $submission->update(['company_id' => $company->id]);
-                }
+                $this->resolveCompany(
+                    $contact,
+                    $profile,
+                    $validatedData,
+                    $formTemplate,
+                    $submission
+                );
             }
 
             if ($landingPage->auto_create_segment) {
@@ -174,13 +179,6 @@ class LandingPageSubmissionService
             $profile = BusinessContactProfile::where('business_phone', $normalizedPhone)->first();
             if ($profile) {
                 return $profile->contact;
-            }
-        }
-
-        if (isset($validatedData['tax_code']) && filled($validatedData['tax_code'])) {
-            $contact = Contact::whereHas('businessProfile', fn ($q) => $q->where('tax_code', $validatedData['tax_code']))->first();
-            if ($contact) {
-                return $contact;
             }
         }
 
@@ -265,7 +263,9 @@ class LandingPageSubmissionService
                     continue;
                 }
                 if ($profileField === 'tax_code') {
-                    $profileData['tax_code'] = $value;
+                    $profileData['tax_code'] = app(
+                        CompanyNormalizationService::class
+                    )->normalizeTaxCode($value);
 
                     continue;
                 }
@@ -279,19 +279,49 @@ class LandingPageSubmissionService
         );
     }
 
-    protected function resolveCompany(Contact $contact, ?BusinessContactProfile $profile, array $validatedData, $formTemplate, LandingPageSubmission $submission): ?Company
-    {
-        if (! config('business_flow.v2_enabled') || ! config('business_flow.company_resolution_enabled')) {
+    protected function resolveCompany(
+        Contact $contact,
+        ?BusinessContactProfile $profile,
+        array $validatedData,
+        $formTemplate,
+        LandingPageSubmission $submission,
+    ): ?Company {
+        if (
+            ! config('business_flow.v2_enabled')
+            || ! config('business_flow.company_resolution_enabled')
+        ) {
             return null;
         }
 
-        $taxCodeKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'tax_code');
-        $nameKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'company_name');
-        $emailKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'business_email');
+        $taxCodeKey = $this->findFieldKeyByMapping(
+            $formTemplate,
+            'business',
+            'tax_code'
+        );
 
-        $companyName = $nameKey ? ($validatedData[$nameKey] ?? null) : null;
-        $businessEmail = $emailKey ? ($validatedData[$emailKey] ?? null) : null;
-        $taxCode = $taxCodeKey ? ($validatedData[$taxCodeKey] ?? null) : null;
+        $nameKey = $this->findFieldKeyByMapping(
+            $formTemplate,
+            'business',
+            'company_name'
+        );
+
+        $emailKey = $this->findFieldKeyByMapping(
+            $formTemplate,
+            'business',
+            'business_email'
+        );
+
+        $companyName = $nameKey
+            ? ($validatedData[$nameKey] ?? null)
+            : null;
+
+        $businessEmail = $emailKey
+            ? ($validatedData[$emailKey] ?? null)
+            : null;
+
+        $taxCode = $taxCodeKey
+            ? ($validatedData[$taxCodeKey] ?? null)
+            : null;
 
         if (blank($taxCode) && blank($businessEmail) && blank($companyName)) {
             return null;
@@ -303,67 +333,114 @@ class LandingPageSubmissionService
             'company_name' => $companyName,
         ]);
 
-        if ($result->found()) {
+        if ($result->isAutoMatch()) {
             $company = $result->company;
-
-            if ($result->confidenceScore < 100) {
-                CompanyMatchCandidate::updateOrCreate(
-                    [
-                        'submission_id' => $submission->id,
-                        'contact_id' => $contact->id,
-                        'suggested_company_id' => $company->id,
+        } elseif ($result->found()) {
+            CompanyMatchCandidate::query()->updateOrCreate(
+                [
+                    'submission_id' => $submission->id,
+                    'contact_id' => $contact->id,
+                    'suggested_company_id' => $result->company->id,
+                ],
+                [
+                    'confidence_score' => $result->confidenceScore,
+                    'matched_by' => $result->matchedBy,
+                    'status' => 'pending',
+                    'evidence' => [
+                        'submitted_company_name' => $companyName,
+                        'submitted_tax_code' => app(
+                            CompanyNormalizationService::class
+                        )->normalizeTaxCode($taxCode),
+                        'submitted_business_email' => $businessEmail,
+                        'suggested_company_name' => $result->company->legal_name,
+                        'suggested_company_tax_code' => $result->company->tax_code,
+                        'suggested_company_domain' => $result->company->email_domain,
                     ],
-                    [
-                        'confidence_score' => $result->confidenceScore,
-                        'matched_by' => $result->matchedBy,
-                        'status' => 'pending',
-                    ]
-                );
-            }
+                    'reviewed_by_user_id' => null,
+                    'reviewed_at' => null,
+                ]
+            );
+
+            return null;
         } else {
-            $company = $this->createCompanyFromSubmission($submission, $validatedData, $formTemplate);
+            $company = $this->createCompanyFromSubmission(
+                $submission,
+                $validatedData,
+                $formTemplate
+            );
         }
 
-        if (! $company) {
+        if ($company === null) {
             return null;
         }
 
-        $contact->companies()->syncWithoutDetaching([$company->id => [
-            'job_title' => $profile?->contact_position,
-            'department' => null,
-            'decision_role' => 'other',
-            'is_primary' => true,
-            'is_active' => true,
-            'joined_at' => now()->toDateString(),
-        ]]);
+        app(CompanyContactLinkService::class)->link(
+            company: $company,
+            contact: $contact,
+            profile: $profile,
+            submission: $submission,
+            jobTitle: $profile?->contact_position,
+        );
 
         return $company;
     }
 
-    protected function createCompanyFromSubmission(LandingPageSubmission $submission, array $validatedData, $formTemplate): ?Company
-    {
-        $taxCodeKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'tax_code');
-        $nameKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'company_name');
-        $emailKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'business_email');
-        $addressKey = $this->findFieldKeyByMapping($formTemplate, 'business', 'company_address');
+    protected function createCompanyFromSubmission(
+        LandingPageSubmission $submission,
+        array $validatedData,
+        $formTemplate,
+    ): ?Company {
+        $taxCodeKey = $this->findFieldKeyByMapping(
+            $formTemplate,
+            'business',
+            'tax_code'
+        );
 
-        $companyName = $nameKey ? ($validatedData[$nameKey] ?? null) : null;
+        $nameKey = $this->findFieldKeyByMapping(
+            $formTemplate,
+            'business',
+            'company_name'
+        );
+
+        $emailKey = $this->findFieldKeyByMapping(
+            $formTemplate,
+            'business',
+            'business_email'
+        );
+
+        $addressKey = $this->findFieldKeyByMapping(
+            $formTemplate,
+            'business',
+            'company_address'
+        );
+
+        $companyName = $nameKey
+            ? ($validatedData[$nameKey] ?? null)
+            : null;
 
         if (blank($companyName)) {
             return null;
         }
 
-        $resolver = app(CompanyResolutionService::class);
-        $businessEmail = $emailKey ? ($validatedData[$emailKey] ?? null) : null;
-        $taxCode = $taxCodeKey ? ($validatedData[$taxCodeKey] ?? null) : null;
+        $normalizer = app(CompanyNormalizationService::class);
+        $businessEmail = $emailKey
+            ? ($validatedData[$emailKey] ?? null)
+            : null;
+        $taxCode = $taxCodeKey
+            ? ($validatedData[$taxCodeKey] ?? null)
+            : null;
 
         return Company::query()->create([
             'company_code' => app(CompanyCodeGenerator::class)->next(),
-            'legal_name' => $companyName,
-            'normalized_name' => $resolver->normalizeName($companyName),
-            'tax_code' => $taxCode ? preg_replace('/\D+/', '', $taxCode) : null,
-            'email_domain' => $resolver->extractBusinessDomain($businessEmail),
-            'address' => $addressKey ? ($validatedData[$addressKey] ?? null) : null,
+            'legal_name' => trim((string) $companyName),
+            'normalized_name' => $normalizer->normalizeName($companyName),
+            'tax_code' => $normalizer->normalizeTaxCode($taxCode),
+            'email_domain' => $normalizer->extractBusinessDomain(
+                $businessEmail
+            ),
+            'address' => $addressKey
+                ? ($validatedData[$addressKey] ?? null)
+                : null,
             'lifecycle_stage' => 'prospect',
             'created_from_submission_id' => $submission->id,
         ]);

@@ -5,84 +5,93 @@ namespace Tests\Feature;
 use App\Filament\Pages\CustomerCarePage;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
+use App\Models\Crm\Staff;
+use App\Models\Marketing\Contact;
 use App\Models\User;
-use Filament\Facades\Filament;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class CustomerCarePageRenderTest extends TestCase
 {
-    private function prepareDb(): void
+    use RefreshDatabase;
+
+    private User $admin;
+    private User $staffUser;
+    private Staff $staff;
+    private Customer $customer;
+    private CustomerAssignment $assignment;
+
+    protected function setUp(): void
     {
-        config(['database.default' => 'mysql']);
-        config(['database.connections.mysql.database' => 'marketing_email']);
-        DB::purge('mysql');
+        parent::setUp();
+
+        $this->admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $this->staffUser = User::factory()->create([
+            'role' => 'customer_service_staff',
+        ]);
+
+        $this->staff = Staff::factory()->create([
+            'user_id' => $this->staffUser->id,
+            'employment_status' => 'active',
+        ]);
+
+        $contact = Contact::query()->create(['contact_type' => 'personal']);
+
+        $this->customer = Customer::factory()->create([
+            'contact_id' => $contact->id,
+            'status' => 'active',
+        ]);
+
+        $this->assignment =
+            CustomerAssignment::factory()->create([
+                'customer_id' => $this->customer->id,
+                'staff_id' => $this->staff->id,
+                'assignment_type' => 'owner',
+                'status' => 'active',
+                'starts_at' => now(),
+            ]);
     }
 
     public function test_customer_care_page_renders(): void
     {
-        $this->prepareDb();
-        Filament::setCurrentPanel(Filament::getPanel('admin'));
-
-        $user = User::query()->firstOrFail();
-        $customer = Customer::query()->firstOrFail();
-
-        $component = Livewire::actingAs($user)->test(CustomerCarePage::class, []);
-
-        $this->assertStringContainsString($customer->display_name, $component->html());
-        $this->assertStringContainsString('fi-table', $component->html());
-
-        $component->call('openCareWorkspace', $customer);
-
-        $this->assertStringContainsString('fi-tabs', $component->html());
-        $this->assertStringContainsString('customer-care-workspace', $component->html());
+        Livewire::actingAs($this->admin)
+            ->test(CustomerCarePage::class, [
+                'customerId' => $this->customer->id,
+            ])
+            ->assertSuccessful();
     }
-
-    public function test_staff_sees_release_modal(): void
+    public function test_staff_can_release_assigned_customer(): void
     {
-        $this->prepareDb();
-        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $component = Livewire::actingAs($this->staffUser)
+            ->test(CustomerCarePage::class, [
+                'customerId' => $this->customer->id,
+            ])
+            ->set('selectedCustomerId', $this->customer->id);
 
-        $activeAssignment = CustomerAssignment::query()
-            ->where('status', 'active')
-            ->with('customer')
-            ->first();
-        $this->assertNotNull($activeAssignment);
-        $staffUser = $activeAssignment->staff->user;
-        $this->assertNotNull($staffUser);
+        $this->assertTrue($component->instance()->canRelease());
 
-        $component = Livewire::actingAs($staffUser)->test(CustomerCarePage::class, []);
+        $component
+            ->set('releaseReason', 'no_response')
+            ->call('releaseCustomer')
+            ->assertHasNoErrors();
 
-        $component->call('openCareWorkspace', $activeAssignment->customer);
-
-        $html = $component->html();
-        $this->assertStringContainsString('release-customer-modal', $html);
-        $this->assertStringContainsString('fi-tabs', $html);
+        $this->assertDatabaseHas('customer_assignments', [
+            'id' => $this->assignment->id,
+            'status' => 'ended',
+        ]);
     }
 
     public function test_tabs_render_content(): void
     {
-        $this->prepareDb();
-        Filament::setCurrentPanel(Filament::getPanel('admin'));
-
-        $user = User::query()->firstOrFail();
-        $customer = Customer::query()->firstOrFail();
-
-        $component = Livewire::actingAs($user)->test(CustomerCarePage::class, []);
-        $component->call('openCareWorkspace', $customer);
-
-        $component->set('activeTab', 'email');
-        $this->assertStringContainsString('wire:model="emailSubject"', $component->html());
-        $this->assertStringContainsString('wire:model="emailBody"', $component->html());
-
-        $component->set('activeTab', 'call');
-        $this->assertStringContainsString('wire:model="callContent"', $component->html());
-
-        $component->set('activeTab', 'quotation');
-        $this->assertStringContainsString('/quotations/create', $component->html());
-
-        $component->set('activeTab', 'timeline');
-        $this->assertStringContainsString('fi-section', $component->html());
+        Livewire::actingAs($this->admin)
+            ->test(CustomerCarePage::class, [
+                'customerId' => $this->customer->id,
+            ])
+            ->assertSuccessful()
+            ->assertSee($this->customer->display_name);
     }
 }

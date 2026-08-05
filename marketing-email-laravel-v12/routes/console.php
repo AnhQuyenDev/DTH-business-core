@@ -11,7 +11,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::call(function (): void {
-    dispatch(new ProcessScheduledCampaignsJob())->onQueue('marketing');
+    dispatch(new ProcessScheduledCampaignsJob)->onQueue('marketing');
 })->everyMinute();
 
 Schedule::command('sales:process-reminders')->everyMinute()->withoutOverlapping();
@@ -41,9 +41,10 @@ Artisan::command('i18n:audit-hardcoded {--path=* : Relative paths to scan} {--fa
     $findings = [];
 
     foreach ($paths as $path) {
-        $absolute = $root . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+        $absolute = $root.DIRECTORY_SEPARATOR.str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
         if (! File::exists($absolute)) {
-            $this->warn('Path not found: ' . $path);
+            $this->warn('Path not found: '.$path);
+
             continue;
         }
 
@@ -71,20 +72,21 @@ Artisan::command('i18n:audit-hardcoded {--path=* : Relative paths to scan} {--fa
                     foreach ($bladePatterns as $pattern) {
                         if (preg_match($pattern, $line)) {
                             $findings[] = [
-                                'file' => str_replace($root . DIRECTORY_SEPARATOR, '', $filePath),
+                                'file' => str_replace($root.DIRECTORY_SEPARATOR, '', $filePath),
                                 'line' => $lineNumber,
                                 'text' => trim($line),
                             ];
                             break;
                         }
                     }
+
                     continue;
                 }
 
                 foreach ($phpPatterns as $pattern) {
                     if (preg_match($pattern, $line)) {
                         $findings[] = [
-                            'file' => str_replace($root . DIRECTORY_SEPARATOR, '', $filePath),
+                            'file' => str_replace($root.DIRECTORY_SEPARATOR, '', $filePath),
                             'line' => $lineNumber,
                             'text' => trim($line),
                         ];
@@ -97,14 +99,14 @@ Artisan::command('i18n:audit-hardcoded {--path=* : Relative paths to scan} {--fa
 
     if (empty($findings)) {
         $this->info('No obvious hardcoded user-facing strings found in scanned paths.');
+
         return 0;
     }
 
-    $this->warn('Potential hardcoded user-facing strings: ' . count($findings));
+    $this->warn('Potential hardcoded user-facing strings: '.count($findings));
     foreach ($findings as $finding) {
-        $this->line($finding['file'] . ':' . $finding['line'] . '  ' . $finding['text']);
+        $this->line($finding['file'].':'.$finding['line'].'  '.$finding['text']);
     }
 
     return $this->option('fail') ? 1 : 0;
 })->purpose('Audit potential hardcoded user-facing strings for i18n cleanup');
-

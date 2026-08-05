@@ -45,6 +45,7 @@ final class LeadDistributionService
             $target = $strategyFn($eligibleStaff);
             if (! $target) {
                 $skipped++;
+
                 continue;
             }
 
@@ -92,6 +93,7 @@ final class LeadDistributionService
         return match ($strategy) {
             DistributionStrategy::RoundRobin => function (Collection $staff) {
                 static $index = 0;
+
                 return $staff->get($index++ % $staff->count());
             },
             DistributionStrategy::LeastLoaded => function (Collection $staff) {
@@ -107,6 +109,7 @@ final class LeadDistributionService
                 ]);
                 $minLoad = $loads->min();
                 $candidates = $staff->filter(fn (Staff $s) => $loads[$s->id] === $minLoad);
+
                 return $candidates->sortBy('id')->first();
             },
             DistributionStrategy::Weighted => function (Collection $staff) {
@@ -122,6 +125,7 @@ final class LeadDistributionService
                 ]);
                 $minLoad = $loads->min();
                 $candidates = $staff->filter(fn (Staff $s) => $loads[$s->id] === $minLoad);
+
                 return $candidates->sortBy('id')->first();
             },
             default => fn (Collection $staff) => $staff->sortBy('id')->first(),

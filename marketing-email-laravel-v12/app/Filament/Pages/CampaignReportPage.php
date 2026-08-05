@@ -4,7 +4,6 @@ namespace App\Filament\Pages;
 
 use App\Enums\Marketing\CampaignRecipientStatus;
 use App\Models\Marketing\Campaign;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;

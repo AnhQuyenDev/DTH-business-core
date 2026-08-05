@@ -31,6 +31,7 @@ class SendQuotationExpiredNotificationJob implements ShouldQueue
                 'quotation_id' => $this->quotation->id,
                 'code' => $this->quotation->quotation_code,
             ]);
+
             return;
         }
 

@@ -29,10 +29,10 @@ class FormField extends Model
     protected function casts(): array
     {
         return [
-            'options'     => 'array',
+            'options' => 'array',
             'is_required' => 'boolean',
             'tag_from_value' => 'boolean',
-            'field_type'  => FormFieldType::class,
+            'field_type' => FormFieldType::class,
         ];
     }
 

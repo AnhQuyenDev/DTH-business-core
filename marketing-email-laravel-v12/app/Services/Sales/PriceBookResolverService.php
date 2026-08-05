@@ -16,6 +16,7 @@ class PriceBookResolverService
     public function resolvePriceBook(User $user, int $priceBookId, string $customerType = 'personal'): ?PriceBook
     {
         $books = $this->accessService->getAccessiblePriceBooks($user, $customerType);
+
         return $books->firstWhere('id', $priceBookId);
     }
 

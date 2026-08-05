@@ -35,6 +35,14 @@
     "Tỷ lệ chuyển đổi": "Tỷ lệ chuyển đổi",
     "Tỷ lệ click": "Tỷ lệ click",
     "Tỷ lệ mở": "Tỷ lệ mở",
+    "Đối chiếu doanh nghiệp": "Đối chiếu doanh nghiệp",
+    "Chấp nhận ghép": "Chấp nhận ghép",
+    "Từ chối": "Từ chối",
+    "Giao Account Owner": "Giao Account Owner",
+    "Kết thúc phân công": "Kết thúc phân công",
+    "Người quyết định": "Người quyết định",
+    "Liên hệ kỹ thuật": "Liên hệ kỹ thuật",
+    "Liên hệ thanh toán": "Liên hệ thanh toán",
     "action.actions": "Hành động",
     "action.add_condition": "Thêm điều kiện",
     "action.add_contact_to_company": "Thêm liên hệ",
@@ -1498,5 +1506,6 @@
     "field.submission_type": "Loại biểu mẫu",
     "field.intake_status": "Tiếp nhận",
     "field.distribution_state": "Phân phối",
-    "field.crm_status": "Trạng thái CRM"
+    "field.crm_status": "Trạng thái CRM",
+    "unsubscribe.success_title": "Hủy đăng ký thành công"
 }

@@ -23,11 +23,11 @@ enum DistributionBatchStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Draft      => __('enum.distribution_batch_status.draft'),
+            self::Draft => __('enum.distribution_batch_status.draft'),
             self::Processing => __('enum.distribution_batch_status.processing'),
-            self::Completed  => __('enum.distribution_batch_status.completed'),
-            self::Failed     => __('enum.distribution_batch_status.failed'),
-            self::Reverted   => __('enum.distribution_batch_status.reverted'),
+            self::Completed => __('enum.distribution_batch_status.completed'),
+            self::Failed => __('enum.distribution_batch_status.failed'),
+            self::Reverted => __('enum.distribution_batch_status.reverted'),
         };
     }
 

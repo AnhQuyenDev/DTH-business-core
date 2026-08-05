@@ -13,7 +13,8 @@ class CreateStaff extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $nextId = (Staff::withTrashed()->max('id') ?? 0) + 1;
-        $data['employee_code'] = 'EMP-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        $data['employee_code'] = 'EMP-'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
+
         return $data;
     }
 }

@@ -6,7 +6,7 @@ use App\Enums\Marketing\CampaignRecipientStatus;
 use App\Enums\Marketing\CampaignStatus;
 use App\Enums\Marketing\EmailEventType;
 use App\Mail\MarketingCampaignMail;
-use App\Models\Crm\Customer;
+use App\Models\Marketing\Campaign;
 use App\Models\Marketing\CampaignRecipient;
 use App\Models\Marketing\EmailEvent;
 use App\Services\Marketing\TrackingLinkService;
@@ -23,9 +23,7 @@ class SendCampaignEmailJob implements ShouldQueue
 
     public int $tries = 3;
 
-    public function __construct(public int $campaignRecipientId)
-    {
-    }
+    public function __construct(public int $campaignRecipientId) {}
 
     public function handle(TrackingLinkService $trackingLinkService): void
     {
@@ -119,7 +117,7 @@ class SendCampaignEmailJob implements ShouldQueue
             ->where('status', CampaignRecipientStatus::Sent->value)
             ->count();
 
-        $campaign = \App\Models\Marketing\Campaign::query()->find($campaignId);
+        $campaign = Campaign::query()->find($campaignId);
 
         if ($campaign) {
             $campaign->update([

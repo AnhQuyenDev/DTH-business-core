@@ -42,7 +42,7 @@ class FormTemplatePreviewTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->user)->get(route('marketing.form-templates.preview', $template));
-        
+
         $response->assertStatus(200);
         $response->assertSee('Email');
         $response->assertSee('Gửi');
@@ -79,8 +79,8 @@ class FormTemplatePreviewTest extends TestCase
             'published_at' => now(),
         ]);
 
-        $response = $this->actingAs($this->user)->get(route('marketing.form-templates.preview', $template) . '?landing_page_id=' . $landingPage->id);
-        
+        $response = $this->actingAs($this->user)->get(route('marketing.form-templates.preview', $template).'?landing_page_id='.$landingPage->id);
+
         $response->assertStatus(200);
         // Should contain the theme variables
         $response->assertSee('--lp-primary: #7c3aed;');
@@ -108,7 +108,7 @@ class FormTemplatePreviewTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->user)->get(route('marketing.form-templates.preview', $template));
-        
+
         $response->assertStatus(200);
         // Should contain default theme
         $response->assertSee('--lp-primary: #2563eb;');

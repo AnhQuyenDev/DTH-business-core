@@ -11,7 +11,7 @@ class LeadPipelineKanbanWidget extends Widget
 {
     protected static string $view = 'filament.widgets.lead-pipeline-kanban-widget';
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public static function canView(): bool
     {
@@ -56,7 +56,7 @@ class LeadPipelineKanbanWidget extends Widget
                         $name = $lead->contact?->full_name
                             ?? $lead->contact?->company_name
                             ?? $lead->contact?->email
-                            ?? ('#' . $lead->contact_id);
+                            ?? ('#'.$lead->contact_id);
 
                         return [
                             'id' => $lead->id,

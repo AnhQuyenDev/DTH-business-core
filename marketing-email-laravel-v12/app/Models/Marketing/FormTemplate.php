@@ -42,16 +42,16 @@ class FormTemplate extends Model
     protected function casts(): array
     {
         return [
-            'auto_tag_names'      => 'array',
-            'auto_list_names'     => 'array',
-            'auto_create_tags'    => 'boolean',
-            'auto_create_lists'   => 'boolean',
+            'auto_tag_names' => 'array',
+            'auto_list_names' => 'array',
+            'auto_create_tags' => 'boolean',
+            'auto_create_lists' => 'boolean',
             'auto_create_segment' => 'boolean',
-            'audience_type'       => FormAudienceType::class,
-            'status'              => FormTemplateStatus::class,
-            'is_system_template'  => 'boolean',
-            'version'             => 'integer',
-            'schema'              => 'json',
+            'audience_type' => FormAudienceType::class,
+            'status' => FormTemplateStatus::class,
+            'is_system_template' => 'boolean',
+            'version' => 'integer',
+            'schema' => 'json',
         ];
     }
 
@@ -87,30 +87,30 @@ class FormTemplate extends Model
     public static function contactMappingOptions(?string $audienceType): array
     {
         $personalFields = [
-            'personal.first_name'    => 'Họ (First Name)',
-            'personal.last_name'     => 'Tên (Last Name)',
-            'personal.email'         => 'Email cá nhân (Personal Email)',
-            'personal.phone'         => 'SĐT cá nhân (Personal Phone)',
+            'personal.first_name' => 'Họ (First Name)',
+            'personal.last_name' => 'Tên (Last Name)',
+            'personal.email' => 'Email cá nhân (Personal Email)',
+            'personal.phone' => 'SĐT cá nhân (Personal Phone)',
             'personal.date_of_birth' => 'Ngày sinh (Date of Birth)',
-            'personal.gender'        => 'Giới tính (Gender)',
-            'personal.ward'          => 'Phường/Xã (Ward)',
-            'personal.district'      => 'Quận/Huyện (District)',
-            'personal.province'      => 'Tỉnh/Thành phố (Province)',
-            'personal.country'       => 'Quốc gia (Country)',
-            'personal.occupation'    => 'Ngành nghề (Occupation)',
+            'personal.gender' => 'Giới tính (Gender)',
+            'personal.ward' => 'Phường/Xã (Ward)',
+            'personal.district' => 'Quận/Huyện (District)',
+            'personal.province' => 'Tỉnh/Thành phố (Province)',
+            'personal.country' => 'Quốc gia (Country)',
+            'personal.occupation' => 'Ngành nghề (Occupation)',
         ];
 
         $businessFields = [
-            'business.tax_code'             => 'Mã số thuế (Tax Code)',
-            'business.company_name'         => 'Tên công ty (Company Name)',
-            'business.company_address'      => 'Địa chỉ công ty (Company Address)',
-            'business.ward'                 => 'Phường/Xã (Ward)',
-            'business.province'             => 'Tỉnh/Thành phố (Province)',
+            'business.tax_code' => 'Mã số thuế (Tax Code)',
+            'business.company_name' => 'Tên công ty (Company Name)',
+            'business.company_address' => 'Địa chỉ công ty (Company Address)',
+            'business.ward' => 'Phường/Xã (Ward)',
+            'business.province' => 'Tỉnh/Thành phố (Province)',
             'business.legal_representative' => 'Họ tên người đại diện (Legal Representative)',
-            'business.contact_position'     => 'Chức vụ (Position)',
-            'business.business_email'       => 'Email công ty (Business Email)',
-            'business.business_phone'       => 'SĐT công ty (Business Phone)',
-            'business.industry'             => 'Lĩnh vực (Industry)',
+            'business.contact_position' => 'Chức vụ (Position)',
+            'business.business_email' => 'Email công ty (Business Email)',
+            'business.business_phone' => 'SĐT công ty (Business Phone)',
+            'business.industry' => 'Lĩnh vực (Industry)',
         ];
 
         $base = ['' => '— None —'];
@@ -118,7 +118,7 @@ class FormTemplate extends Model
         return match ($audienceType) {
             'personal' => $base + $personalFields,
             'business' => $base + $businessFields,
-            default    => $base + $personalFields + $businessFields,
+            default => $base + $personalFields + $businessFields,
         };
     }
 }

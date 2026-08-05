@@ -24,12 +24,12 @@ enum CustomerConsentStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Pending       => __('enum.consent.pending'),
-            self::Subscribed    => __('enum.consent.subscribed'),
-            self::Unsubscribed  => __('enum.consent.unsubscribed'),
-            self::Bounced       => __('enum.consent.bounced'),
-            self::Complained    => __('enum.consent.complained'),
-            self::DoNotContact  => __('enum.consent.do_not_contact'),
+            self::Pending => __('enum.consent.pending'),
+            self::Subscribed => __('enum.consent.subscribed'),
+            self::Unsubscribed => __('enum.consent.unsubscribed'),
+            self::Bounced => __('enum.consent.bounced'),
+            self::Complained => __('enum.consent.complained'),
+            self::DoNotContact => __('enum.consent.do_not_contact'),
         };
     }
 

@@ -30,7 +30,7 @@ class QrPaymentService
 
         $url = "https://img.vietqr.io/image/{$qrContent}-compact.png";
         if ($params) {
-            $url .= '?' . $params;
+            $url .= '?'.$params;
         }
 
         return $url;
@@ -64,6 +64,7 @@ class QrPaymentService
         if (mb_strlen($cleanName) > $maxLen) {
             $cleanName = mb_substr($cleanName, 0, $maxLen);
         }
+
         return "{$quotationCode} {$cleanName}";
     }
 
@@ -86,7 +87,7 @@ class QrPaymentService
     ): ?string {
         $bin = VnBank::query()->where('code', strtoupper($bankCode))->value('bin');
 
-        if (!$bin || !preg_match('/^\d{6}$/', (string) $bin)) {
+        if (! $bin || ! preg_match('/^\d{6}$/', (string) $bin)) {
             return null;
         }
 
@@ -96,7 +97,7 @@ class QrPaymentService
         }
 
         $template = $template ?: 'compact';
-        $cacheKey = 'vietqr.v2.' . hash('sha256', implode('|', [
+        $cacheKey = 'vietqr.v2.'.hash('sha256', implode('|', [
             $bankCode,
             $accountNo,
             (int) ($amount ?? 0),
@@ -142,7 +143,7 @@ class QrPaymentService
 
                 if ($response->ok() && $response->json('code') === '00') {
                     $data = $response->json('data') ?? [];
-                    if (!empty($data['qrDataURL'])) {
+                    if (! empty($data['qrDataURL'])) {
                         return $data['qrDataURL'];
                     }
                 }
@@ -188,6 +189,7 @@ class QrPaymentService
     {
         $text = preg_replace('/[^A-Za-z0-9\s\.\-_\/]/u', '', $text);
         $text = trim(preg_replace('/\s+/', ' ', $text));
+
         return mb_substr($text, 0, 50);
     }
 }

@@ -12,7 +12,7 @@ class LandingPageThemeServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new LandingPageThemeService();
+        $this->service = new LandingPageThemeService;
     }
 
     public function test_it_detects_css_variables_from_vps_html(): void

@@ -27,15 +27,15 @@ enum CampaignStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Draft     => __('enum.campaign_status.draft'),
-            self::Testing   => __('enum.campaign_status.testing'),
+            self::Draft => __('enum.campaign_status.draft'),
+            self::Testing => __('enum.campaign_status.testing'),
             self::Scheduled => __('enum.campaign_status.scheduled'),
             self::Preparing => __('enum.campaign_status.preparing'),
-            self::Sending   => __('enum.campaign_status.sending'),
-            self::Sent      => __('enum.campaign_status.sent'),
-            self::Paused    => __('enum.campaign_status.paused'),
+            self::Sending => __('enum.campaign_status.sending'),
+            self::Sent => __('enum.campaign_status.sent'),
+            self::Paused => __('enum.campaign_status.paused'),
             self::Cancelled => __('enum.campaign_status.cancelled'),
-            self::Failed    => __('enum.campaign_status.failed'),
+            self::Failed => __('enum.campaign_status.failed'),
         };
     }
 }

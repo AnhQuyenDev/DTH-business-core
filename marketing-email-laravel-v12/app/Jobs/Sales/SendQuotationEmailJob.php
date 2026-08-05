@@ -22,6 +22,7 @@ class SendQuotationEmailJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public array $backoff = [60, 300];
 
     public function __construct(
@@ -36,6 +37,7 @@ class SendQuotationEmailJob implements ShouldQueue
                 'email_log_id' => $this->emailLog->id,
                 'status' => $this->emailLog->status,
             ]);
+
             return;
         }
 
@@ -101,7 +103,7 @@ class SendQuotationEmailJob implements ShouldQueue
     {
         $quotation = $this->emailLog->quotation;
 
-        if (!$quotation->customer) {
+        if (! $quotation->customer) {
             return;
         }
 

@@ -2,9 +2,10 @@
 
 namespace Database\Factories\Crm;
 
+use App\Enums\Crm\StaffEmploymentStatus;
 use App\Models\Crm\Department;
 use App\Models\Crm\Staff;
-use App\Enums\Crm\StaffEmploymentStatus;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class StaffFactory extends Factory
@@ -14,8 +15,8 @@ class StaffFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => \App\Models\User::factory(),
-            'employee_code' => 'EMP' . fake()->unique()->numerify('#####'),
+            'user_id' => User::factory(),
+            'employee_code' => 'EMP'.fake()->unique()->numerify('#####'),
             'full_name' => fake()->name(),
             'department_id' => Department::factory(),
             'employment_status' => StaffEmploymentStatus::Active,

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MarketingCampaignResource\Pages;
 
 use App\Filament\Resources\MarketingCampaignResource;
+use App\Models\Marketing\LandingPage;
 use Filament\Resources\Pages\EditRecord;
 
 class EditMarketingCampaign extends EditRecord
@@ -13,8 +14,8 @@ class EditMarketingCampaign extends EditRecord
     {
         $record = $this->getRecord();
         $record->landingPages()->update(['marketing_campaign_id' => null]);
-        if (!empty($this->data['landing_page_ids'])) {
-            \App\Models\Marketing\LandingPage::whereIn('id', $this->data['landing_page_ids'])
+        if (! empty($this->data['landing_page_ids'])) {
+            LandingPage::whereIn('id', $this->data['landing_page_ids'])
                 ->update(['marketing_campaign_id' => $record->id]);
         }
     }

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Sales;
 
 use App\Filament\Resources\Sales\BankAccountResource\Pages;
 use App\Models\Sales\BankAccount;
+use App\Models\VnBank;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -17,6 +18,7 @@ use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class BankAccountResource extends Resource
 {
@@ -49,12 +51,12 @@ class BankAccountResource extends Resource
         return auth()->user()?->can('sales.manage-bank-accounts') ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return auth()->user()?->can('sales.manage-bank-accounts') ?? false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return auth()->user()?->can('sales.manage-bank-accounts') ?? false;
     }
@@ -70,13 +72,13 @@ class BankAccountResource extends Resource
             Section::make(__('section.bank_account_details'))->schema([
                 Select::make('bank_code')
                     ->label(__('field.bank'))
-                    ->options(\App\Models\VnBank::query()->orderBy('short_name')->pluck('name', 'code'))
+                    ->options(VnBank::query()->orderBy('short_name')->pluck('name', 'code'))
                     ->searchable()
                     ->preload()
                     ->required()
                     ->live()
                     ->afterStateUpdated(function (Set $set, ?string $state): void {
-                        $bank = \App\Models\VnBank::where('code', $state)->first();
+                        $bank = VnBank::where('code', $state)->first();
                         $set('bank_name', $bank?->name ?? $state);
                         $set('swift_code', $bank?->swift_code ?? null);
                     }),
@@ -107,14 +109,14 @@ class BankAccountResource extends Resource
             IconColumn::make('is_default')->label(__('field.is_default'))->boolean(),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable()->toggleable(),
         ])
-        ->bulkActions([
-            BulkActionGroup::make([
-                DeleteBulkAction::make()
-                    ->label(__('action.bulk_delete'))
-                    ->modalHeading(__('action.bulk_delete'))
-                    ->requiresConfirmation(),
-            ]),
-        ]);
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->label(__('action.bulk_delete'))
+                        ->modalHeading(__('action.bulk_delete'))
+                        ->requiresConfirmation(),
+                ]),
+            ]);
     }
 
     public static function getPages(): array

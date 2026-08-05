@@ -12,13 +12,13 @@ class SegmentFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'        => $this->faker->unique()->words(3, true),
+            'name' => $this->faker->unique()->words(3, true),
             'description' => $this->faker->sentence(),
-            'rules'       => ['conditions' => [
+            'rules' => ['conditions' => [
                 ['field' => 'consent_status_equals', 'operator' => 'equals', 'value' => 'subscribed'],
             ]],
-            'status'      => 'active',
-            'created_by'  => null,
+            'status' => 'active',
+            'created_by' => null,
         ];
     }
 }

@@ -17,7 +17,7 @@ class QuotationTemplateRenderer
         return [
             'quotation_code' => $quotation->quotation_code,
             'quotation_title' => $quotation->title,
-            'grand_total' => number_format($quotation->grand_total, 0) . ' ' . $quotation->currency,
+            'grand_total' => number_format($quotation->grand_total, 0).' '.$quotation->currency,
             'currency' => $quotation->currency,
             'quotation_date' => $quotation->quotation_date?->format('d/m/Y'),
             'valid_until' => $quotation->valid_until?->format('d/m/Y'),
@@ -69,7 +69,7 @@ class QuotationTemplateRenderer
     {
         $tokens = [];
         foreach ($context as $key => $value) {
-            $tokens['{{' . $key . '}}'] = (string) ($value ?? '');
+            $tokens['{{'.$key.'}}'] = (string) ($value ?? '');
         }
 
         return strtr($source, $tokens);

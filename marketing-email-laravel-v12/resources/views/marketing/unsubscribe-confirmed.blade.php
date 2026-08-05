@@ -26,7 +26,7 @@
             </div>
             
             <h1 class="mt-6 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                {{ __('marketing.unsubscribe_confirmed.heading') }}
+                 {{ __('unsubscribe.success_title') }}
             </h1>
             
             <p class="mt-3 text-sm text-slate-500 leading-relaxed">

@@ -4,10 +4,10 @@ namespace App\Enums\Marketing;
 
 enum LandingPageSubmissionStatus: string
 {
-    case Received  = 'received';
+    case Received = 'received';
     case Processed = 'processed';
-    case Failed    = 'failed';
-    case Spam      = 'spam';
+    case Failed = 'failed';
+    case Spam = 'spam';
 
     public static function values(): array
     {
@@ -22,10 +22,10 @@ enum LandingPageSubmissionStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Received  => __('enum.landing_page_submission.received'),
+            self::Received => __('enum.landing_page_submission.received'),
             self::Processed => __('enum.landing_page_submission.processed'),
-            self::Failed    => __('enum.landing_page_submission.failed'),
-            self::Spam      => __('enum.landing_page_submission.spam'),
+            self::Failed => __('enum.landing_page_submission.failed'),
+            self::Spam => __('enum.landing_page_submission.spam'),
         };
     }
 }

@@ -11,8 +11,7 @@ class FormTemplateImportService
 {
     public function __construct(
         private readonly LandingPageRenderService $renderer
-    ) {
-    }
+    ) {}
 
     public function import(array $data, string $sourceHtml, ?int $userId): FormTemplate
     {
@@ -32,8 +31,7 @@ class FormTemplateImportService
                 'slug' => (string) $data['slug'],
                 'audience_type' => $audienceType,
                 'status' => 'draft',
-                'submit_button_text' =>
-                    $prepared['submit_button_text']
+                'submit_button_text' => $prepared['submit_button_text']
                     ?: ($data['submit_button_text'] ?? 'Gửi thông tin'),
                 'html_body' => $prepared['html_body'],
                 'created_by' => $userId,
@@ -389,10 +387,8 @@ class FormTemplateImportService
             'business_phone' => 'business.business_phone',
             'phone' => 'business.business_phone',
             'company_address' => 'business.company_address',
-            'legal_representative' =>
-                'business.legal_representative',
-            'contact_position' =>
-                'business.contact_position',
+            'legal_representative' => 'business.legal_representative',
+            'contact_position' => 'business.contact_position',
             'industry' => 'business.industry',
         ];
 

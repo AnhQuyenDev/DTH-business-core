@@ -30,6 +30,7 @@ class BackfillApprovalCancelled extends Command
 
             if ($hasCancelled) {
                 $skipped++;
+
                 continue;
             }
 

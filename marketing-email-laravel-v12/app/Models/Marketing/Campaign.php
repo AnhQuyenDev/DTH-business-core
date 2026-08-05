@@ -83,7 +83,7 @@ class Campaign extends Model
 
             if ($changes !== []) {
                 $action = array_key_exists('status', $changes)
-                    ? 'campaign.' . $changes['status']
+                    ? 'campaign.'.$changes['status']
                     : 'campaign.updated';
 
                 app(AuditLogService::class)->log($action, $campaign, $campaign->getOriginal(), $changes);

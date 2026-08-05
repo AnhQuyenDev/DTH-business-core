@@ -6,117 +6,199 @@ use App\Enums\Crm\CompanyLifecycleStage;
 use App\Models\Crm\BusinessContactProfile;
 use App\Models\Crm\Company;
 use App\Services\Crm\CompanyCodeGenerator;
-use App\Services\Crm\CompanyResolutionService;
+use App\Services\Crm\CompanyContactLinkService;
+use App\Services\Crm\CompanyNormalizationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class BackfillCompaniesFromBusinessProfiles extends Command
 {
-    protected $signature = 'crm:backfill-companies {--dry-run : Chỉ báo cáo, không ghi dữ liệu}';
+    protected $signature = 'crm:backfill-companies
+        {--dry-run : Chỉ báo cáo, không ghi dữ liệu}
+        {--chunk=200 : Số profile xử lý mỗi chunk}';
 
-    protected $description = 'Backfill companies from legacy business_contact_profiles';
+    protected $description =
+        'Backfill Company từ business_contact_profiles legacy';
 
-    public function handle(CompanyResolutionService $resolution, CompanyCodeGenerator $codeGenerator): int
-    {
+    public function handle(
+        CompanyNormalizationService $normalizer,
+        CompanyCodeGenerator $codeGenerator,
+        CompanyContactLinkService $linkService,
+    ): int {
         $dryRun = (bool) $this->option('dry-run');
-        $profiles = BusinessContactProfile::query()
+        $chunkSize = max(1, (int) $this->option('chunk'));
+
+        $stats = [
+            'would_create' => 0,
+            'matched_tax' => 0,
+            'grouped_name' => 0,
+            'would_attach' => 0,
+            'would_update_profile' => 0,
+            'conflict' => 0,
+            'skipped' => 0,
+            'created' => 0,
+            'attached' => 0,
+            'updated_profile' => 0,
+        ];
+
+        /*
+         * Dùng để mô phỏng nhóm trong dry-run mà không ghi DB.
+         */
+        $simulatedKeys = [];
+
+        BusinessContactProfile::query()
             ->whereNull('company_id')
-            ->where(fn ($q) => $q
-                ->whereNotNull('company_name')
-                ->orWhereNotNull('tax_code'))
+            ->where(function ($query): void {
+                $query
+                    ->whereNotNull('company_name')
+                    ->orWhereNotNull('tax_code');
+            })
             ->orderBy('id')
-            ->get();
+            ->chunkById(
+                $chunkSize,
+                function ($profiles) use (
+                    $dryRun,
+                    $normalizer,
+                    $codeGenerator,
+                    $linkService,
+                    &$stats,
+                    &$simulatedKeys,
+                ): void {
+                    foreach ($profiles as $profile) {
+                        $taxCode = $normalizer->normalizeTaxCode(
+                            $profile->tax_code
+                        );
+                        $normalizedName = $normalizer->normalizeName(
+                            $profile->company_name
+                        );
 
-        if ($profiles->isEmpty()) {
-            $this->info('Không có profile cần backfill.');
+                        if ($taxCode === null && $normalizedName === null) {
+                            $stats['skipped']++;
 
-            return self::SUCCESS;
+                            continue;
+                        }
+
+                        $groupKey = $taxCode !== null
+                            ? 'tax:'.$taxCode
+                            : 'name:'.$normalizedName;
+
+                        $company = $taxCode !== null
+                            ? Company::query()
+                                ->where('tax_code', $taxCode)
+                                ->first()
+                            : Company::query()
+                                ->whereNull('tax_code')
+                                ->where('normalized_name', $normalizedName)
+                                ->first();
+
+                        if ($dryRun) {
+                            if ($company !== null) {
+                                if ($taxCode !== null) {
+                                    $stats['matched_tax']++;
+                                } else {
+                                    $stats['grouped_name']++;
+                                }
+                            } elseif (isset($simulatedKeys[$groupKey])) {
+                                if ($taxCode !== null) {
+                                    $stats['matched_tax']++;
+                                } else {
+                                    $stats['grouped_name']++;
+                                }
+                            } else {
+                                $simulatedKeys[$groupKey] = true;
+                                $stats['would_create']++;
+                            }
+
+                            $stats['would_attach']++;
+                            $stats['would_update_profile']++;
+
+                            continue;
+                        }
+
+                        DB::transaction(function () use (
+                            $profile,
+                            $taxCode,
+                            $normalizedName,
+                            $normalizer,
+                            $codeGenerator,
+                            $linkService,
+                            &$stats,
+                        ): void {
+                            $company = $taxCode !== null
+                                ? Company::query()
+                                    ->where('tax_code', $taxCode)
+                                    ->lockForUpdate()
+                                    ->first()
+                                : Company::query()
+                                    ->whereNull('tax_code')
+                                    ->where(
+                                        'normalized_name',
+                                        $normalizedName
+                                    )
+                                    ->lockForUpdate()
+                                    ->first();
+
+                            if ($company === null) {
+                                $company = Company::query()->create([
+                                    'company_code' => $codeGenerator->next(),
+                                    'legal_name' => filled($profile->company_name)
+                                        ? trim($profile->company_name)
+                                        : 'Công ty MST '.$taxCode,
+                                    'normalized_name' => $normalizedName
+                                        ?? ('mst '.$taxCode),
+                                    'tax_code' => $taxCode,
+                                    'email_domain' => $normalizer
+                                        ->extractBusinessDomain(
+                                            $profile->business_email
+                                        ),
+                                    'phone' => $profile->business_phone,
+                                    'normalized_phone' => $normalizer
+                                        ->normalizePhone(
+                                            $profile->business_phone
+                                        ),
+                                    'industry' => $profile->industry,
+                                    'address' => $profile->company_address,
+                                    'province' => $profile->province,
+                                    'lifecycle_stage' => CompanyLifecycleStage::Prospect->value,
+                                ]);
+
+                                $stats['created']++;
+                            } elseif ($taxCode !== null) {
+                                $stats['matched_tax']++;
+                            } else {
+                                $stats['grouped_name']++;
+                            }
+
+                            $linkService->link(
+                                company: $company,
+                                contact: $profile->contact,
+                                profile: $profile,
+                                submission: null,
+                                jobTitle: $profile->contact_position,
+                            );
+
+                            $stats['attached']++;
+                            $stats['updated_profile']++;
+                        }, 3);
+                    }
+                }
+            );
+
+        $this->newLine();
+        $this->table(
+            ['Chỉ số', 'Số lượng'],
+            collect($stats)
+                ->map(fn (int $value, string $key): array => [$key, $value])
+                ->values()
+                ->all()
+        );
+
+        if ($dryRun) {
+            $this->warn('DRY-RUN: không có dữ liệu nào được ghi.');
+        } else {
+            $this->info('Backfill Company hoàn tất.');
         }
-
-        $this->info(sprintf('Tìm thấy %d profile cần backfill.', $profiles->count()));
-
-        $created = 0;
-        $matched = 0;
-        $skipped = 0;
-
-        foreach ($profiles as $profile) {
-            $data = [
-                'tax_code' => $profile->tax_code,
-                'business_email' => $profile->business_email,
-                'company_name' => $profile->company_name,
-            ];
-
-            $result = $resolution->resolve($data);
-            $company = null;
-
-            if ($result->found() && $result->isAutoMatch()) {
-                $company = $result->company;
-                $matched++;
-            }
-
-            if ($company === null && ! $dryRun) {
-                $company = DB::transaction(function () use ($profile, $resolution, $codeGenerator) {
-                    $company = Company::query()->create([
-                        'company_code' => $codeGenerator->next(),
-                        'legal_name' => $profile->company_name ?? ('Công ty MST '.$profile->tax_code),
-                        'normalized_name' => $resolution->normalizeName($profile->company_name)
-                            ?? $profile->company_name,
-                        'tax_code' => $profile->tax_code,
-                        'email_domain' => $this->extractDomain($profile->business_email),
-                        'phone' => $profile->business_phone,
-                        'normalized_phone' => $profile->business_phone
-                            ? preg_replace('/[^0-9]/', '', $profile->business_phone)
-                            : null,
-                        'industry' => $profile->industry,
-                        'address' => $profile->company_address,
-                        'province' => $profile->province,
-                        'lifecycle_stage' => CompanyLifecycleStage::Prospect->value,
-                    ]);
-
-                    $company->contacts()->syncWithoutDetaching([
-                        $profile->contact_id => [
-                            'job_title' => $profile->contact_position,
-                            'is_primary' => true,
-                            'is_active' => true,
-                        ],
-                    ]);
-
-                    $profile->update(['company_id' => $company->id]);
-
-                    return $company;
-                });
-                $created++;
-            } elseif ($company !== null && ! $dryRun) {
-                DB::transaction(function () use ($company, $profile) {
-                    $company->contacts()->syncWithoutDetaching([
-                        $profile->contact_id => [
-                            'job_title' => $profile->contact_position,
-                            'is_primary' => ! $company->contacts()->exists(),
-                            'is_active' => true,
-                        ],
-                    ]);
-                    $profile->update(['company_id' => $company->id]);
-                });
-            } else {
-                $skipped++;
-            }
-        }
-
-        $this->info(sprintf('Tạo mới: %d | Match: %d | Bỏ qua: %d', $created, $matched, $skipped));
 
         return self::SUCCESS;
-    }
-
-    private function extractDomain(?string $email): ?string
-    {
-        if (blank($email) || ! str_contains($email, '@')) {
-            return null;
-        }
-
-        $domain = strtolower(trim(substr($email, strrpos($email, '@') + 1)));
-
-        return in_array($domain, ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'icloud.com'], true)
-            ? null
-            : $domain;
     }
 }

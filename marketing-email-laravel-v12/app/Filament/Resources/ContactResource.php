@@ -73,11 +73,11 @@ class ContactResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ])->filters([
-            SelectFilter::make('contact_type')->options([
-                'personal' => __('enum.contact_type.personal'),
-                'business' => __('enum.contact_type.business'),
-            ]),
-        ]);
+                SelectFilter::make('contact_type')->options([
+                    'personal' => __('enum.contact_type.personal'),
+                    'business' => __('enum.contact_type.business'),
+                ]),
+            ]);
     }
 
     public static function getPages(): array

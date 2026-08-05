@@ -19,6 +19,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 class DepartmentPositionsTable extends Component implements HasForms, HasTable
@@ -64,7 +65,7 @@ class DepartmentPositionsTable extends Component implements HasForms, HasTable
             ]);
     }
 
-    public function render(): \Illuminate\Contracts\View\View
+    public function render(): View
     {
         return view('livewire.department-positions-table');
     }

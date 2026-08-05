@@ -100,7 +100,7 @@ class QuotationRevisionService
         if ($quotation->status === QuotationStatus::Draft) {
             return;
         }
-        if (!$this->stateMachine->canTransition($quotation->status, QuotationStatus::Superseded)) {
+        if (! $this->stateMachine->canTransition($quotation->status, QuotationStatus::Superseded)) {
             throw new \InvalidArgumentException('This quotation cannot be revised.');
         }
     }

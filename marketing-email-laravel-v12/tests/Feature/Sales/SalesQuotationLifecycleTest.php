@@ -55,6 +55,7 @@ use App\Services\Sales\QuotationReminderService;
 use App\Services\Sales\QuotationRevisionService;
 use App\Services\Sales\QuotationTemplateRenderer;
 use App\Services\Sales\ServiceCatalogService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
@@ -74,13 +75,19 @@ class SalesQuotationLifecycleTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $manager;
+
     private User $staffUser;
+
     private Staff $staff;
 
     private PriceBook $priceBook;
+
     private PriceBookItem $item;
+
     private BankAccount $bankAccount;
+
     private Customer $customer;
 
     protected function setUp(): void
@@ -163,12 +170,12 @@ class SalesQuotationLifecycleTest extends TestCase
         $contact = Contact::query()->create(['contact_type' => 'personal']);
 
         return Customer::query()->create(array_merge([
-            'customer_code' => 'CUS-' . strtoupper(Str::random(8)),
+            'customer_code' => 'CUS-'.strtoupper(Str::random(8)),
             'contact_id' => $contact->id,
             'customer_type' => 'personal',
             'first_name' => 'Nguyễn',
             'last_name' => 'Văn A',
-            'email' => 'a' . Str::random(4) . '@example.test',
+            'email' => 'a'.Str::random(4).'@example.test',
             'phone' => '0912345678',
             'consent_status' => CustomerConsentStatus::Subscribed,
             'status' => CustomerStatus::Potential,
@@ -223,6 +230,7 @@ class SalesQuotationLifecycleTest extends TestCase
     {
         $quotation = $this->createQuotation($this->admin, [$this->itemLine()], $params);
         $quotation->update(['status' => QuotationStatus::Sent->value, 'sent_at' => now()]);
+
         return $quotation;
     }
 
@@ -412,7 +420,7 @@ class SalesQuotationLifecycleTest extends TestCase
             'quotation_id' => $quotation->id,
             'version' => 1,
             'document_type' => DocumentType::Pdf,
-            'file_path' => 'quotations/' . $quotation->quotation_code . '/fake.pdf',
+            'file_path' => 'quotations/'.$quotation->quotation_code.'/fake.pdf',
             'file_name' => 'fake.pdf',
             'mime_type' => 'application/pdf',
             'file_size' => 123,
@@ -580,7 +588,7 @@ class SalesQuotationLifecycleTest extends TestCase
         $this->assertSame(CustomerLifecycleStage::Purchasing->value, $customer->lifecycle_stage);
         $this->assertNotNull($customer->first_purchase_at);
 
-        fwrite(STDERR, "\n\nSENT COUNT: " . count(Mail::sent(PaymentConfirmedMail::class)) . "\n");
+        fwrite(STDERR, "\n\nSENT COUNT: ".count(Mail::sent(PaymentConfirmedMail::class))."\n");
 
         Mail::assertSent(PaymentConfirmedMail::class);
 
@@ -613,7 +621,7 @@ class SalesQuotationLifecycleTest extends TestCase
         $draft = $this->createQuotation($this->admin, [$this->itemLine()]);
         $draft->update(['valid_until' => now()->subDay()]);
 
-        (new ExpireQuotationsJob())->handle();
+        (new ExpireQuotationsJob)->handle();
 
         $this->assertSame(QuotationStatus::Expired, $approved->fresh()->status);
         $this->assertNotNull($approved->fresh()->expired_at);
@@ -651,12 +659,27 @@ class SalesQuotationLifecycleTest extends TestCase
 
     public function test_quotation_pdf_is_generated_and_stored(): void
     {
-        \Barryvdh\DomPDF\Facade\Pdf::swap(new class {
-            public function loadHTML(string $html): self { return $this; }
-            public function setPaper(mixed ...$args): self { return $this; }
-            public function setOptions(array $options): self { return $this; }
-            public function save(string $path): self {
+        Pdf::swap(new class
+        {
+            public function loadHTML(string $html): self
+            {
+                return $this;
+            }
+
+            public function setPaper(mixed ...$args): self
+            {
+                return $this;
+            }
+
+            public function setOptions(array $options): self
+            {
+                return $this;
+            }
+
+            public function save(string $path): self
+            {
                 File::put($path, '%PDF-1.4 fake');
+
                 return $this;
             }
         });

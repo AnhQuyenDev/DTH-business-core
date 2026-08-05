@@ -2,13 +2,14 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\Marketing\SuppressionReason;
 use App\Filament\Resources\SuppressionEntryResource\Pages;
 use App\Models\Marketing\SuppressionEntry;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Section;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -69,7 +70,7 @@ class SuppressionEntryResource extends Resource
         return $table->columns([
             TextColumn::make('email')->label(__('field.email'))->searchable()->sortable(),
             TextColumn::make('reason')->label(__('field.reason'))->badge()
-                ->formatStateUsing(fn (string $state): string => \App\Enums\Marketing\SuppressionReason::tryFrom($state)?->label() ?? $state)
+                ->formatStateUsing(fn (string $state): string => SuppressionReason::tryFrom($state)?->label() ?? $state)
                 ->color(fn ($state): string => match ($state) {
                     'unsubscribe', 'bounce', 'complaint', 'invalid_email', 'do_not_contact' => 'danger',
                     'manual' => 'warning',

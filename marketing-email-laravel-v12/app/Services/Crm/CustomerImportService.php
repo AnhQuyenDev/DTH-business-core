@@ -9,6 +9,8 @@ use App\Models\Marketing\Tag;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Reader\XLSX\Reader;
 
 class CustomerImportService
 {
@@ -29,6 +31,7 @@ class CustomerImportService
 
         if ($handle === false) {
             $batch->update(['status' => 'failed']);
+
             return [
                 'batch' => $batch,
                 'total_rows' => 0,
@@ -56,6 +59,7 @@ class CustomerImportService
                 if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     $failedRows++;
                     $errors[] = ['row' => $rowNumber, 'email' => $email, 'message' => 'Invalid email address.'];
+
                     continue;
                 }
 
@@ -63,7 +67,7 @@ class CustomerImportService
                 $isNew = $customer === null;
 
                 if ($customer === null) {
-                    $customer = new Customer();
+                    $customer = new Customer;
                     $customer->email = $email;
                     $customer->customer_code = CustomerCodeGenerator::generate();
                     $customer->customer_type = $record['customer_type'] ?? 'personal';
@@ -73,6 +77,7 @@ class CustomerImportService
                 } elseif (! $updateExisting) {
                     $failedRows++;
                     $errors[] = ['row' => $rowNumber, 'email' => $email, 'message' => 'Customer already exists.'];
+
                     continue;
                 }
 
@@ -103,7 +108,9 @@ class CustomerImportService
             DB::commit();
         } catch (\Throwable $throwable) {
             DB::rollBack();
-            if (isset($handle)) fclose($handle);
+            if (isset($handle)) {
+                fclose($handle);
+            }
             $batch->update([
                 'total_rows' => $totalRows,
                 'success_rows' => $successRows,
@@ -139,7 +146,7 @@ class CustomerImportService
             'created_by' => $createdBy,
         ]);
 
-        $reader = new \OpenSpout\Reader\XLSX\Reader();
+        $reader = new Reader;
         $reader->open($absolutePath);
 
         $rowNumber = 0;
@@ -155,7 +162,7 @@ class CustomerImportService
             foreach ($reader->getSheetIterator() as $sheet) {
                 foreach ($sheet->getRowIterator() as $row) {
                     $cells = array_map(
-                        static fn (\OpenSpout\Common\Entity\Cell $c) => (string) ($c->getValue() ?? ''),
+                        static fn (Cell $c) => (string) ($c->getValue() ?? ''),
                         $row->getCells()
                     );
 
@@ -165,6 +172,7 @@ class CustomerImportService
                             $cells
                         );
                         $rowNumber++;
+
                         continue;
                     }
 
@@ -181,6 +189,7 @@ class CustomerImportService
                     if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                         $failedRows++;
                         $errors[] = ['row' => $rowNumber, 'email' => $email, 'message' => 'Invalid email address.'];
+
                         continue;
                     }
 
@@ -188,7 +197,7 @@ class CustomerImportService
                     $isNew = $customer === null;
 
                     if ($customer === null) {
-                        $customer = new Customer();
+                        $customer = new Customer;
                         $customer->email = $email;
                         $customer->customer_code = CustomerCodeGenerator::generate();
                         $customer->customer_type = $record['customer_type'] ?? 'personal';
@@ -198,6 +207,7 @@ class CustomerImportService
                     } elseif (! $updateExisting) {
                         $failedRows++;
                         $errors[] = ['row' => $rowNumber, 'email' => $email, 'message' => 'Customer already exists.'];
+
                         continue;
                     }
 
@@ -256,14 +266,18 @@ class CustomerImportService
     private function fillIfBlank(Customer $customer, string $attribute, mixed $value): void
     {
         $value = is_string($value) ? trim($value) : $value;
-        if (blank($value) || filled($customer->{$attribute})) return;
+        if (blank($value) || filled($customer->{$attribute})) {
+            return;
+        }
         $customer->{$attribute} = $value;
     }
 
     private function syncTags(Customer $customer, string $value, bool $autoCreateRelations): void
     {
         $names = $this->splitValues($value);
-        if ($names === []) return;
+        if ($names === []) {
+            return;
+        }
 
         $tagIds = [];
         foreach ($names as $name) {
@@ -271,7 +285,9 @@ class CustomerImportService
             if (! $tag && $autoCreateRelations) {
                 $tag = Tag::create(['name' => $name, 'slug' => Str::slug($name)]);
             }
-            if ($tag) $tagIds[] = $tag->id;
+            if ($tag) {
+                $tagIds[] = $tag->id;
+            }
         }
         if ($tagIds !== []) {
             $customer->tags()->syncWithoutDetaching(array_unique($tagIds));
@@ -281,7 +297,9 @@ class CustomerImportService
     private function syncLists(Customer $customer, string $value, bool $autoCreateRelations): void
     {
         $names = $this->splitValues($value);
-        if ($names === []) return;
+        if ($names === []) {
+            return;
+        }
 
         $listIds = [];
         foreach ($names as $name) {
@@ -294,7 +312,9 @@ class CustomerImportService
                     'status' => 'active',
                 ]);
             }
-            if ($list) $listIds[] = $list->id;
+            if ($list) {
+                $listIds[] = $list->id;
+            }
         }
         if ($listIds !== []) {
             $customer->lists()->syncWithoutDetaching(array_unique($listIds));
@@ -304,6 +324,7 @@ class CustomerImportService
     private function splitValues(string $value): array
     {
         $chunks = preg_split('/[|,;]+/', $value) ?: [];
+
         return array_values(array_filter(array_map(static fn (string $item) => trim($item), $chunks)));
     }
 }

@@ -24,14 +24,14 @@ final class FakeTaxVerificationProvider implements TaxCodeVerificationProvider
         if ($num % 3 === 0) {
             return new TaxVerificationResult(
                 status: TaxVerificationStatus::Mismatch,
-                companyName: 'CÔNG TY TNHH ' . substr($normalized, 0, 8),
+                companyName: 'CÔNG TY TNHH '.substr($normalized, 0, 8),
                 message: 'Tax code exists but company name does not match.',
             );
         }
 
         return new TaxVerificationResult(
             status: TaxVerificationStatus::Verified,
-            companyName: 'CÔNG TY TNHH THƯƠNG MẠI ' . substr($normalized, 0, 6),
+            companyName: 'CÔNG TY TNHH THƯƠNG MẠI '.substr($normalized, 0, 6),
             companyAddress: '123 Đường Láng, Đống Đa, Hà Nội',
             legalName: 'NGUYỄN VĂN A',
             rawData: [

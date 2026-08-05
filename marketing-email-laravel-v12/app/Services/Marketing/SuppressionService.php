@@ -2,10 +2,7 @@
 
 namespace App\Services\Marketing;
 
-use App\Models\Marketing\Campaign;
-use App\Models\Marketing\Contact;
 use App\Models\Marketing\SuppressionEntry;
-use Illuminate\Support\Str;
 
 class SuppressionService
 {

@@ -51,7 +51,7 @@ class QuotationReminderService
             'customer_id' => $quotation->customer_id,
             'staff_id' => $quotation->assigned_staff_id,
             'interaction_type' => 'follow_up',
-            'subject' => 'Nhắc nhở: ' . $quotation->quotation_code,
+            'subject' => 'Nhắc nhở: '.$quotation->quotation_code,
             'content' => $note,
             'status' => 'scheduled',
             'interaction_at' => now(),

@@ -5,6 +5,8 @@ namespace Database\Factories\Sales;
 use App\Enums\Sales\EmailStatus;
 use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
+use App\Models\Crm\Customer;
+use App\Models\Crm\Staff;
 use App\Models\Sales\Quotation;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -15,9 +17,9 @@ class QuotationFactory extends Factory
     public function definition(): array
     {
         return [
-            'quotation_code' => 'QT' . now()->format('Y') . str_pad((string) fake()->unique()->numberBetween(1, 99999), 5, '0', STR_PAD_LEFT),
-            'customer_id' => \App\Models\Crm\Customer::factory(),
-            'assigned_staff_id' => \App\Models\Crm\Staff::factory(),
+            'quotation_code' => 'QT'.now()->format('Y').str_pad((string) fake()->unique()->numberBetween(1, 99999), 5, '0', STR_PAD_LEFT),
+            'customer_id' => Customer::factory(),
+            'assigned_staff_id' => Staff::factory(),
             'title' => fake()->sentence(3),
             'version' => 1,
             'quotation_date' => now()->toDateString(),

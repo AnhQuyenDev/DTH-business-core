@@ -12,6 +12,7 @@ class FormTemplateImportServiceTest extends TestCase
     use RefreshDatabase;
 
     private FormTemplateImportService $service;
+
     private User $user;
 
     protected function setUp(): void
@@ -44,11 +45,11 @@ HTML;
         ], $html, $this->user->id);
 
         $fieldKeys = $template->fields->pluck('field_key')->all();
-        
+
         // Should generate keys from labels/placeholders
         $this->assertCount(2, $fieldKeys);
         $this->assertStringContainsString('{{fields}}', $template->html_body);
-        
+
         // Verify keys are stable and not field_0, field_1
         foreach ($fieldKeys as $key) {
             $this->assertNotEquals('field_0', $key);
@@ -73,7 +74,7 @@ HTML;
         ], $html, $this->user->id);
 
         $fieldKeys = $template->fields->pluck('field_key')->all();
-        
+
         $this->assertSame(['full_name', 'email'], $fieldKeys);
         $this->assertStringContainsString('{{fields}}', $template->html_body);
     }
@@ -102,7 +103,7 @@ HTML;
         ], $html, $this->user->id);
 
         $fields = $template->fields->keyBy('field_key');
-        
+
         $this->assertEquals('text', $fields['full_name']->field_type->value);
         $this->assertEquals('email', $fields['email']->field_type->value);
         $this->assertEquals('phone', $fields['phone']->field_type->value);
@@ -131,7 +132,7 @@ HTML;
         ], $html, $this->user->id);
 
         $field = $template->fields->where('field_key', 'service_package')->first();
-        
+
         $this->assertNotNull($field->options);
         $this->assertCount(2, $field->options);
         $this->assertEquals('vps', $field->options[0]['value']);
@@ -157,7 +158,7 @@ HTML;
         ], $html, $this->user->id);
 
         $fields = $template->fields->keyBy('field_key');
-        
+
         $this->assertTrue($fields['full_name']->is_required);
         $this->assertFalse($fields['email']->is_required);
     }
@@ -225,11 +226,11 @@ HTML;
         ], $html, $this->user->id);
 
         $fields = $template->fields->sortBy('position')->values();
-        
+
         $this->assertEquals('first', $fields[0]->field_key);
         $this->assertEquals('second', $fields[1]->field_key);
         $this->assertEquals('third', $fields[2]->field_key);
-        
+
         $this->assertEquals(0, $fields[0]->sort_order);
         $this->assertEquals(1, $fields[1]->sort_order);
         $this->assertEquals(2, $fields[2]->sort_order);
@@ -252,7 +253,7 @@ HTML;
         ], $html, $this->user->id);
 
         $fieldKeys = $template->fields->pluck('field_key')->all();
-        
+
         $this->assertCount(2, $fieldKeys);
         $this->assertEquals('email', $fieldKeys[0]);
         $this->assertEquals('email_2', $fieldKeys[1]);
@@ -279,7 +280,7 @@ HTML;
         $this->assertNotNull($field);
         $this->assertEquals('email', $field->field_key);
         $this->assertEquals('Email', $field->label);
-        
+
         // html_body should be a shell with {{fields}} placeholder
         $this->assertStringContainsString('{{fields}}', $template->html_body);
     }

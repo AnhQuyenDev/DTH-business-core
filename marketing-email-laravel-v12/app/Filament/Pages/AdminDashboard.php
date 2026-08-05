@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Widgets\DashboardCampaignWidget;
 use App\Filament\Widgets\DashboardStaffDetailTableWidget;
 use App\Filament\Widgets\DashboardStaffWorkloadWidget;
 use App\Filament\Widgets\DashboardSystemAlertsWidget;
@@ -37,7 +36,7 @@ class AdminDashboard extends BaseDashboard
         ];
     }
 
-    public function getColumns(): int | array
+    public function getColumns(): int|array
     {
         return 3;
     }
@@ -54,6 +53,7 @@ class AdminDashboard extends BaseDashboard
             ] as $page) {
                 if ($page::canAccess()) {
                     $this->redirect($page::getUrl());
+
                     return;
                 }
             }
@@ -68,10 +68,10 @@ class AdminDashboard extends BaseDashboard
     public function getTabs(): array
     {
         return [
-            'email'     => __('dashboard.tab.email'),
+            'email' => __('dashboard.tab.email'),
             'marketing' => __('dashboard.tab.marketing'),
             'customers' => __('dashboard.tab.customers'),
-            'staff'     => __('dashboard.tab.staff'),
+            'staff' => __('dashboard.tab.staff'),
         ];
     }
 }

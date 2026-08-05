@@ -8,6 +8,7 @@ use App\Models\Crm\CustomerList;
 use App\Models\Marketing\Campaign;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\Segment;
+use App\Models\Marketing\Tag;
 use App\Services\Crm\SegmentQueryService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -47,6 +48,7 @@ class CampaignAudienceService
         if (! $listId) {
             return collect();
         }
+
         return $query->whereHas('lists', fn (Builder $q) => $q->where('customer_lists.id', $listId))->get();
     }
 
@@ -55,6 +57,7 @@ class CampaignAudienceService
         if (! $tagId) {
             return collect();
         }
+
         return $query->whereHas('tags', fn (Builder $q) => $q->where('tags.id', $tagId))->get();
     }
 
@@ -67,6 +70,7 @@ class CampaignAudienceService
         if (! $segment) {
             return collect();
         }
+
         return app(SegmentQueryService::class)->queryForCustomerSegment($segment)->get();
     }
 
@@ -86,7 +90,7 @@ class CampaignAudienceService
     {
         return match ($type) {
             'list' => CustomerList::query()->orderBy('name')->pluck('name', 'id')->all(),
-            'tag' => \App\Models\Marketing\Tag::query()->orderBy('name')->pluck('name', 'id')->all(),
+            'tag' => Tag::query()->orderBy('name')->pluck('name', 'id')->all(),
             'segment' => Segment::query()->orderBy('name')->pluck('name', 'id')->all(),
             default => [],
         };

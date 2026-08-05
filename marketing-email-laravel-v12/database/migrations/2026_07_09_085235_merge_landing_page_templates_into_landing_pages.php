@@ -30,7 +30,7 @@ return new class extends Migration
                     ->where('id', $page->id)
                     ->update([
                         'html_body' => $template->html_body,
-                        'css_body'  => $template->css_body,
+                        'css_body' => $template->css_body,
                     ]);
             }
         }

@@ -12,7 +12,6 @@ use App\Models\Marketing\CampaignRecipient;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\EmailTemplate;
 use App\Models\Marketing\SendingAccount;
-use App\Models\Marketing\SuppressionEntry;
 use App\Models\Marketing\TrackedLink;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -28,18 +27,18 @@ class MarketingPublicRoutesTest extends TestCase
         PersonalContactProfile::query()->create([
             'contact_id' => $contact->id,
             'first_name' => $firstName,
-            'last_name'  => $lastName,
-            'email'      => $email,
+            'last_name' => $lastName,
+            'email' => $email,
         ]);
 
         $customer = Customer::query()->create([
-            'customer_code'  => 'CUS-' . strtoupper($firstName . $lastName),
-            'contact_id'     => $contact->id,
-            'customer_type'  => 'personal',
-            'display_name'   => $firstName . ' ' . $lastName,
-            'email'          => $email,
+            'customer_code' => 'CUS-'.strtoupper($firstName.$lastName),
+            'contact_id' => $contact->id,
+            'customer_type' => 'personal',
+            'display_name' => $firstName.' '.$lastName,
+            'email' => $email,
             'consent_status' => CustomerConsentStatus::Subscribed,
-            'status'         => CustomerStatus::Active,
+            'status' => CustomerStatus::Active,
         ]);
 
         return [$contact, $customer];
@@ -95,7 +94,7 @@ class MarketingPublicRoutesTest extends TestCase
         $this->withHeader('Accept-Language', 'vi')
             ->post('/m/unsubscribe/unsubscribe-token')
             ->assertStatus(200)
-            ->assertSee('Đã hủy đăng ký thành công');
+            ->assertSee(__('unsubscribe.success_title'));
 
         $customer->refresh();
         $recipient->refresh();

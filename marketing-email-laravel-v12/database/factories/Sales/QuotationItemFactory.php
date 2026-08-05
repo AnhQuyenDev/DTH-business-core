@@ -2,6 +2,7 @@
 
 namespace Database\Factories\Sales;
 
+use App\Models\Sales\Quotation;
 use App\Models\Sales\QuotationItem;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -18,7 +19,7 @@ class QuotationItemFactory extends Factory
         $vatAmount = $lineSubtotal * $vatRate / 100;
 
         return [
-            'quotation_id' => \App\Models\Sales\Quotation::factory(),
+            'quotation_id' => Quotation::factory(),
             'service_name_snapshot' => fake()->words(3, true),
             'package_name_snapshot' => fake()->words(2, true),
             'unit' => 'tháng',

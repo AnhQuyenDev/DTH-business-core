@@ -5,13 +5,14 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\CustomFieldResource\Pages;
 use App\Models\Marketing\CustomField;
 use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Section;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class CustomFieldResource extends Resource
 {
@@ -46,12 +47,12 @@ class CustomFieldResource extends Resource
         return auth()->user()?->can('marketing.manage-custom-fields') ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return auth()->user()?->can('marketing.manage-custom-fields') ?? false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return auth()->user()?->can('marketing.manage-custom-fields') ?? false;
     }

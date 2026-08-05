@@ -2,9 +2,12 @@
 
 namespace Database\Factories\Crm;
 
+use App\Enums\Crm\CustomerAssignmentReason;
 use App\Enums\Crm\CustomerAssignmentStatus;
 use App\Enums\Crm\CustomerAssignmentType;
+use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
+use App\Models\Crm\Staff;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class CustomerAssignmentFactory extends Factory
@@ -14,10 +17,11 @@ class CustomerAssignmentFactory extends Factory
     public function definition(): array
     {
         return [
-            'customer_id' => \App\Models\Crm\Customer::factory(),
-            'staff_id' => \App\Models\Crm\Staff::factory(),
+            'customer_id' => Customer::factory(),
+            'staff_id' => Staff::factory(),
             'assignment_type' => CustomerAssignmentType::Owner,
             'status' => CustomerAssignmentStatus::Active,
+            'reason' => CustomerAssignmentReason::Manual,
             'starts_at' => now(),
             'assigned_by_user_id' => 1,
         ];

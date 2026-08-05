@@ -4,6 +4,8 @@ namespace App\Services\Crm;
 
 use App\Models\Crm\Customer;
 use Illuminate\Support\Collection;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer;
 
 class CustomerExportService
 {
@@ -35,24 +37,26 @@ class CustomerExportService
         }
 
         rewind($handle);
+
         return stream_get_contents($handle) ?: '';
     }
 
     public function toExcel(Collection $customers): string
     {
-        $tmpPath = tempnam(sys_get_temp_dir(), 'customers_export_') . '.xlsx';
+        $tmpPath = tempnam(sys_get_temp_dir(), 'customers_export_').'.xlsx';
 
-        $writer = new \OpenSpout\Writer\XLSX\Writer();
+        $writer = new Writer;
         $writer->openToFile($tmpPath);
-        $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(self::HEADERS));
+        $writer->addRow(Row::fromValues(self::HEADERS));
 
         $customers->loadMissing(['tags', 'lists']);
 
         foreach ($customers as $customer) {
-            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($this->customerToRow($customer)));
+            $writer->addRow(Row::fromValues($this->customerToRow($customer)));
         }
 
         $writer->close();
+
         return $tmpPath;
     }
 

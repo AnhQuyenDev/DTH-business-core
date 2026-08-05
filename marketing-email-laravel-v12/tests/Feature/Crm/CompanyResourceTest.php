@@ -17,7 +17,16 @@ use Tests\TestCase;
 class CompanyResourceTest extends TestCase
 {
     use RefreshDatabase;
+    
+    protected function setUp(): void
+    {
+        parent::setUp();
 
+        config()->set(
+            'business_flow.v2_enabled',
+            true
+        );
+    }
     private function makeCompany(): Company
     {
         return Company::query()->create([

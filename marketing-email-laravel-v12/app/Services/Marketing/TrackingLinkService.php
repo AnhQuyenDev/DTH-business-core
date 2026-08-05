@@ -37,7 +37,7 @@ class TrackingLinkService
 
             $trackingUrl = route('marketing.track.click', ['token' => $trackedLink->tracking_token]);
 
-            return 'href="' . e($trackingUrl) . '"';
+            return 'href="'.e($trackingUrl).'"';
         }, $html) ?? $html;
 
         return $this->appendOpenPixel($html, $recipient);
@@ -46,10 +46,10 @@ class TrackingLinkService
     public function appendOpenPixel(string $html, CampaignRecipient $recipient): string
     {
         $pixelUrl = route('marketing.track.open', ['token' => $recipient->tracking_token]);
-        $pixelTag = '<img src="' . e($pixelUrl) . '" alt="" width="1" height="1" style="display:none!important;border:0;" />';
+        $pixelTag = '<img src="'.e($pixelUrl).'" alt="" width="1" height="1" style="display:none!important;border:0;" />';
 
         return Str::contains($html, '</body>')
-            ? Str::replaceLast('</body>', $pixelTag . '</body>', $html)
-            : $html . $pixelTag;
+            ? Str::replaceLast('</body>', $pixelTag.'</body>', $html)
+            : $html.$pixelTag;
     }
 }

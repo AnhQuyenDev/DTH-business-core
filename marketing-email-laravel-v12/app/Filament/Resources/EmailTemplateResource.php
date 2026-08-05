@@ -97,24 +97,24 @@ class EmailTemplateResource extends Resource
         return $table
             ->modifyQueryUsing(fn ($query) => $query->with('categoryRelation'))
             ->columns([
-            TextColumn::make('name')->label(__('field.name'))->searchable()->sortable(),
-            TextColumn::make('categoryRelation.name')->label(__('field.category'))
-                ->badge()
-                ->color(fn (EmailTemplate $record): string => match (true) {
-                    $record->categoryRelation?->slug === 'marketing' => 'info',
-                    $record->categoryRelation?->slug === 'quotation' => 'warning',
-                    default => 'gray',
-                }),
-            TextColumn::make('subject')->label(__('field.subject'))->searchable()->limit(50),
-            TextColumn::make('status')->label(__('field.status'))->badge()
-                ->formatStateUsing(fn (?string $state): string => $state ? __('field.status_'.$state) : '')
-                ->color(fn (?string $state): string => match ($state) {
-                    'active' => 'success',
-                    'inactive' => 'danger',
-                    default => 'gray',
-                }),
-            TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable(),
-        ])
+                TextColumn::make('name')->label(__('field.name'))->searchable()->sortable(),
+                TextColumn::make('categoryRelation.name')->label(__('field.category'))
+                    ->badge()
+                    ->color(fn (EmailTemplate $record): string => match (true) {
+                        $record->categoryRelation?->slug === 'marketing' => 'info',
+                        $record->categoryRelation?->slug === 'quotation' => 'warning',
+                        default => 'gray',
+                    }),
+                TextColumn::make('subject')->label(__('field.subject'))->searchable()->limit(50),
+                TextColumn::make('status')->label(__('field.status'))->badge()
+                    ->formatStateUsing(fn (?string $state): string => $state ? __('field.status_'.$state) : '')
+                    ->color(fn (?string $state): string => match ($state) {
+                        'active' => 'success',
+                        'inactive' => 'danger',
+                        default => 'gray',
+                    }),
+                TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable(),
+            ])
             ->actions([ActionGroup::make([
                 Action::make('preview')
                     ->label(__('action.preview'))

@@ -59,6 +59,7 @@ class SegmentQueryService
                 if ($ids !== null) {
                     $contactIds = $contactIds === null ? $ids : array_intersect($contactIds, $ids);
                 }
+
                 continue;
             }
 

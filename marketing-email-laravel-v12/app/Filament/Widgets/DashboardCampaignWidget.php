@@ -37,7 +37,7 @@ class DashboardCampaignWidget extends BaseWidget
 
         return [
             Stat::make(__('dashboard.campaign.total_campaigns'), number_format($totalCampaigns))
-                ->description(__('dashboard.campaign.draft') . ': ' . number_format($draftCampaigns) . ', ' . __('dashboard.campaign.sending') . ': ' . number_format($sending))
+                ->description(__('dashboard.campaign.draft').': '.number_format($draftCampaigns).', '.__('dashboard.campaign.sending').': '.number_format($sending))
                 ->icon('heroicon-o-envelope')
                 ->color('primary'),
             Stat::make(__('dashboard.campaign.sent'), number_format($sent))
@@ -47,14 +47,14 @@ class DashboardCampaignWidget extends BaseWidget
                 ->icon('heroicon-o-users')
                 ->color('info'),
             Stat::make(__('dashboard.campaign.open_rate'), "{$openRate}%")
-                ->description(__('dashboard.campaign.opened') . ': ' . number_format($opened))
+                ->description(__('dashboard.campaign.opened').': '.number_format($opened))
                 ->icon('heroicon-o-eye')
                 ->color('warning'),
             Stat::make(__('dashboard.campaign.click_rate'), "{$clickRate}%")
-                ->description(__('dashboard.campaign.clicked') . ': ' . number_format($clicked))
+                ->description(__('dashboard.campaign.clicked').': '.number_format($clicked))
                 ->icon('heroicon-o-cursor-arrow-rays')
                 ->color('success'),
-            Stat::make(__('dashboard.campaign.bounce_unsub'), number_format($bounced) . ' / ' . number_format($unsubscribed))
+            Stat::make(__('dashboard.campaign.bounce_unsub'), number_format($bounced).' / '.number_format($unsubscribed))
                 ->icon('heroicon-o-exclamation-triangle')
                 ->color('danger'),
         ];

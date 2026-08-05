@@ -25,7 +25,7 @@ class PriceBookAccessService
         }
 
         $staff = $user->staff;
-        if (!$staff) {
+        if (! $staff) {
             return collect();
         }
 
@@ -61,7 +61,7 @@ class PriceBookAccessService
         }
 
         $staff = $user->staff;
-        if (!$staff) {
+        if (! $staff) {
             return false;
         }
 
@@ -89,7 +89,7 @@ class PriceBookAccessService
         }
 
         $staff = $user->staff;
-        if (!$staff) {
+        if (! $staff) {
             return 0;
         }
 

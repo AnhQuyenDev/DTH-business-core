@@ -28,16 +28,16 @@ enum ContactQualificationStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::New         => __('enum.qualification.new'),
-            self::Assigned    => __('enum.qualification.assigned'),
-            self::Contacting  => __('enum.qualification.contacting'),
-            self::FollowUp    => __('enum.qualification.follow_up'),
-            self::Qualified   => __('enum.qualification.qualified'),
+            self::New => __('enum.qualification.new'),
+            self::Assigned => __('enum.qualification.assigned'),
+            self::Contacting => __('enum.qualification.contacting'),
+            self::FollowUp => __('enum.qualification.follow_up'),
+            self::Qualified => __('enum.qualification.qualified'),
             self::Unqualified => __('enum.qualification.unqualified'),
-            self::Converted   => __('enum.qualification.converted'),
-            self::Duplicate   => __('enum.qualification.duplicate'),
-            self::Spam        => __('enum.qualification.spam'),
-            self::Archived    => __('enum.qualification.archived'),
+            self::Converted => __('enum.qualification.converted'),
+            self::Duplicate => __('enum.qualification.duplicate'),
+            self::Spam => __('enum.qualification.spam'),
+            self::Archived => __('enum.qualification.archived'),
         };
     }
 

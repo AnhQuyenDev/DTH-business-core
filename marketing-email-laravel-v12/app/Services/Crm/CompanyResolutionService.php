@@ -4,93 +4,109 @@ namespace App\Services\Crm;
 
 use App\Data\Crm\CompanyResolutionResult;
 use App\Models\Crm\Company;
-use Illuminate\Support\Str;
 
 final class CompanyResolutionService
 {
-    private const FREE_EMAIL_DOMAINS = [
-        'gmail.com',
-        'outlook.com',
-        'hotmail.com',
-        'yahoo.com',
-        'icloud.com',
-    ];
+    public function __construct(
+        private readonly CompanyNormalizationService $normalizer,
+    ) {}
 
     public function resolve(array $data): CompanyResolutionResult
     {
-        $taxCode = $this->normalizeTaxCode($data['tax_code'] ?? null);
+        $taxCode = $this->normalizer->normalizeTaxCode(
+            $data['tax_code'] ?? null
+        );
 
         if ($taxCode !== null) {
-            $company = Company::query()->where('tax_code', $taxCode)->first();
+            $company = Company::query()
+                ->where('tax_code', $taxCode)
+                ->first();
 
-            if ($company) {
-                return CompanyResolutionResult::matched($company, 100, 'tax_code');
+            if ($company !== null) {
+                return CompanyResolutionResult::matched(
+                    $company,
+                    100,
+                    'tax_code'
+                );
             }
         }
 
-        $domain = $this->extractBusinessDomain($data['business_email'] ?? null);
+        $domain = $this->normalizer->extractBusinessDomain(
+            $data['business_email'] ?? null
+        );
 
         if ($domain !== null) {
-            $matches = Company::query()->where('email_domain', $domain)->get();
+            $matches = Company::query()
+                ->where('email_domain', $domain)
+                ->limit(2)
+                ->get();
 
             if ($matches->count() === 1) {
                 $company = $matches->first();
 
-                if ($taxCode === null || blank($company->tax_code) || $company->tax_code === $taxCode) {
-                    return CompanyResolutionResult::matched($company, 85, 'email_domain');
+                $hasTaxConflict = $taxCode !== null
+                    && filled($company->tax_code)
+                    && $company->tax_code !== $taxCode;
+
+                if (! $hasTaxConflict) {
+                    return CompanyResolutionResult::matched(
+                        $company,
+                        85,
+                        'email_domain'
+                    );
                 }
             }
         }
 
-        $normalizedName = $this->normalizeName($data['company_name'] ?? null);
+        $normalizedName = $this->normalizer->normalizeName(
+            $data['company_name'] ?? null
+        );
 
         if ($normalizedName !== null) {
-            $company = Company::query()
+            $matches = Company::query()
                 ->where('normalized_name', $normalizedName)
-                ->first();
+                ->limit(2)
+                ->get();
 
-            if ($company) {
-                return CompanyResolutionResult::candidate($company, 65, 'normalized_name');
+            if ($matches->count() === 1) {
+                $company = $matches->first();
+
+                /*
+                 * Hai doanh nghiệp có cùng tên nhưng MST khác nhau
+                 * không được tạo candidate ghép vào nhau.
+                 */
+                $hasTaxConflict = $taxCode !== null
+                    && filled($company->tax_code)
+                    && $company->tax_code !== $taxCode;
+
+                if (! $hasTaxConflict) {
+                    return CompanyResolutionResult::candidate(
+                        $company,
+                        65,
+                        'normalized_name'
+                    );
+                }
             }
         }
 
         return CompanyResolutionResult::notFound();
     }
 
+    /*
+     * Giữ các wrapper này để không làm hỏng caller/test hiện tại.
+     */
     public function normalizeName(?string $value): ?string
     {
-        if (blank($value)) {
-            return null;
-        }
-
-        $value = Str::lower(Str::ascii(trim($value)));
-        $value = preg_replace('/\b(cong ty|cty|tnhh|co phan|jsc|ltd|company)\b/', ' ', $value) ?? $value;
-        $value = preg_replace('/[^a-z0-9]+/', ' ', $value) ?? $value;
-
-        return trim(preg_replace('/\s+/', ' ', $value) ?? $value);
+        return $this->normalizer->normalizeName($value);
     }
 
-    private function normalizeTaxCode(?string $value): ?string
+    public function normalizeTaxCode(?string $value): ?string
     {
-        if (blank($value)) {
-            return null;
-        }
-
-        $value = preg_replace('/\D+/', '', $value) ?? '';
-
-        return $value !== '' ? $value : null;
+        return $this->normalizer->normalizeTaxCode($value);
     }
 
     public function extractBusinessDomain(?string $email): ?string
     {
-        if (blank($email) || ! str_contains($email, '@')) {
-            return null;
-        }
-
-        $domain = Str::lower(Str::after($email, '@'));
-
-        return in_array($domain, self::FREE_EMAIL_DOMAINS, true)
-            ? null
-            : $domain;
+        return $this->normalizer->extractBusinessDomain($email);
     }
 }
