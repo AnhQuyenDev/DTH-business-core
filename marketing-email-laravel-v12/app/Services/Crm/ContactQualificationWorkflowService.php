@@ -44,6 +44,7 @@ final class ContactQualificationWorkflowService
             'archived',
         ],
         'qualified' => [
+            'converted',
             'unqualified',
         ],
         'unqualified' => [
@@ -64,12 +65,14 @@ final class ContactQualificationWorkflowService
         ContactQualificationStatus $to,
         array $data = [],
         ?int $actorUserId = null,
+        bool $fromPaymentService = false,
     ): ContactQualification {
         return DB::transaction(function () use (
             $qualification,
             $to,
             $data,
             $actorUserId,
+            $fromPaymentService,
         ): ContactQualification {
             $locked = ContactQualification::query()
                 ->with('lead')
@@ -85,6 +88,17 @@ final class ContactQualificationWorkflowService
 
             $from = $locked->status?->value
                 ?? (string) $locked->status;
+
+            if (
+                $to === ContactQualificationStatus::Converted
+                && ! $fromPaymentService
+            ) {
+                throw ValidationException::withMessages([
+                    'status' => __(
+                        'validation.qualification_converted_requires_payment'
+                    ),
+                ]);
+            }
 
             if ($from === $to->value) {
                 return $locked;
@@ -204,6 +218,17 @@ final class ContactQualificationWorkflowService
             }
         }
 
+        if (
+            $to === ContactQualificationStatus::Converted
+            && blank($data['converted_customer_id'] ?? null)
+        ) {
+            throw ValidationException::withMessages([
+                'converted_customer_id' => __(
+                    'validation.converted_customer_required'
+                ),
+            ]);
+        }
+
         if ($to === ContactQualificationStatus::Unqualified) {
             if (blank($data['unqualified_reason'] ?? null)) {
                 throw ValidationException::withMessages([
@@ -252,6 +277,7 @@ final class ContactQualificationWorkflowService
             'next_follow_up_at',
             'qualified_by_staff_id',
             'unqualified_reason',
+            'converted_customer_id',
         ]);
 
         $payload['status'] = $to->value;
@@ -272,6 +298,15 @@ final class ContactQualificationWorkflowService
             $payload['qualification_result'] =
                 QualificationResult::ConfirmedNeed->value;
             $payload['qualified_at'] = now();
+            $payload['next_follow_up_at'] = null;
+        }
+
+        if ($to === ContactQualificationStatus::Converted) {
+            $payload['qualification_result'] =
+                QualificationResult::Purchased->value;
+            $payload['converted_customer_id'] =
+                (int) $data['converted_customer_id'];
+            $payload['converted_at'] = now();
             $payload['next_follow_up_at'] = null;
         }
 
@@ -312,6 +347,11 @@ final class ContactQualificationWorkflowService
 
         if ($to === ContactQualificationStatus::Spam) {
             $payload['intake_status'] = LeadIntakeStatus::Spam->value;
+        }
+
+        if ($to === ContactQualificationStatus::Converted) {
+            $payload['intake_status'] =
+                LeadIntakeStatus::ConvertedToOpportunity->value;
         }
 
         if (in_array($to, [

@@ -1624,5 +1624,17 @@
     "validation.price_book_audience_mismatch": "The price book does not match the opportunity recipient type.",
     "validation.price_book_not_accessible": "You do not have permission to use this price book.",
     "validation.opportunity_payment_requires_conversion_flow": "The quotation cannot be marked as paid before the Phase 8 customer conversion flow is available.",
-    "notification.payment_requires_phase8_conversion": "Opportunity quotations cannot be marked as paid during Phase 7."
+    "notification.payment_requires_phase8_conversion": "Opportunity quotations cannot be marked as paid during Phase 7.",
+    "action.confirm_payment": "Confirm payment",
+    "field.payment_note": "Payment verification note",
+    "field.paid_at": "Paid at",
+    "field.payment_verified_by": "Payment verified by",
+    "payment.confirm_conversion_warning": "Confirming payment will mark the Opportunity as Won and create or update the Customer. Do not continue until the transaction has been verified.",
+    "notification.payment_confirmed": "Payment confirmed",
+    "notification.customer_created_from_payment": "The Customer was created or updated from the paid transaction.",
+    "validation.qualification_converted_requires_payment": "The qualification can only be converted by a successful payment flow.",
+    "validation.converted_customer_required": "A converted customer is required.",
+    "validation.quotation_not_in_opportunity": "The quotation does not belong to the selected opportunity.",
+    "validation.quotation_must_be_paid": "The quotation must be paid before customer conversion.",
+    "validation.manual_customer_conversion_disabled": "Manual customer conversion is disabled in Business Flow V2. Customers are created only after successful payment."
 }

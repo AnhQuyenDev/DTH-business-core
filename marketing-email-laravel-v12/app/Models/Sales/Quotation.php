@@ -42,6 +42,9 @@ class Quotation extends Model
         'grand_total',
         'status',
         'payment_status',
+        'paid_at',
+        'payment_verified_by_user_id',
+        'payment_note',
         'email_status',
         'customer_snapshot',
         'company_snapshot',
@@ -86,6 +89,7 @@ class Quotation extends Model
             'expired_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'approved_at' => 'datetime',
+            'paid_at' => 'datetime',
             'subtotal' => 'decimal:2',
             'discount_total' => 'decimal:2',
             'tax_total' => 'decimal:2',
@@ -112,6 +116,14 @@ class Quotation extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function paymentVerifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(
+            User::class,
+            'payment_verified_by_user_id'
+        );
     }
 
     public function assignedStaff(): BelongsTo

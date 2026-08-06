@@ -15,6 +15,8 @@ class CustomerFactory extends Factory
     {
         return [
             'customer_code' => 'CUS-'.fake()->unique()->numerify('####'),
+            'company_id' => null,
+            'converted_from_opportunity_id' => null,
             'customer_type' => fake()->randomElement(['personal', 'business']),
             'display_name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),

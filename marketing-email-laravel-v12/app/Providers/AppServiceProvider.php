@@ -114,5 +114,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('sales.view-opportunities', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager() || $user->isCustomerServiceStaff());
         Gate::define('sales.create-opportunities', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager());
         Gate::define('sales.process-opportunities', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager() || $user->role === 'customer_service_staff');
+        Gate::define(
+            'sales.verify-payments',
+            fn (User $user): bool => $user->isAdmin()
+                || $user->isCustomerServiceManager()
+        );
     }
 }

@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Sales\QuotationResource\Pages;
 
+use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
 use App\Filament\Resources\Sales\QuotationResource;
 use App\Models\Marketing\EmailTemplate;
 use App\Services\Sales\QuotationApprovalService;
 use App\Services\Sales\QuotationMailService;
+use App\Services\Sales\QuotationPaymentService;
 use App\Services\Sales\QuotationPdfService;
 use App\Services\Sales\QuotationTemplateRenderer;
 use Filament\Actions\Action;
@@ -14,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewQuotation extends ViewRecord
@@ -117,6 +120,53 @@ class ViewQuotation extends ViewRecord
                     'quotationCode' => $q->quotation_code,
                     'token' => $q->public_token,
                 ]), shouldOpenInNewTab: true),
+
+            Action::make('confirm_payment')
+                ->label(__('action.confirm_payment'))
+                ->icon('heroicon-o-banknotes')
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading(__('action.confirm_payment'))
+                ->modalDescription(
+                    __('payment.confirm_conversion_warning')
+                )
+                ->form([
+                    Textarea::make('payment_note')
+                        ->label(__('field.payment_note'))
+                        ->rows(4)
+                        ->required()
+                        ->maxLength(2000),
+                ])
+                ->action(function (array $data) use ($q): void {
+                    app(QuotationPaymentService::class)->updateStatus(
+                        quotation: $q,
+                        newStatus: PaymentStatus::Paid,
+                        user: auth()->user(),
+                        note: $data['payment_note'],
+                    );
+
+                    Notification::make()
+                        ->success()
+                        ->title(__('notification.payment_confirmed'))
+                        ->body(__('notification.customer_created_from_payment'))
+                        ->send();
+
+                    $this->record->refresh();
+
+                    $this->redirect(
+                        static::getResource()::getUrl('view', [
+                            'record' => $this->record,
+                        ])
+                    );
+                })
+                ->visible(function () use ($q): bool {
+                    $paymentStatus = $q->payment_status?->value
+                        ?? (string) $q->payment_status;
+
+                    return auth()->user()?->can('sales.verify-payments')
+                        && $q->status === QuotationStatus::Accepted
+                        && $paymentStatus !== PaymentStatus::Paid->value;
+                }),
         ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Sales;
 
+use App\Actions\Sales\ConvertWonOpportunityToCustomerAction;
 use App\Enums\Crm\CustomerLifecycleStage;
 use App\Enums\Crm\CustomerStatus;
 use App\Enums\Sales\PaymentStatus;
@@ -10,15 +11,26 @@ use App\Models\Sales\Quotation;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
-class QuotationPaymentService
+final class QuotationPaymentService
 {
     private const VALID_TRANSITIONS = [
         'not_required' => ['unpaid'],
-        'unpaid' => ['pending_verification', 'paid', 'cancelled'],
-        'pending_verification' => ['paid', 'unpaid', 'cancelled'],
-        'partially_paid' => ['paid', 'pending_verification', 'cancelled'],
+        'unpaid' => [
+            'pending_verification',
+            'paid',
+            'cancelled',
+        ],
+        'pending_verification' => [
+            'paid',
+            'unpaid',
+            'cancelled',
+        ],
+        'partially_paid' => [
+            'paid',
+            'pending_verification',
+            'cancelled',
+        ],
         'paid' => ['refunded'],
         'refunded' => [],
         'cancelled' => [],
@@ -26,88 +38,168 @@ class QuotationPaymentService
 
     public function __construct(
         private readonly AuditLogService $auditLog,
+        private readonly ConvertWonOpportunityToCustomerAction $converter,
     ) {}
 
-    public function updateStatus(Quotation $quotation, PaymentStatus $newStatus, User $user, ?string $note = null): Quotation
-    {
-        DB::transaction(function () use ($quotation, $newStatus, $user, $note) {
-            $oldStatus = $quotation->payment_status;
+    public function updateStatus(
+        Quotation $quotation,
+        PaymentStatus $newStatus,
+        User $user,
+        ?string $note = null,
+    ): Quotation {
+        $result = DB::transaction(function () use (
+            $quotation,
+            $newStatus,
+            $user,
+            $note,
+        ): array {
+            $locked = Quotation::query()
+                ->with([
+                    'opportunity',
+                    'customer',
+                ])
+                ->whereKey($quotation->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            $this->validateTransition($oldStatus, $newStatus);
+            $oldStatus = $locked->payment_status;
 
-            $this->assertOpportunityPaidAllowed($quotation, $newStatus);
+            /*
+             * Idempotency: nếu đã paid thì trả về,
+             * không cộng doanh thu hoặc tạo Customer lần nữa.
+             */
+            if (
+                $newStatus === PaymentStatus::Paid
+                && $oldStatus === PaymentStatus::Paid
+            ) {
+                return [
+                    'quotation_id' => $locked->id,
+                    'payment_became_paid' => false,
+                ];
+            }
 
-            $quotation->update([
-                'payment_status' => $newStatus,
+            $this->validateTransition(
+                $oldStatus,
+                $newStatus,
+            );
+
+            $locked->update([
+                'payment_status' => $newStatus->value,
+                'paid_at' => $newStatus === PaymentStatus::Paid
+                    ? ($locked->paid_at ?? now())
+                    : $locked->paid_at,
+                'payment_verified_by_user_id' => $newStatus === PaymentStatus::Paid
+                        ? $user->id
+                        : $locked->payment_verified_by_user_id,
+                'payment_note' => $note
+                    ?? $locked->payment_note,
                 'updated_by' => $user->id,
             ]);
 
-            $this->auditLog->log('quotation.payment_updated', $quotation, [
-                'old_status' => $oldStatus?->value,
-            ], [
-                'new_status' => $newStatus->value,
-                'note' => $note,
-            ]);
+            $this->auditLog->log(
+                'quotation.payment_updated',
+                $locked,
+                [
+                    'old_status' => $oldStatus?->value,
+                ],
+                [
+                    'new_status' => $newStatus->value,
+                    'note' => $note,
+                    'verified_by_user_id' => $user->id,
+                ],
+            );
 
             if ($newStatus === PaymentStatus::Paid) {
-                $this->handlePaid($quotation, $user);
+                $this->handlePaid($locked, $user);
             }
+
+            return [
+                'quotation_id' => $locked->id,
+                'payment_became_paid' => $newStatus === PaymentStatus::Paid,
+            ];
         });
 
-        return $quotation->fresh();
+        if ($result['payment_became_paid']) {
+            SendPaymentConfirmedNotificationJob::dispatch(
+                $result['quotation_id']
+            );
+        }
+
+        return Quotation::query()
+            ->with([
+                'customer',
+                'opportunity',
+            ])
+            ->findOrFail($result['quotation_id']);
     }
 
-    private function validateTransition(?PaymentStatus $current, PaymentStatus $target): void
-    {
-        $currentValue = $current?->value ?? 'unpaid';
+    private function validateTransition(
+        ?PaymentStatus $current,
+        PaymentStatus $target,
+    ): void {
+        $currentValue = $current?->value
+            ?? PaymentStatus::Unpaid->value;
+
         $allowed = self::VALID_TRANSITIONS[$currentValue] ?? [];
 
         if (! in_array($target->value, $allowed, true)) {
             throw new \InvalidArgumentException(
-                "Cannot transition payment from {$currentValue} to {$target->value}"
+                "Cannot transition payment from {$currentValue} "
+                ."to {$target->value}"
             );
         }
     }
 
-    private function assertOpportunityPaidAllowed(Quotation $quotation, PaymentStatus $newStatus): void
-    {
-        if (
-            $newStatus === PaymentStatus::Paid
-            && $quotation->opportunity_id !== null
-            && $quotation->customer_id === null
-        ) {
-            throw ValidationException::withMessages([
-                'payment_status' => __(
-                    'validation.opportunity_payment_requires_conversion_flow'
-                ),
-            ]);
-        }
-    }
+    private function handlePaid(
+        Quotation $quotation,
+        User $user,
+    ): void {
+        if ($quotation->opportunity_id !== null) {
+            $opportunity = $quotation->opportunity;
 
-    private function handlePaid(Quotation $quotation, User $user): void
-    {
+            if ($opportunity === null) {
+                throw new \RuntimeException(
+                    'Opportunity quotation is missing its opportunity.'
+                );
+            }
+
+            $this->converter->execute(
+                opportunity: $opportunity,
+                quotation: $quotation,
+                verifiedBy: $user,
+            );
+
+            return;
+        }
+
+        /*
+         * Luồng legacy: Quotation cũ đã có Customer.
+         */
         $customer = $quotation->customer;
-        if (! $customer) {
+
+        if ($customer === null) {
             return;
         }
 
         $customer->update([
-            'status' => CustomerStatus::Active,
-            'lifecycle_stage' => CustomerLifecycleStage::Purchasing,
+            'status' => CustomerStatus::Active->value,
+            'lifecycle_stage' => CustomerLifecycleStage::Purchasing->value,
             'first_purchase_at' => $customer->first_purchase_at ?? now(),
             'latest_purchase_at' => now(),
+            'total_revenue' => (float) $customer->total_revenue
+                + (float) $quotation->grand_total,
         ]);
 
-        $this->auditLog->log('customer.lifecycle_updated', $customer, [
-            'old_status' => $customer->getOriginal('status')?->value,
-            'old_lifecycle' => $customer->getOriginal('lifecycle_stage')?->value,
-        ], [
-            'new_status' => CustomerStatus::Active->value,
-            'new_lifecycle' => CustomerLifecycleStage::Purchasing->value,
-            'source' => 'quotation_payment',
-            'quotation_code' => $quotation->quotation_code,
-        ]);
-
-        SendPaymentConfirmedNotificationJob::dispatch($quotation);
+        $this->auditLog->log(
+            'customer.lifecycle_updated',
+            $customer,
+            [],
+            [
+                'new_status' => CustomerStatus::Active->value,
+                'new_lifecycle' => CustomerLifecycleStage::Purchasing->value,
+                'source' => 'legacy_quotation_payment',
+                'quotation_code' => $quotation->quotation_code,
+            ],
+        );
     }
 }

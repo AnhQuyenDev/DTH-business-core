@@ -10,6 +10,7 @@ use App\Models\Marketing\Contact;
 use App\Models\Marketing\EmailEvent;
 use App\Models\Marketing\SuppressionEntry;
 use App\Models\Marketing\Tag;
+use App\Models\Sales\Opportunity;
 use App\Models\Sales\Quotation;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -78,6 +79,8 @@ class Customer extends Model
     protected $fillable = [
         'customer_code',
         'contact_id',
+        'company_id',
+        'converted_from_opportunity_id',
         'customer_type',
         'display_name',
         'email',
@@ -147,6 +150,19 @@ class Customer extends Model
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function convertedFromOpportunity(): BelongsTo
+    {
+        return $this->belongsTo(
+            Opportunity::class,
+            'converted_from_opportunity_id'
+        );
     }
 
     public function convertedBy(): BelongsTo

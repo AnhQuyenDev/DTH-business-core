@@ -490,24 +490,6 @@ class QuotationResource extends Resource
                                 }
                             }
                         }),
-                    BulkAction::make('bulk_mark_paid')
-                        ->label(__('action.bulk_mark_paid'))
-                        ->icon('heroicon-o-banknotes')
-                        ->color('success')
-                        ->requiresConfirmation()
-                        ->modalHeading(__('action.bulk_mark_paid'))
-                        ->deselectRecordsAfterCompletion()
-                        ->visible(fn (): bool => ! config('business_flow.opportunity_quotation_enabled') && auth()->user()->can('sales.approve-quotations'))
-                        ->action(function (Collection $records): void {
-                            foreach ($records as $record) {
-                                if ($record->status === QuotationStatus::Accepted && $record->payment_status !== PaymentStatus::Paid) {
-                                    $record->update([
-                                        'payment_status' => PaymentStatus::Paid,
-                                        'metadata' => array_merge($record->metadata ?? [], ['paid_at' => now()->toDateTimeString(), 'paid_by' => auth()->id()]),
-                                    ]);
-                                }
-                            }
-                        }),
                 ]),
             ]);
     }

@@ -1634,5 +1634,17 @@
     "validation.price_book_audience_mismatch": "Bảng giá không phù hợp với loại người nhận của cơ hội.",
     "validation.price_book_not_accessible": "Bạn không có quyền sử dụng bảng giá này.",
     "validation.opportunity_payment_requires_conversion_flow": "Không thể đánh dấu đã thanh toán trước khi luồng chuyển đổi Customer của Phase 8 được kích hoạt.",
-    "notification.payment_requires_phase8_conversion": "Báo giá Opportunity chưa thể đánh dấu đã thanh toán trong Phase 7."
+    "notification.payment_requires_phase8_conversion": "Báo giá Opportunity chưa thể đánh dấu đã thanh toán trong Phase 7.",
+    "action.confirm_payment": "Xác nhận thanh toán",
+    "field.payment_note": "Ghi chú xác minh thanh toán",
+    "field.paid_at": "Thanh toán lúc",
+    "field.payment_verified_by": "Người xác minh thanh toán",
+    "payment.confirm_conversion_warning": "Xác nhận thanh toán sẽ chuyển Cơ hội thành Thành công và tạo hoặc cập nhật Khách hàng. Thao tác này không nên thực hiện nếu chưa kiểm tra giao dịch thực tế.",
+    "notification.payment_confirmed": "Đã xác nhận thanh toán",
+    "notification.customer_created_from_payment": "Khách hàng đã được tạo hoặc cập nhật từ giao dịch thanh toán.",
+    "validation.qualification_converted_requires_payment": "Qualification chỉ được chuyển thành Đã chuyển đổi từ luồng thanh toán thành công.",
+    "validation.converted_customer_required": "Phải có khách hàng được chuyển đổi.",
+    "validation.quotation_not_in_opportunity": "Báo giá không thuộc cơ hội kinh doanh được chỉ định.",
+    "validation.quotation_must_be_paid": "Báo giá phải ở trạng thái đã thanh toán trước khi chuyển khách hàng.",
+    "validation.manual_customer_conversion_disabled": "Không thể chuyển khách hàng thủ công trong Business Flow V2. Khách hàng chỉ được tạo sau thanh toán thành công."
 }

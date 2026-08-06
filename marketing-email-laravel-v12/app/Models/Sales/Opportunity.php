@@ -4,6 +4,7 @@ namespace App\Models\Sales;
 
 use App\Enums\Sales\OpportunityStage;
 use App\Models\Crm\Company;
+use App\Models\Crm\Customer;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\Contact;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Opportunity extends Model
@@ -97,6 +99,14 @@ class Opportunity extends Model
     public function quotations(): HasMany
     {
         return $this->hasMany(Quotation::class);
+    }
+
+    public function convertedCustomer(): HasOne
+    {
+        return $this->hasOne(
+            Customer::class,
+            'converted_from_opportunity_id'
+        );
     }
 
     public function latestQuotation()

@@ -21,42 +21,57 @@ class SendPaymentConfirmedNotificationJob implements ShouldQueue
     public int $tries = 3;
 
     public function __construct(
-        public Quotation $quotation,
+        public int $quotationId,
     ) {}
 
     public function handle(
         QuotationInteractionService $interaction,
         QuotationEmailCrmSyncer $syncer,
     ): void {
-        $customerEmail = $this->quotation->customer?->email;
+        $quotation = Quotation::query()
+            ->with([
+                'customer',
+                'opportunity',
+                'company',
+                'contact.personalProfile',
+                'contact.businessProfile',
+            ])
+            ->find($this->quotationId);
 
-        if (empty($customerEmail)) {
-            Log::info('SendPaymentConfirmedNotificationJob: no customer email', [
-                'quotation_id' => $this->quotation->id,
-                'code' => $this->quotation->quotation_code,
+        if ($quotation === null) {
+            return;
+        }
+
+        $recipientEmail = $quotation->customer?->email
+            ?? $quotation->party_email;
+
+        if (empty($recipientEmail)) {
+            Log::info('SendPaymentConfirmedNotificationJob: no recipient email', [
+                'quotation_id' => $quotation->id,
+                'code' => $quotation->quotation_code,
             ]);
 
             return;
         }
 
         try {
-            Mail::to($customerEmail)->send(new PaymentConfirmedMail($this->quotation));
+            Mail::to($recipientEmail)->send(new PaymentConfirmedMail($quotation));
 
-            $interaction->logPaymentUpdated($this->quotation, 'Đã gửi xác nhận thanh toán đến khách hàng');
+            $interaction->logPaymentUpdated($quotation, 'Đã gửi xác nhận thanh toán đến khách hàng');
 
             $syncer->recordEmailEvent(
-                $this->quotation,
-                "Xác nhận thanh toán báo giá {$this->quotation->quotation_code}",
+                $quotation,
+                "Xác nhận thanh toán báo giá {$quotation->quotation_code}",
                 'payment_confirmed',
             );
 
             Log::info('SendPaymentConfirmedNotificationJob: notification sent', [
-                'quotation_code' => $this->quotation->quotation_code,
-                'email' => $customerEmail,
+                'quotation_code' => $quotation->quotation_code,
+                'email' => $recipientEmail,
             ]);
         } catch (\Throwable $e) {
             Log::error('SendPaymentConfirmedNotificationJob: failed', [
-                'quotation_code' => $this->quotation->quotation_code,
+                'quotation_code' => $quotation->quotation_code,
                 'error' => $e->getMessage(),
             ]);
             throw $e;

@@ -62,9 +62,18 @@ class CustomerResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (
+            config('business_flow.v2_enabled')
+            && config('business_flow.customer_on_paid_only')
+        ) {
+            return false;
+        }
+
         $user = auth()->user();
 
-        return ($user?->isAdmin() || $user?->isCustomerServiceManager() || $user?->isCustomerServiceStaff()) ?? false;
+        return ($user?->isAdmin()
+            || $user?->isCustomerServiceManager()
+            || $user?->isCustomerServiceStaff()) ?? false;
     }
 
     public static function canEdit(Model $record): bool

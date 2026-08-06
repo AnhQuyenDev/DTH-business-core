@@ -16,7 +16,12 @@ use App\Models\Crm\Staff;
 use App\Models\Marketing\Contact;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
+/**
+ * @deprecated Business Flow V2 converts Customer only from a paid
+ * Opportunity quotation. Use ConvertWonOpportunityToCustomerAction.
+ */
 final readonly class ConvertContactToCustomerAction
 {
     public function __construct(
@@ -29,6 +34,17 @@ final readonly class ConvertContactToCustomerAction
         Staff $convertedBy,
         ?Staff $assignToStaff = null,
     ): Customer {
+        if (
+            config('business_flow.v2_enabled')
+            && config('business_flow.customer_on_paid_only')
+        ) {
+            throw ValidationException::withMessages([
+                'contact' => __(
+                    'validation.manual_customer_conversion_disabled'
+                ),
+            ]);
+        }
+
         $qualification = $contact->qualification;
 
         if (! $qualification || ! $qualification->isConvertible()) {
