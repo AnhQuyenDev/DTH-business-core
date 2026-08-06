@@ -5,6 +5,7 @@ namespace App\Models\Crm;
 use App\Enums\Crm\LeadIntakeStatus;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\LandingPageSubmission;
+use App\Models\Sales\Opportunity;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -81,6 +82,11 @@ class Lead extends Model
     public function qualification(): HasOne
     {
         return $this->hasOne(ContactQualification::class);
+    }
+
+    public function opportunities(): HasMany
+    {
+        return $this->hasMany(Opportunity::class);
     }
 
     public function qualificationNotes(): HasManyThrough

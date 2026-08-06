@@ -109,5 +109,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('sales.revise-quotations', fn (User $user) => $user->isAdmin());
         Gate::define('sales.cancel-quotations', fn (User $user) => $user->isAdmin() || $user->isCustomerServiceManager());
         Gate::define('sales.export-quotations', fn (User $user) => $user->isAnyMarketingUser());
+
+        // ─── Sales / Opportunity Gates ───────────────────────────────────
+        Gate::define('sales.view-opportunities', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager() || $user->isCustomerServiceStaff());
+        Gate::define('sales.create-opportunities', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager());
+        Gate::define('sales.process-opportunities', fn (User $user): bool => $user->isAdmin() || $user->isCustomerServiceManager() || $user->role === 'customer_service_staff');
     }
 }
