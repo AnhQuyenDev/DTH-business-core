@@ -123,7 +123,13 @@ class BackfillOpportunities extends Command
         $legacyOpportunityPairs = Quotation::query()
             ->whereNull('opportunity_id')
             ->whereNotNull('customer_id')
-            ->get(['id', 'customer_id', 'assigned_staff_id']);
+            ->get([
+                'id',
+                'customer_id',
+                'assigned_staff_id',
+                'payment_status',
+                'grand_total',
+            ]);
 
         $processedCustomerIds = [];
 
@@ -174,7 +180,21 @@ class BackfillOpportunities extends Command
 
                     Quotation::query()
                         ->whereKey($quotation->id)
-                        ->update(['opportunity_id' => $opportunity->id]);
+                        ->update([
+                            'opportunity_id' => $opportunity->id,
+                        ]);
+
+                    if (
+                        $companyId !== null
+                        && $stage === OpportunityStage::Won
+                    ) {
+                        Company::query()
+                            ->whereKey($companyId)
+                            ->update([
+                                'lifecycle_stage' =>
+                                    CompanyLifecycleStage::Customer->value,
+                            ]);
+                    }
                 });
 
                 $stats['opportunities_linked_to_quotation']++;

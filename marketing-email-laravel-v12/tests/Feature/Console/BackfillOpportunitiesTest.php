@@ -5,8 +5,11 @@ namespace Tests\Feature\Console;
 use App\Enums\Crm\CompanyLifecycleStage;
 use App\Enums\Crm\ContactQualificationStatus;
 use App\Enums\Crm\QualificationResult;
+use App\Models\Crm\Company;
 use App\Models\Crm\ContactQualification;
+use App\Models\Crm\Customer;
 use App\Models\Crm\Department;
+use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\Contact;
 use App\Models\Sales\Opportunity;
@@ -44,9 +47,9 @@ class BackfillOpportunitiesTest extends TestCase
         ]);
     }
 
-    private function makeCompany(Staff $owner): \App\Models\Crm\Company
+    private function makeCompany(Staff $owner): Company
     {
-        return \App\Models\Crm\Company::query()->create([
+        return Company::query()->create([
             'company_code' => 'COM-'.now()->format('Y').'-'.fake()->unique()->numberBetween(100000, 999999),
             'legal_name' => 'Công ty ABC',
             'tax_code' => (string) fake()->unique()->numberBetween(1000000000, 9999999999),
@@ -63,7 +66,7 @@ class BackfillOpportunitiesTest extends TestCase
 
         $contact = Contact::factory()->create();
 
-        $lead = \App\Models\Crm\Lead::query()->create([
+        $lead = Lead::query()->create([
             'lead_code' => 'LEAD-'.now()->format('Y').'-'.fake()->unique()->numberBetween(100000, 999999),
             'contact_id' => $contact->id,
             'company_id' => $company->id,
@@ -95,14 +98,6 @@ class BackfillOpportunitiesTest extends TestCase
     public function test_command_lists_qualified_qualifications_without_opportunity_in_dry_run(): void
     {
         $this->makeQualifiedFlow();
-
-        $stats = [
-            'qualified_qualifications_without_opportunity' => 1,
-            'opportunities_from_qualification' => 0,
-            'legacy_customers_with_quotation_without_opportunity' => 0,
-            'opportunities_linked_to_quotation' => 0,
-        ];
-
         $this->artisan('sales:backfill-opportunities', ['--dry-run' => true])
             ->expectsOutputToContain('qualified_qualifications_without_opportunity')
             ->assertSuccessful();
@@ -136,7 +131,7 @@ class BackfillOpportunitiesTest extends TestCase
         $flow = $this->makeQualifiedFlow();
 
         $contact = $flow['contact'];
-        $customer = \App\Models\Crm\Customer::query()->create([
+        $customer = Customer::query()->create([
             'customer_code' => 'CUS-'.fake()->unique()->numerify('######'),
             'contact_id' => $contact->id,
             'company_id' => $flow['company']->id,
