@@ -118,7 +118,7 @@ class QuotationResource extends Resource
 
                             if (
                                 ! $user?->isAdmin()
-                                && ! $user?->isCustomerServiceManager()
+                                && ! $user?->isSalesManager()
                             ) {
                                 $query->where(
                                     'assigned_staff_id',
