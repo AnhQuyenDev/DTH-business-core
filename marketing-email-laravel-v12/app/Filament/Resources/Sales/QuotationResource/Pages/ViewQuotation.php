@@ -30,21 +30,21 @@ class ViewQuotation extends ViewRecord
         return array_filter([
             Action::make('edit')->label(__('action.edit'))
                 ->url(route('filament.admin.resources.sales.quotations.edit', $q))
-                ->visible(fn () => $q->status->isEditable() && auth()->user()->can('sales.create-quotations')),
+                ->visible(fn () => auth()->user()?->can('update', $q) ?? false),
 
             Action::make('submit_approval')->label(__('action.submit_approval'))
                 ->action(function () use ($q) {
                     app(QuotationApprovalService::class)->submitForApproval($q, auth()->user());
                     $this->redirect($this->getUrl(['record' => $this->record]));
                 })
-                ->visible(fn () => $q->status === QuotationStatus::Draft && auth()->user()->can('sales.create-quotations')),
+                ->visible(fn () => $q->status === QuotationStatus::Draft && (auth()->user()?->can('update', $q) ?? false)),
 
             Action::make('approve')->label(__('action.approve'))
                 ->action(function () use ($q) {
                     app(QuotationApprovalService::class)->approve($q, auth()->user());
                     $this->redirect($this->getUrl(['record' => $this->record]));
                 })
-                ->visible(fn () => $q->status === QuotationStatus::PendingApproval && auth()->user()->can('sales.approve-quotations')),
+                ->visible(fn () => $q->status === QuotationStatus::PendingApproval && (auth()->user()?->can('approve', $q) ?? false)),
 
             Action::make('reject_approval')->label(__('action.reject_approval'))->color('danger')
                 ->form([Textarea::make('reason')->required()])
@@ -52,7 +52,7 @@ class ViewQuotation extends ViewRecord
                     app(QuotationApprovalService::class)->reject($q, auth()->user(), $data['reason']);
                     $this->redirect($this->getUrl(['record' => $this->record]));
                 })
-                ->visible(fn () => $q->status === QuotationStatus::PendingApproval && auth()->user()->can('sales.approve-quotations')),
+                ->visible(fn () => $q->status === QuotationStatus::PendingApproval && (auth()->user()?->can('approve', $q) ?? false)),
 
             Action::make('send')->label(__('action.send'))
                 ->form([
@@ -99,7 +99,7 @@ class ViewQuotation extends ViewRecord
                     ]);
                     $this->redirect($this->getUrl(['record' => $this->record]));
                 })
-                ->visible(fn () => filled($q->party_email) && $q->status->canSend() && auth()->user()->can('sales.send-quotations')),
+                ->visible(fn () => filled($q->party_email) && (auth()->user()?->can('send', $q) ?? false)),
 
             Action::make('generate_pdf')->label(__('action.generate_pdf'))
                 ->action(function () use ($q) {
@@ -109,7 +109,7 @@ class ViewQuotation extends ViewRecord
                 ->visible(fn () => ! $q->status->isTerminal()),
 
             Action::make('cancel')->label(__('action.cancel'))->color('danger')
-                ->visible(fn () => ! $q->status->isTerminal() && auth()->user()->can('sales.cancel-quotations'))
+                ->visible(fn () => auth()->user()?->can('cancel', $q) ?? false)
                 ->action(function () use ($q) {
                     app(QuotationApprovalService::class)->logCancellation($q, auth()->user());
                     $this->redirect($this->getUrl(['record' => $this->record]));
@@ -163,7 +163,10 @@ class ViewQuotation extends ViewRecord
                     $paymentStatus = $q->payment_status?->value
                         ?? (string) $q->payment_status;
 
-                    return auth()->user()?->can('sales.verify-payments')
+                    return auth()->user()?->can(
+                        'verifyPayment',
+                        $q
+                    )
                         && $q->status === QuotationStatus::Accepted
                         && $paymentStatus !== PaymentStatus::Paid->value;
                 }),

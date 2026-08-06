@@ -36,11 +36,11 @@ class CustomerResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?int $navigationSort = 20;
+    protected static ?int $navigationSort = 10;
 
     public static function getNavigationGroup(): string
     {
-        return __('navigation.group.crm');
+        return __('navigation.group.customer_care');
     }
 
     public static function getModelLabel(): string
@@ -55,32 +55,36 @@ class CustomerResource extends Resource
 
     public static function canViewAny(): bool
     {
-        $user = auth()->user();
+        return auth()->user()?->can(
+            'viewAny',
+            Customer::class
+        ) ?? false;
+    }
 
-        return $user?->isAnyMarketingUser() ?? false;
+    public static function canView(Model $record): bool
+    {
+        return $record instanceof Customer
+            && (auth()->user()?->can('view', $record) ?? false);
     }
 
     public static function canCreate(): bool
     {
-        if (
-            config('business_flow.v2_enabled')
-            && config('business_flow.customer_on_paid_only')
-        ) {
-            return false;
-        }
-
-        $user = auth()->user();
-
-        return ($user?->isAdmin()
-            || $user?->isCustomerServiceManager()
-            || $user?->isCustomerServiceStaff()) ?? false;
+        return auth()->user()?->can(
+            'create',
+            Customer::class
+        ) ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        $user = auth()->user();
+        return $record instanceof Customer
+            && (auth()->user()?->can('update', $record) ?? false);
+    }
 
-        return ($user?->isAdmin() || $user?->isCustomerServiceManager() || $user?->isCustomerServiceStaff()) ?? false;
+    public static function canDelete(Model $record): bool
+    {
+        return $record instanceof Customer
+            && (auth()->user()?->can('delete', $record) ?? false);
     }
 
     public static function form(Form $form): Form
@@ -225,7 +229,7 @@ class CustomerResource extends Resource
                 Action::make('assign_owner')
                     ->label(__('action.assign_staff'))
                     ->icon('heroicon-o-user-plus')
-                    ->visible(fn (): bool => auth()->user()?->isAdmin() || auth()->user()?->isCustomerServiceManager())
+                    ->visible(fn (Customer $record): bool => auth()->user()?->can('manageAssignments', $record) ?? false)
                     ->form([
                         Select::make('staff_id')
                             ->label(__('field.owner_staff'))
@@ -259,7 +263,7 @@ class CustomerResource extends Resource
                 Action::make('assign_support')
                     ->label(__('field.support_staff'))
                     ->icon('heroicon-o-user-group')
-                    ->visible(fn (): bool => auth()->user()?->isAdmin() || auth()->user()?->isCustomerServiceManager())
+                    ->visible(fn (Customer $record): bool => auth()->user()?->can('manageAssignments', $record) ?? false)
                     ->form([
                         Select::make('staff_id')
                             ->label(__('field.support_staff'))
@@ -284,7 +288,7 @@ class CustomerResource extends Resource
                     ->label(__('enum.assignment_reason.transfer'))
                     ->icon('heroicon-o-arrow-right-circle')
                     ->color('warning')
-                    ->visible(fn (): bool => auth()->user()?->isAdmin() || auth()->user()?->isCustomerServiceManager())
+                    ->visible(fn (Customer $record): bool => auth()->user()?->can('manageAssignments', $record) ?? false)
                     ->form([
                         Select::make('staff_id')
                             ->label(__('field.owner_staff'))
@@ -334,7 +338,7 @@ class CustomerResource extends Resource
                     ->label(__('action.release_customer'))
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('danger')
-                    ->visible(fn (): bool => auth()->user()?->isAdmin() || auth()->user()?->isCustomerServiceManager())
+                    ->visible(fn (Customer $record): bool => auth()->user()?->can('manageAssignments', $record) ?? false)
                     ->requiresConfirmation()
                     ->modalHeading(__('action.release_customer_confirm'))
                     ->modalDescription(__('action.release_customer_desc'))
@@ -390,23 +394,26 @@ class CustomerResource extends Resource
             return $query->whereRaw('0 = 1');
         }
 
-        if ($user->isAdmin() || $user->isCustomerServiceManager() || $user->isMarketingManager()) {
+        if ($user->isAdmin() || $user->isCustomerServiceManager()) {
             return $query;
         }
 
-        if ($user->isCustomerServiceStaff()) {
-            $staffId = $user->staff?->id;
-            if (! $staffId) {
-                return $query->whereRaw('0 = 1');
-            }
+        if (
+            $user->role !== 'customer_service_staff'
+            || $user->staff?->id === null
+        ) {
+            return $query->whereRaw('0 = 1');
+        }
 
-            return $query->whereHas('assignments', function (Builder $assignmentQuery) use ($staffId): void {
+        $staffId = $user->staff->id;
+
+        return $query->whereHas(
+            'assignments',
+            function (Builder $assignmentQuery) use ($staffId): void {
                 $assignmentQuery
                     ->where('staff_id', $staffId)
                     ->where('status', 'active');
-            });
-        }
-
-        return $query;
+            }
+        );
     }
 }

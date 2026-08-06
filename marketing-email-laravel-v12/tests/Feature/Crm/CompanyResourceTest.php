@@ -3,11 +3,14 @@
 namespace Tests\Feature\Crm;
 
 use App\Enums\Crm\CompanyLifecycleStage;
+use App\Enums\Crm\StaffEmploymentStatus;
 use App\Filament\Resources\CompanyResource;
 use App\Filament\Resources\CompanyResource\Pages\ViewCompany;
 use App\Filament\Resources\CompanyResource\RelationManagers\ContactsRelationManager;
 use App\Models\Crm\BusinessContactProfile;
 use App\Models\Crm\Company;
+use App\Models\Crm\Department;
+use App\Models\Crm\Staff;
 use App\Models\Marketing\Contact;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,9 +50,23 @@ class CompanyResourceTest extends TestCase
 
     public function test_customer_service_user_can_view_companies(): void
     {
-        $this->makeCompany();
+        $company = $this->makeCompany();
 
-        $this->actingAs($this->makeUser('customer_service_staff'));
+        $user = $this->makeUser('customer_service_staff');
+        $staff = Staff::query()->create([
+            'user_id' => $user->id,
+            'employee_code' => 'CS-001',
+            'full_name' => 'CS Staff',
+            'department_id' => Department::query()->firstOrCreate(
+                ['code' => 'customer_service'],
+                ['name' => 'Chăm sóc khách hàng', 'sort_order' => 3, 'is_active' => true]
+            )->id,
+            'employment_status' => StaffEmploymentStatus::Active,
+            'can_receive_customers' => true,
+        ]);
+        $company->update(['account_owner_staff_id' => $staff->id]);
+
+        $this->actingAs($user);
 
         Livewire::test(CompanyResource\Pages\ListCompanies::class)
             ->assertSuccessful()

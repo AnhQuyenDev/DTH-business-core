@@ -71,22 +71,30 @@ class QuotationResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('sales.view-quotations') ?? false;
+        return auth()->user()?->can(
+            'viewAny',
+            Quotation::class
+        ) ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('sales.create-quotations') ?? false;
+        return auth()->user()?->can(
+            'create',
+            Quotation::class
+        ) ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->can('sales.create-quotations') ?? false;
+        return $record instanceof Quotation
+            && (auth()->user()?->can('update', $record) ?? false);
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->can('sales.cancel-quotations') ?? false;
+        return $record instanceof Quotation
+            && (auth()->user()?->can('delete', $record) ?? false);
     }
 
     public static function form(Form $form): Form
@@ -411,7 +419,7 @@ class QuotationResource extends Resource
                     ->url(fn (Quotation $q): string => route('filament.admin.resources.sales.quotations.view', $q)),
                 Action::make('edit')->label(__('action.edit'))->icon('heroicon-o-pencil')
                     ->url(fn (Quotation $q): string => route('filament.admin.resources.sales.quotations.edit', $q))
-                    ->visible(fn (Quotation $q): bool => $q->status->isEditable() && auth()->user()->can('sales.create-quotations')),
+                    ->visible(fn (Quotation $q): bool => auth()->user()?->can('update', $q) ?? false),
                 Action::make('send')->label(__('action.send'))->icon('heroicon-o-paper-airplane')
                     ->form([
                         TextInput::make('party_name')
@@ -461,10 +469,10 @@ class QuotationResource extends Resource
                         ]);
                         Notification::make()->success()->title(__('notification.email_queued'))->send();
                     })
-                    ->visible(fn (Quotation $q): bool => filled($q->party_email) && $q->status->canSend() && auth()->user()->can('sales.send-quotations')),
+                    ->visible(fn (Quotation $q): bool => filled($q->party_email) && $q->status->canSend() && (auth()->user()?->can('send', $q) ?? false)),
                 Action::make('cancel')->label(__('action.cancel'))->icon('heroicon-o-x-circle')->color('danger')
                     ->action(fn (Quotation $q) => app(QuotationApprovalService::class)->logCancellation($q, auth()->user()))
-                    ->visible(fn (Quotation $q): bool => ! $q->status->isTerminal()),
+                    ->visible(fn (Quotation $q): bool => auth()->user()?->can('cancel', $q) ?? false),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->bulkActions([
@@ -473,7 +481,8 @@ class QuotationResource extends Resource
                         ->label(__('action.bulk_delete'))
                         ->modalHeading(__('action.bulk_delete'))
                         ->successNotificationTitle(__('notification.bulk_deleted'))
-                        ->requiresConfirmation(),
+                        ->requiresConfirmation()
+                        ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
                     BulkAction::make('bulk_cancel')
                         ->label(__('action.bulk_cancel'))
                         ->icon('heroicon-o-x-circle')
@@ -481,7 +490,7 @@ class QuotationResource extends Resource
                         ->requiresConfirmation()
                         ->modalHeading(__('action.bulk_cancel'))
                         ->deselectRecordsAfterCompletion()
-                        ->visible(fn (): bool => auth()->user()->can('sales.cancel-quotations'))
+                        ->visible(fn (): bool => auth()->user()?->isSalesManager() ?? false)
                         ->action(function (Collection $records): void {
                             $service = app(QuotationApprovalService::class);
                             foreach ($records as $q) {
@@ -556,16 +565,41 @@ class QuotationResource extends Resource
         $query = parent::getEloquentQuery();
         $user = auth()->user();
 
-        if ($user->isAdmin() || $user->isCustomerServiceManager()) {
-            return $query;
-        }
-
-        $staff = $user->staff;
-        if (! $staff) {
+        if (! $user) {
             return $query->whereRaw('0 = 1');
         }
 
-        return $query->where('assigned_staff_id', $staff->id)
-            ->orWhere('created_by', $user->id);
+        if (
+            $user->isAdmin()
+            || $user->isSalesManager()
+            || $user->role === 'finance_staff'
+        ) {
+            return $query;
+        }
+
+        if (
+            $user->role !== 'sales_staff'
+            || $user->staff?->id === null
+        ) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        $staffId = $user->staff->id;
+
+        return $query->where(function (Builder $query) use (
+            $staffId,
+            $user,
+        ): void {
+            $query
+                ->where('assigned_staff_id', $staffId)
+                ->orWhere('created_by', $user->id)
+                ->orWhereHas(
+                    'opportunity',
+                    fn (Builder $opportunityQuery): Builder => $opportunityQuery->where(
+                        'assigned_staff_id',
+                        $staffId
+                    )
+                );
+        });
     }
 }

@@ -21,6 +21,8 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class CompanyResource extends Resource
 {
@@ -163,40 +165,81 @@ class CompanyResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         return config('business_flow.v2_enabled')
-            && static::userCanViewCompanies();
+            && static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return config('business_flow.v2_enabled')
-            && static::userCanViewCompanies();
+        return auth()->user()?->can('viewAny', Company::class) ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return $record instanceof Company
+            && (auth()->user()?->can('view', $record) ?? false);
     }
 
     public static function canCreate(): bool
     {
-        return config('business_flow.v2_enabled')
-            && (auth()->user()?->isAdmin() ?? false);
+        return auth()->user()?->can('create', Company::class) ?? false;
     }
 
-    public static function canEdit($record): bool
+    public static function canEdit(Model $record): bool
     {
-        return static::canCreate();
+        return $record instanceof Company
+            && (auth()->user()?->can('update', $record) ?? false);
     }
 
-    public static function canDelete($record): bool
+    public static function canDelete(Model $record): bool
     {
-        return static::canCreate();
+        return $record instanceof Company
+            && (auth()->user()?->can('delete', $record) ?? false);
     }
 
-    private static function userCanViewCompanies(): bool
+    public static function getEloquentQuery(): Builder
     {
+        $query = parent::getEloquentQuery();
         $user = auth()->user();
 
-        return $user !== null
-            && (
-                $user->isAdmin()
-                || $user->isCustomerServiceManager()
-                || $user->isCustomerServiceStaff()
+        if (! $user) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        if (
+            $user->isAdmin()
+            || $user->isCustomerServiceManager()
+            || $user->isMarketingManager()
+            || $user->isSalesManager()
+        ) {
+            return $query;
+        }
+
+        $staffId = $user->staff?->id;
+
+        if ($staffId === null) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        if ($user->role === 'customer_service_staff') {
+            return $query->where(function (Builder $query) use ($staffId): void {
+                $query
+                    ->where('account_owner_staff_id', $staffId)
+                    ->orWhereHas(
+                        'leads',
+                        fn (Builder $leadQuery): Builder => $leadQuery
+                            ->where('assigned_staff_id', $staffId)
+                    );
+            });
+        }
+
+        if ($user->role === 'sales_staff') {
+            return $query->whereHas(
+                'opportunities',
+                fn (Builder $opportunityQuery): Builder => $opportunityQuery
+                    ->where('assigned_staff_id', $staffId)
             );
+        }
+
+        return $query->whereRaw('0 = 1');
     }
 }

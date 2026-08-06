@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\AuditLog;
 use Database\Factories\UserFactory;
@@ -40,7 +41,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->isAnyMarketingUser();
+        return $this->canAccessBusinessPanel();
     }
 
     public function staff(): HasOne
@@ -53,33 +54,156 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(AuditLog::class, 'user_id');
     }
 
+    public function hasRole(UserRole|string $role): bool
+    {
+        $value = $role instanceof UserRole
+            ? $role->value
+            : $role;
+
+        return $this->role === $value;
+    }
+
+    /**
+     * @param  array<int, UserRole|string>  $roles
+     */
+    public function hasAnyRole(array $roles): bool
+    {
+        $values = array_map(
+            fn (UserRole|string $role): string => $role instanceof UserRole
+                ? $role->value
+                : $role,
+            $roles,
+        );
+
+        return in_array($this->role, $values, true);
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->hasRole(UserRole::Admin);
     }
 
     public function isMarketingManager(): bool
     {
-        return in_array($this->role, ['admin', 'marketing_manager'], true);
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::MarketingManager,
+        ]);
     }
 
     public function isMarketingStaff(): bool
     {
-        return in_array($this->role, ['admin', 'marketing_manager', 'marketing_staff'], true);
-    }
-
-    public function isCustomerServiceStaff(): bool
-    {
-        return in_array($this->role, ['admin', 'customer_service_manager', 'customer_service_staff'], true);
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::MarketingManager,
+            UserRole::MarketingStaff,
+        ]);
     }
 
     public function isCustomerServiceManager(): bool
     {
-        return in_array($this->role, ['admin', 'customer_service_manager'], true);
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::CustomerServiceManager,
+        ]);
     }
 
+    public function isCustomerServiceStaff(): bool
+    {
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::CustomerServiceManager,
+            UserRole::CustomerServiceStaff,
+        ]);
+    }
+
+    public function isSalesManager(): bool
+    {
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::SalesManager,
+        ]);
+    }
+
+    public function isSalesStaff(): bool
+    {
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::SalesManager,
+            UserRole::SalesStaff,
+        ]);
+    }
+
+    public function isFinanceStaff(): bool
+    {
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::FinanceStaff,
+        ]);
+    }
+
+    public function isViewer(): bool
+    {
+        return $this->hasRole(UserRole::Viewer);
+    }
+
+    public function canViewMarketingModule(): bool
+    {
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::MarketingManager,
+            UserRole::MarketingStaff,
+        ]);
+    }
+
+    public function canViewCrmModule(): bool
+    {
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::MarketingManager,
+            UserRole::MarketingStaff,
+            UserRole::CustomerServiceManager,
+            UserRole::CustomerServiceStaff,
+        ]);
+    }
+
+    public function canViewSalesModule(): bool
+    {
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::CustomerServiceManager,
+            UserRole::SalesManager,
+            UserRole::SalesStaff,
+            UserRole::FinanceStaff,
+        ]);
+    }
+
+    public function canViewCustomerCareModule(): bool
+    {
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::CustomerServiceManager,
+            UserRole::CustomerServiceStaff,
+        ]);
+    }
+
+    public function canAccessBusinessPanel(): bool
+    {
+        return in_array($this->role, UserRole::values(), true);
+    }
+
+    /**
+     * @deprecated Dùng helper theo module thay vì helper tổng quát này.
+     */
     public function isAnyMarketingUser(): bool
     {
-        return in_array($this->role, ['admin', 'marketing_manager', 'marketing_staff', 'customer_service_manager', 'customer_service_staff', 'viewer'], true);
+        return $this->hasAnyRole([
+            UserRole::Admin,
+            UserRole::MarketingManager,
+            UserRole::MarketingStaff,
+            UserRole::CustomerServiceManager,
+            UserRole::CustomerServiceStaff,
+            UserRole::Viewer,
+        ]);
     }
 }

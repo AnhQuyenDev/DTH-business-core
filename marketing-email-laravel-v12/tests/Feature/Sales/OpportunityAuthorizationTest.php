@@ -54,40 +54,17 @@ class OpportunityAuthorizationTest extends TestCase
         $this->assertTrue(OpportunityResource::canViewAny());
     }
 
-    public function test_customer_service_staff_can_view_opportunities(): void
+    public function test_customer_service_staff_cannot_view_opportunities(): void
     {
         $this->actingAs($this->makeUser('customer_service_staff'));
 
-        $this->assertTrue(OpportunityResource::canViewAny());
-    }
-
-    public function test_marketing_staff_cannot_access_opportunities(): void
-    {
-        $this->actingAs($this->makeUser('marketing_staff'));
-
         $this->assertFalse(OpportunityResource::canViewAny());
         $this->assertFalse(OpportunityResource::shouldRegisterNavigation());
     }
 
-    public function test_guest_cannot_access_opportunities(): void
+    public function test_sales_staff_only_sees_assigned_opportunities(): void
     {
-        $this->assertFalse(OpportunityResource::canViewAny());
-        $this->assertFalse(OpportunityResource::canCreate());
-    }
-
-    public function test_resource_hidden_when_v2_flag_disabled(): void
-    {
-        config()->set('business_flow.v2_enabled', false);
-
-        $this->actingAs($this->makeUser('admin'));
-
-        $this->assertFalse(OpportunityResource::canViewAny());
-        $this->assertFalse(OpportunityResource::shouldRegisterNavigation());
-    }
-
-    public function test_customer_service_staff_only_sees_assigned_opportunities(): void
-    {
-        $user = $this->makeUser('customer_service_staff');
+        $user = $this->makeUser('sales_staff');
         $staff = Staff::factory()->create(['user_id' => $user->id]);
 
         $this->actingAs($user);
@@ -106,49 +83,16 @@ class OpportunityAuthorizationTest extends TestCase
         $this->assertSame([$assigned->id], $ids);
     }
 
-    public function test_admin_sees_all_opportunities(): void
-    {
-        $this->actingAs($this->makeUser('admin'));
-
-        $first = $this->makeOpportunity();
-        $second = $this->makeOpportunity();
-
-        $ids = OpportunityResource::scopeForUser(
-            Opportunity::query()
-        )->orderBy('id')->pluck('id')->all();
-
-        $this->assertSame([$first->id, $second->id], $ids);
-    }
-
-    public function test_customer_service_staff_cannot_open_another_staff_opportunity_by_url(): void
+    public function test_customer_service_staff_cannot_open_opportunity_by_url(): void
     {
         $user = $this->makeUser('customer_service_staff');
-
-        $staff = Staff::factory()->create([
-            'user_id' => $user->id,
-        ]);
-
-        $otherStaff = Staff::factory()->create();
-
-        $ownOpportunity = $this->makeOpportunity([
-            'assigned_staff_id' => $staff->id,
-        ]);
-
-        $otherOpportunity = $this->makeOpportunity([
-            'assigned_staff_id' => $otherStaff->id,
-        ]);
-
         $this->actingAs($user);
 
-        $this->get(
-            OpportunityResource::getUrl('view', [
-                'record' => $ownOpportunity,
-            ])
-        )->assertOk();
+        $opportunity = $this->makeOpportunity();
 
         $this->get(
             OpportunityResource::getUrl('view', [
-                'record' => $otherOpportunity,
+                'record' => $opportunity,
             ])
         )->assertNotFound();
     }

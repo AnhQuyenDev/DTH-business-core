@@ -5,6 +5,7 @@ namespace App\Models\Crm;
 use App\Enums\Crm\CompanyLifecycleStage;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\LandingPageSubmission;
+use App\Models\Sales\Opportunity;
 use App\Services\Crm\CompanyNormalizationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,6 +60,11 @@ class Company extends Model
     public function businessProfiles(): HasMany
     {
         return $this->hasMany(BusinessContactProfile::class);
+    }
+
+    public function opportunities(): HasMany
+    {
+        return $this->hasMany(Opportunity::class);
     }
 
     protected static function booted(): void

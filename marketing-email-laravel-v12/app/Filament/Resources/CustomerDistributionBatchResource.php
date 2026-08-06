@@ -33,7 +33,7 @@ class CustomerDistributionBatchResource extends Resource
 
     public static function getNavigationGroup(): string
     {
-        return __('navigation.group.crm');
+        return __('navigation.group.customer_care');
     }
 
     public static function getNavigationLabel(): string
@@ -53,9 +53,9 @@ class CustomerDistributionBatchResource extends Resource
 
     public static function canViewAny(): bool
     {
-        $user = auth()->user();
-
-        return ($user?->isAdmin() || $user?->isCustomerServiceManager()) ?? false;
+        return auth()->user()?->can(
+            'customer-care.manage-assignments'
+        ) ?? false;
     }
 
     public static function canCreate(): bool

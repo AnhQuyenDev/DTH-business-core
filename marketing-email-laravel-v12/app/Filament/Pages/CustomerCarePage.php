@@ -32,7 +32,7 @@ class CustomerCarePage extends Page implements HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 20;
 
     protected static string $view = 'filament.pages.customer-care';
 
@@ -71,7 +71,7 @@ class CustomerCarePage extends Page implements HasTable
 
     public static function getNavigationGroup(): string
     {
-        return __('navigation.group.crm');
+        return __('navigation.group.customer_care');
     }
 
     public static function getNavigationLabel(): string
@@ -81,9 +81,7 @@ class CustomerCarePage extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        $user = auth()->user();
-
-        return $user && ($user->isAdmin() || $user->isCustomerServiceManager() || $user->isCustomerServiceStaff());
+        return auth()->user()?->can('customer-care.view') ?? false;
     }
 
     public function getTitle(): string
@@ -203,6 +201,11 @@ class CustomerCarePage extends Page implements HasTable
 
     public function openCareWorkspace(Customer $record): void
     {
+        abort_unless(
+            auth()->user()?->can('view', $record),
+            403
+        );
+
         $this->selectedCustomerId = $record->id;
         $this->activeTab = 'overview';
         $this->emailTo = $record->email ?? '';
@@ -240,6 +243,11 @@ class CustomerCarePage extends Page implements HasTable
         if (! $customer) {
             return;
         }
+
+        abort_unless(
+            auth()->user()?->can('interact', $customer),
+            403
+        );
 
         $this->validate([
             'emailTo' => ['required', 'string'],
@@ -321,6 +329,11 @@ class CustomerCarePage extends Page implements HasTable
         if (! $customer) {
             return;
         }
+
+        abort_unless(
+            auth()->user()?->can('interact', $customer),
+            403
+        );
 
         $this->validate([
             'callType' => ['required', 'in:call,message'],
@@ -425,7 +438,7 @@ class CustomerCarePage extends Page implements HasTable
             return null;
         }
 
-        return Customer::query()
+        return $this->getBaseQuery()
             ->with(['tags', 'assignments.staff', 'currentOwner'])
             ->find($this->selectedCustomerId);
     }
@@ -481,6 +494,10 @@ class CustomerCarePage extends Page implements HasTable
 
         if ($user->isAdmin() || $user->isCustomerServiceManager()) {
             return Customer::query();
+        }
+
+        if ($user->role !== 'customer_service_staff') {
+            return Customer::query()->whereRaw('0 = 1');
         }
 
         $staff = $user->staff;

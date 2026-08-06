@@ -63,7 +63,12 @@ class OpportunityResource extends Resource
     public static function canViewAny(): bool
     {
         return config('business_flow.v2_enabled')
-            && (auth()->user()?->can('sales.view-opportunities') ?? false);
+            && (
+                auth()->user()?->can(
+                    'viewAny',
+                    Opportunity::class
+                ) ?? false
+            );
     }
 
     public static function canCreate(): bool
@@ -91,21 +96,16 @@ class OpportunityResource extends Resource
         return Gate::allows('sales.create-opportunities');
     }
 
-    public static function canProcessOpportunity(?Opportunity $opportunity = null): bool
-    {
-        if (! Gate::allows('sales.process-opportunities')) {
-            return false;
-        }
-
-        $user = auth()->user();
-
-        if ($user?->isAdmin() || $user?->isCustomerServiceManager()) {
-            return true;
-        }
-
-        return $user?->role === 'customer_service_staff'
-            && $user->staff?->id !== null
-            && $opportunity?->assigned_staff_id === $user->staff->id;
+    public static function canProcessOpportunity(
+        ?Opportunity $opportunity = null,
+    ): bool {
+        return $opportunity !== null
+            && (
+                auth()->user()?->can(
+                    'process',
+                    $opportunity
+                ) ?? false
+            );
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -378,13 +378,16 @@ class OpportunityResource extends Resource
                             fn (Opportunity $record): bool => config(
                                 'business_flow.opportunity_quotation_enabled'
                             )
-                                && static::canProcessOpportunity($record)
+                                && (
+                                    auth()->user()?->can(
+                                        'createQuotation',
+                                        $record
+                                    ) ?? false
+                                )
                                 && in_array(
                                     $record->stage instanceof OpportunityStage
                                         ? $record->stage
-                                        : OpportunityStage::from(
-                                            (string) $record->stage
-                                        ),
+                                        : OpportunityStage::from((string) $record->stage),
                                     [
                                         OpportunityStage::Qualified,
                                         OpportunityStage::Proposal,
@@ -512,14 +515,29 @@ class OpportunityResource extends Resource
     {
         $user = auth()->user();
 
+        if (! $user) {
+            return $query->whereRaw('0 = 1');
+        }
+
         if (
-            $user?->role !== 'customer_service_staff'
-            || $user?->staff?->id === null
+            $user->isAdmin()
+            || $user->isCustomerServiceManager()
+            || $user->isSalesManager()
         ) {
             return $query;
         }
 
-        return $query->where('assigned_staff_id', $user->staff->id);
+        if (
+            $user->role !== 'sales_staff'
+            || $user->staff?->id === null
+        ) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        return $query->where(
+            'assigned_staff_id',
+            $user->staff->id
+        );
     }
 
     public static function qualifiedLeadOptions(): array
@@ -552,22 +570,7 @@ class OpportunityResource extends Resource
 
     public static function canView($record): bool
     {
-        if (! static::canViewAny()) {
-            return false;
-        }
-
-        $user = auth()->user();
-
-        if (
-            $user?->isAdmin()
-            || $user?->isCustomerServiceManager()
-        ) {
-            return true;
-        }
-
-        return $user?->role === 'customer_service_staff'
-            && $user?->staff?->id !== null
-            && $record instanceof Opportunity
-            && $record->assigned_staff_id === $user->staff->id;
+        return $record instanceof Opportunity
+            && (auth()->user()?->can('view', $record) ?? false);
     }
 }

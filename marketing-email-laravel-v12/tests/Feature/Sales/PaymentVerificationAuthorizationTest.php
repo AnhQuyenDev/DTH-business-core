@@ -27,6 +27,14 @@ class PaymentVerificationAuthorizationTest extends TestCase
         $manager = $this->makeUser('customer_service_manager');
         $this->actingAs($manager);
 
+        $this->assertFalse(Gate::allows('sales.verify-payments'));
+    }
+
+    public function test_finance_staff_can_verify_payments(): void
+    {
+        $finance = $this->makeUser('finance_staff');
+        $this->actingAs($finance);
+
         $this->assertTrue(Gate::allows('sales.verify-payments'));
     }
 

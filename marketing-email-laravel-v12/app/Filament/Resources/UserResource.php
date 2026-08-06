@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\UserRole;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
 use Filament\Forms\Components\Select;
@@ -26,7 +27,7 @@ class UserResource extends Resource
 
     public static function getNavigationGroup(): string
     {
-        return __('navigation.group.system');
+        return __('navigation.group.configuration');
     }
 
     public static function getNavigationLabel(): string
@@ -69,14 +70,11 @@ class UserResource extends Resource
         return $form->schema([
             TextInput::make('name')->label(__('field.name'))->required()->maxLength(255),
             TextInput::make('email')->label(__('field.email'))->email()->required()->unique(ignoreRecord: true),
-            Select::make('role')->label(__('field.role'))->options([
-                'admin' => __('enum.role.admin'),
-                'marketing_manager' => __('enum.role.marketing_manager'),
-                'marketing_staff' => __('enum.role.marketing_staff'),
-                'customer_service_manager' => __('enum.role.customer_service_manager'),
-                'customer_service_staff' => __('enum.role.customer_service_staff'),
-                'viewer' => __('enum.role.viewer'),
-            ])->required(),
+            Select::make('role')
+                ->label(__('field.role'))
+                ->options(UserRole::options())
+                ->required()
+                ->searchable(),
             TextInput::make('password')
                 ->label(__('field.password'))
                 ->password()
@@ -90,15 +88,20 @@ class UserResource extends Resource
         return $table->columns([
             TextColumn::make('name')->label(__('field.name'))->searchable()->sortable(),
             TextColumn::make('email')->label(__('field.email'))->searchable()->sortable(),
-            TextColumn::make('role')->label(__('field.role'))->badge()
-                ->formatStateUsing(fn (?string $state): string => $state ? __('enum.role.'.$state) : '')
-                ->color(fn (?string $state): string => match ($state) {
-                    'admin' => 'danger',
-                    'marketing_manager', 'customer_service_manager' => 'warning',
-                    'marketing_staff', 'customer_service_staff' => 'info',
-                    'viewer' => 'gray',
-                    default => 'gray',
-                }),
+            TextColumn::make('role')
+                ->label(__('field.role'))
+                ->badge()
+                ->formatStateUsing(
+                    fn (?string $state): string => $state
+                        ? UserRole::tryFrom($state)?->label()
+                            ?? __('common.not_available')
+                        : __('common.not_available')
+                )
+                ->color(
+                    fn (?string $state): string => UserRole::tryFrom(
+                        (string) $state
+                    )?->color() ?? 'gray'
+                ),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable(),
         ])
             ->actions([ActionGroup::make([

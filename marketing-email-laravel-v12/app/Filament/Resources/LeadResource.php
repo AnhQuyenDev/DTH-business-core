@@ -61,7 +61,7 @@ class LeadResource extends Resource
     public static function canViewAny(): bool
     {
         return config('business_flow.v2_enabled')
-            && static::userCanViewLeads();
+            && (auth()->user()?->can('viewAny', Lead::class) ?? false);
     }
 
     public static function canCreate(): bool
@@ -81,21 +81,51 @@ class LeadResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return config('business_flow.v2_enabled')
-            && static::userCanViewLeads();
+        return static::canViewAny();
     }
 
-    private static function userCanViewLeads(): bool
+    public static function canView($record): bool
     {
+        return $record instanceof Lead
+            && (auth()->user()?->can('view', $record) ?? false);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
         $user = auth()->user();
 
-        return $user !== null
-            && (
-                $user->isAdmin()
-                || $user->isMarketingManager()
-                || $user->isCustomerServiceManager()
-                || $user->isCustomerServiceStaff()
-            );
+        if (! $user) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        if (
+            $user->isAdmin()
+            || $user->isMarketingManager()
+            || $user->role === 'marketing_staff'
+            || $user->isCustomerServiceManager()
+        ) {
+            return $query;
+        }
+
+        if (
+            $user->role !== 'customer_service_staff'
+            || $user->staff?->id === null
+        ) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        $staffId = $user->staff->id;
+
+        return $query->where(function (Builder $query) use ($staffId): void {
+            $query
+                ->where('assigned_staff_id', $staffId)
+                ->orWhereHas(
+                    'company',
+                    fn (Builder $companyQuery): Builder => $companyQuery
+                        ->where('account_owner_staff_id', $staffId)
+                );
+        });
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -259,24 +289,12 @@ class LeadResource extends Resource
 
     public static function canProcessLead(Lead $lead): bool
     {
-        if (! Gate::allows('crm.process-lead')) {
-            return false;
-        }
-
-        $user = auth()->user();
-
-        if ($user?->isAdmin() || $user?->isCustomerServiceManager()) {
-            return true;
-        }
-
-        return $user?->role === 'customer_service_staff'
-            && $user->staff?->id !== null
-            && $lead->assigned_staff_id === $user->staff->id;
+        return auth()->user()?->can('process', $lead) ?? false;
     }
 
     public static function canArchiveLead(Lead $lead): bool
     {
-        return Gate::allows('crm.archive-lead');
+        return auth()->user()?->can('archive', $lead) ?? false;
     }
 
     public static function table(Table $table): Table
@@ -343,13 +361,13 @@ class LeadResource extends Resource
                     ->label(__('field.status'))
                     ->options(ContactQualificationStatus::options())
                     ->query(fn (Builder $query, array $data) => $query
-                    ->when(
-                        filled($data['value'] ?? null),
-                        fn (Builder $query, string $value) => $query->whereHas(
-                            'qualification',
-                            fn (Builder $query) => $query->where('status', $value)
-                        )
-                    )),
+                        ->when(
+                            filled($data['value'] ?? null),
+                            fn (Builder $query, string $value) => $query->whereHas(
+                                'qualification',
+                                fn (Builder $query) => $query->where('status', $value)
+                            )
+                        )),
                 Tables\Filters\Filter::make('overdue_follow_up')
                     ->label(__('filter.overdue_follow_up'))
                     ->query(fn (Builder $query): Builder => $query->whereHas(

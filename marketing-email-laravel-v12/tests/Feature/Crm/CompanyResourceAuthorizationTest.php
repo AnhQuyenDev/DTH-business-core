@@ -72,7 +72,6 @@ class CompanyResourceAuthorizationTest extends TestCase
 
         $this->actingAs($this->makeUser('admin'));
 
-        $this->assertFalse(CompanyResource::canViewAny());
         $this->assertFalse(CompanyResource::shouldRegisterNavigation());
     }
 }

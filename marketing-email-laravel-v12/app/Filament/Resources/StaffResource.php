@@ -42,12 +42,12 @@ class StaffResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return false;
+        return auth()->user()?->isAdmin() ?? false;
     }
 
     public static function getNavigationGroup(): string
     {
-        return __('navigation.group.crm');
+        return __('navigation.group.configuration');
     }
 
     public static function getNavigationLabel(): string

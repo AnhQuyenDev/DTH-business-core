@@ -50,6 +50,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make()->label(fn (): string => __('navigation.group.marketing')),
                 NavigationGroup::make()->label(fn (): string => __('navigation.group.crm')),
                 NavigationGroup::make()->label(fn (): string => __('navigation.group.sales')),
+                NavigationGroup::make()->label(fn (): string => __('navigation.group.customer_care')),
                 NavigationGroup::make()->label(fn (): string => __('navigation.group.system')),
                 NavigationGroup::make()->label(fn (): string => __('navigation.group.configuration')),
             ])
