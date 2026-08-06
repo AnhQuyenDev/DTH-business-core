@@ -112,7 +112,6 @@ final class OpportunityWorkflowService
         if (
             $to !== OpportunityStage::Won
             || $fromPaymentService
-            || ! config('business_flow.customer_on_paid_only', false)
         ) {
             return;
         }

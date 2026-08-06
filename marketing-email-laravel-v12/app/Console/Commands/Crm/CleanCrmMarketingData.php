@@ -36,6 +36,11 @@ class CleanCrmMarketingData extends Command
         'personal_contact_profiles',
         'contact_qualification_notes',
         'contact_qualifications',
+
+        'opportunity_interactions',
+        'opportunity_contacts',
+        'sales_opportunities',
+
         'leads',
         'landing_page_submissions',
         'customer_distribution_items',
@@ -53,6 +58,7 @@ class CleanCrmMarketingData extends Command
         // --- Bộ đếm & log ---
         'company_code_sequences',
         'lead_code_sequences',
+        'opportunity_code_sequences',
         'audit_logs',
     ];
 

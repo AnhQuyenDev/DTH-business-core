@@ -2,12 +2,13 @@
 
 namespace App\Filament\Resources\Sales\OpportunityResource\RelationManagers;
 
+use App\Models\Marketing\Contact;
+use App\Models\Sales\Opportunity;
+use App\Services\Sales\OpportunityContactService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\AttachAction;
-use Filament\Tables\Actions\DetachAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -31,25 +32,36 @@ class ContactsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('full_name')
                     ->label(__('field.contact')),
+
                 TextColumn::make('pivot.role')
                     ->label(__('field.role'))
                     ->badge(),
+
                 IconColumn::make('pivot.is_primary')
                     ->label(__('field.is_primary'))
                     ->boolean(),
             ])
             ->headerActions([
-                AttachAction::make()
+                Action::make('add_contact')
                     ->label(__('action.add_contact'))
-                    ->preloadRecordSelect()
-                    ->form(fn (AttachAction $action): array => [
-                        $action->getRecordSelect()
+                    ->icon('heroicon-o-user-plus')
+                    ->form([
+                        Select::make('contact_id')
                             ->label(__('field.contact'))
-                            ->getOptionLabelFromRecordUsing(
-                                fn (Model $record): string => $record->full_name
-                                    ?: 'Contact #'.$record->id
+                            ->options(
+                                Contact::query()
+                                    ->orderBy('id')
+                                    ->get()
+                                    ->mapWithKeys(
+                                        fn (Contact $contact): array => [
+                                            $contact->id => $contact->full_name
+                                                ?: 'Contact #'.$contact->id,
+                                        ]
+                                    )
                             )
-                            ->searchable(),
+                            ->searchable()
+                            ->required(),
+
                         Select::make('role')
                             ->label(__('field.role'))
                             ->options([
@@ -61,10 +73,25 @@ class ContactsRelationManager extends RelationManager
                             ])
                             ->default('other')
                             ->required(),
+
                         Toggle::make('is_primary')
                             ->label(__('field.is_primary'))
                             ->default(false),
                     ])
+                    ->action(function (array $data): void {
+                        /** @var Opportunity $opportunity */
+                        $opportunity = $this->getOwnerRecord();
+
+                        app(OpportunityContactService::class)->upsert(
+                            opportunity: $opportunity,
+                            contactId: (int) $data['contact_id'],
+                            role: (string) ($data['role'] ?? 'other'),
+                            isPrimary: (bool) (
+                                $data['is_primary'] ?? false
+                            ),
+                            actorUserId: auth()->id(),
+                        );
+                    })
                     ->visible(
                         fn (): bool => auth()->user()?->isAdmin()
                             || auth()->user()?->isCustomerServiceManager()
@@ -74,10 +101,14 @@ class ContactsRelationManager extends RelationManager
                 Action::make('edit_membership')
                     ->label(__('action.edit'))
                     ->icon('heroicon-o-pencil-square')
-                    ->fillForm(fn (Model $record): array => [
-                        'role' => $record->pivot?->role,
-                        'is_primary' => (bool) $record->pivot?->is_primary,
-                    ])
+                    ->fillForm(
+                        fn (Model $record): array => [
+                            'role' => $record->pivot?->role,
+                            'is_primary' => (bool) (
+                                $record->pivot?->is_primary
+                            ),
+                        ]
+                    )
                     ->form([
                         Select::make('role')
                             ->label(__('field.role'))
@@ -89,27 +120,55 @@ class ContactsRelationManager extends RelationManager
                                 'other' => __('field.role.other'),
                             ])
                             ->required(),
-                        Toggle::make('is_primary'),
-                    ])
-                    ->action(function (Model $record, array $data): void {
-                        if (($data['is_primary'] ?? false) === true) {
-                            $this->getOwnerRecord()
-                                ->contacts()
-                                ->newPivotStatement()
-                                ->where('opportunity_id', $this->getOwnerRecord()->id)
-                                ->where('contact_id', '!=', $record->id)
-                                ->update(['is_primary' => false]);
-                        }
 
-                        $this->getOwnerRecord()
-                            ->contacts()
-                            ->updateExistingPivot($record->id, $data);
-                    })
+                        Toggle::make('is_primary')
+                            ->label(__('field.is_primary')),
+                    ])
+                    ->action(
+                        function (
+                            Model $record,
+                            array $data
+                        ): void {
+                            /** @var Opportunity $opportunity */
+                            $opportunity = $this->getOwnerRecord();
+
+                            app(
+                                OpportunityContactService::class
+                            )->upsert(
+                                opportunity: $opportunity,
+                                contactId: (int) $record->id,
+                                role: (string) (
+                                    $data['role'] ?? 'other'
+                                ),
+                                isPrimary: (bool) (
+                                    $data['is_primary'] ?? false
+                                ),
+                                actorUserId: auth()->id(),
+                            );
+                        }
+                    )
                     ->visible(
                         fn (): bool => auth()->user()?->isAdmin()
                             || auth()->user()?->isCustomerServiceManager()
                     ),
-                DetachAction::make()
+
+                Action::make('remove_contact')
+                    ->label(__('action.delete'))
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->action(function (Model $record): void {
+                        /** @var Opportunity $opportunity */
+                        $opportunity = $this->getOwnerRecord();
+
+                        app(
+                            OpportunityContactService::class
+                        )->detach(
+                            opportunity: $opportunity,
+                            contactId: (int) $record->id,
+                            actorUserId: auth()->id(),
+                        );
+                    })
                     ->visible(
                         fn (): bool => auth()->user()?->isAdmin()
                             || auth()->user()?->isCustomerServiceManager()

@@ -9,6 +9,7 @@ use App\Filament\Resources\Sales\OpportunityResource\RelationManagers\Interactio
 use App\Models\Crm\Lead;
 use App\Models\Marketing\Contact;
 use App\Models\Sales\Opportunity;
+use App\Services\Sales\OpportunityContactService;
 use App\Services\Sales\OpportunityWorkflowService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -230,8 +231,9 @@ class OpportunityResource extends Resource
             : OpportunityStage::from((string) $record->stage);
 
         $options = collect($workflow->allowedTransitions($current))
-            ->reject(fn (OpportunityStage $stage): bool => $stage === OpportunityStage::Won
-                && config('business_flow.customer_on_paid_only', false))
+            ->reject(
+                fn (OpportunityStage $stage): bool => $stage === OpportunityStage::Won
+            )
             ->mapWithKeys(
                 fn (OpportunityStage $stage): array => [
                     $stage->value => $stage->label(),
@@ -390,20 +392,13 @@ class OpportunityResource extends Resource
                                 && ! $record->isTerminal()
                         )
                         ->action(function (Opportunity $record, array $data): void {
-                            $record->contacts()->syncWithoutDetaching([
-                                $data['contact_id'] => [
-                                    'role' => $data['role'],
-                                    'is_primary' => (bool) ($data['is_primary'] ?? false),
-                                ],
-                            ]);
-
-                            if (($data['is_primary'] ?? false) === true) {
-                                $record->contacts()
-                                    ->newPivotStatement()
-                                    ->where('opportunity_id', $record->id)
-                                    ->where('contact_id', '!=', $data['contact_id'])
-                                    ->update(['is_primary' => false]);
-                            }
+                            app(OpportunityContactService::class)->upsert(
+                                opportunity: $record,
+                                contactId: (int) $data['contact_id'],
+                                role: (string) ($data['role'] ?? 'other'),
+                                isPrimary: (bool) ($data['is_primary'] ?? false),
+                                actorUserId: auth()->id(),
+                            );
 
                             Notification::make()
                                 ->title(__('notification.opportunity_contact_added'))
@@ -503,7 +498,7 @@ class OpportunityResource extends Resource
                 'qualification',
                 fn (Builder $query) => $query->where('status', 'qualified')
             )
-            ->whereDoesntHave('opportunities')
+            ->whereDoesntHave('opportunity')
             ->with(['contact', 'company'])
             ->orderByDesc('id')
             ->get()
@@ -515,5 +510,33 @@ class OpportunityResource extends Resource
                     .' ('.$lead->lead_code.')',
             ])
             ->all();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return static::scopeForUser(
+            parent::getEloquentQuery()
+        );
+    }
+
+    public static function canView($record): bool
+    {
+        if (! static::canViewAny()) {
+            return false;
+        }
+
+        $user = auth()->user();
+
+        if (
+            $user?->isAdmin()
+            || $user?->isCustomerServiceManager()
+        ) {
+            return true;
+        }
+
+        return $user?->role === 'customer_service_staff'
+            && $user?->staff?->id !== null
+            && $record instanceof Opportunity
+            && $record->assigned_staff_id === $user->staff->id;
     }
 }

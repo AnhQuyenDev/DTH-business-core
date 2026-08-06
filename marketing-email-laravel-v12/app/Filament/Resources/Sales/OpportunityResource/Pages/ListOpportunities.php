@@ -136,9 +136,4 @@ class ListOpportunities extends ListRecords
 
         return $tabs;
     }
-
-    protected function getEloquentQuery(): Builder
-    {
-        return OpportunityResource::scopeForUser(parent::getEloquentQuery());
-    }
 }

@@ -1613,5 +1613,7 @@
     "validation.opportunity_requires_qualified_lead": "The lead must be qualified before creating an opportunity.",
     "validation.opportunity_lost_reason_required": "A lost reason is required when closing an opportunity as lost.",
     "validation.invalid_opportunity_transition": "Cannot change opportunity stage from :from to :to.",
-    "validation.opportunity_won_requires_payment": "An opportunity can only be marked as won after the payment is confirmed."
+    "validation.opportunity_won_requires_payment": "An opportunity can only be marked as won after the payment is confirmed.",
+    "validation.opportunity_primary_contact_cannot_be_demoted": "The primary contact cannot be demoted until another primary contact is selected.",
+    "validation.opportunity_primary_contact_cannot_be_detached": "The primary contact cannot be detached. Select another primary contact first."
 }

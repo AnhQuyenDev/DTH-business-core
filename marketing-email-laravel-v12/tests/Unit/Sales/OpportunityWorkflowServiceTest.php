@@ -80,49 +80,53 @@ class OpportunityWorkflowServiceTest extends TestCase
         );
     }
 
-    public function test_won_requires_payment_when_customer_on_paid_only_enabled(): void
+    public function test_won_cannot_be_selected_manually_regardless_of_feature_flag(): void
     {
-        config()->set('business_flow.customer_on_paid_only', true);
+        foreach ([true, false] as $flagValue) {
+            config()->set(
+                'business_flow.customer_on_paid_only',
+                $flagValue
+            );
 
-        $opportunity = $this->makeOpportunity(OpportunityStage::Negotiation->value);
+            $opportunity = $this->makeOpportunity(
+                OpportunityStage::Negotiation->value
+            );
 
-        $this->expectException(ValidationException::class);
+            try {
+                $this->service()->transition(
+                    $opportunity,
+                    OpportunityStage::Won,
+                );
 
-        $this->service()->transition(
-            $opportunity,
-            OpportunityStage::Won,
-        );
+                $this->fail(
+                    'Won không được phép chuyển thủ công.'
+                );
+            } catch (ValidationException) {
+                $this->assertDatabaseHas('sales_opportunities', [
+                    'id' => $opportunity->id,
+                    'stage' => OpportunityStage::Negotiation->value,
+                ]);
+            }
+        }
     }
 
-    public function test_won_allowed_when_customer_on_paid_only_disabled(): void
+    public function test_won_is_allowed_only_from_payment_service(): void
     {
-        config()->set('business_flow.customer_on_paid_only', false);
-
-        $opportunity = $this->makeOpportunity(OpportunityStage::Negotiation->value);
-
-        $result = $this->service()->transition(
-            $opportunity,
-            OpportunityStage::Won,
+        $opportunity = $this->makeOpportunity(
+            OpportunityStage::Negotiation->value
         );
 
-        $this->assertSame(OpportunityStage::Won, $result->stage);
-        $this->assertNotNull($result->won_at);
-        $this->assertSame(100, $result->probability);
-    }
-
-    public function test_won_allowed_from_payment_service_even_when_flag_enabled(): void
-    {
-        config()->set('business_flow.customer_on_paid_only', true);
-
-        $opportunity = $this->makeOpportunity(OpportunityStage::Negotiation->value);
-
         $result = $this->service()->transition(
-            $opportunity,
-            OpportunityStage::Won,
+            opportunity: $opportunity,
+            to: OpportunityStage::Won,
             fromPaymentService: true,
         );
 
-        $this->assertSame(OpportunityStage::Won, $result->stage);
+        $this->assertSame(
+            OpportunityStage::Won,
+            $result->stage
+        );
+
         $this->assertNotNull($result->won_at);
     }
 

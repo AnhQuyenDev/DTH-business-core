@@ -84,9 +84,9 @@ class Lead extends Model
         return $this->hasOne(ContactQualification::class);
     }
 
-    public function opportunities(): HasMany
+    public function opportunity(): HasOne
     {
-        return $this->hasMany(Opportunity::class);
+        return $this->hasOne(Opportunity::class);
     }
 
     public function qualificationNotes(): HasManyThrough

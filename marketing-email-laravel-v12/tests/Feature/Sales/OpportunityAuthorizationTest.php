@@ -119,4 +119,37 @@ class OpportunityAuthorizationTest extends TestCase
 
         $this->assertSame([$first->id, $second->id], $ids);
     }
+
+    public function test_customer_service_staff_cannot_open_another_staff_opportunity_by_url(): void
+    {
+        $user = $this->makeUser('customer_service_staff');
+
+        $staff = Staff::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $otherStaff = Staff::factory()->create();
+
+        $ownOpportunity = $this->makeOpportunity([
+            'assigned_staff_id' => $staff->id,
+        ]);
+
+        $otherOpportunity = $this->makeOpportunity([
+            'assigned_staff_id' => $otherStaff->id,
+        ]);
+
+        $this->actingAs($user);
+
+        $this->get(
+            OpportunityResource::getUrl('view', [
+                'record' => $ownOpportunity,
+            ])
+        )->assertOk();
+
+        $this->get(
+            OpportunityResource::getUrl('view', [
+                'record' => $otherOpportunity,
+            ])
+        )->assertNotFound();
+    }
 }

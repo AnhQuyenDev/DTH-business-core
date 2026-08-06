@@ -94,11 +94,6 @@ class Opportunity extends Model
             ->orderByDesc('id');
     }
 
-    public function quotations(): HasMany
-    {
-        return $this->hasMany(Quotation::class);
-    }
-
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Sales\OpportunityResource\Pages;
 
 use App\Enums\Sales\OpportunityStage;
 use App\Filament\Resources\Sales\OpportunityResource;
+use App\Services\Sales\OpportunityContactService;
 use App\Services\Sales\OpportunityWorkflowService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -51,20 +52,13 @@ class ViewOpportunity extends ViewRecord
                         && ! $this->record->isTerminal()
                 )
                 ->action(function (array $data): void {
-                    $this->record->contacts()->syncWithoutDetaching([
-                        $data['contact_id'] => [
-                            'role' => $data['role'],
-                            'is_primary' => (bool) ($data['is_primary'] ?? false),
-                        ],
-                    ]);
-
-                    if (($data['is_primary'] ?? false) === true) {
-                        $this->record->contacts()
-                            ->newPivotStatement()
-                            ->where('opportunity_id', $this->record->id)
-                            ->where('contact_id', '!=', $data['contact_id'])
-                            ->update(['is_primary' => false]);
-                    }
+                    app(OpportunityContactService::class)->upsert(
+                        opportunity: $this->record,
+                        contactId: (int) $data['contact_id'],
+                        role: (string) ($data['role'] ?? 'other'),
+                        isPrimary: (bool) ($data['is_primary'] ?? false),
+                        actorUserId: auth()->id(),
+                    );
 
                     $this->record->refresh();
 

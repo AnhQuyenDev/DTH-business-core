@@ -1623,5 +1623,7 @@
     "validation.opportunity_requires_qualified_lead": "Lead phải được đánh giá đủ điều kiện trước khi tạo cơ hội.",
     "validation.opportunity_lost_reason_required": "Phải nhập lý do thất bại khi đóng cơ hội.",
     "validation.invalid_opportunity_transition": "Không thể đổi giai đoạn cơ hội từ :from sang :to.",
-    "validation.opportunity_won_requires_payment": "Cơ hội chỉ được chuyển Thành công sau khi thanh toán được xác nhận."
+    "validation.opportunity_won_requires_payment": "Cơ hội chỉ được chuyển Thành công sau khi thanh toán được xác nhận.",
+    "validation.opportunity_primary_contact_cannot_be_demoted": "Không thể bỏ vai trò liên hệ chính khi chưa chọn một liên hệ chính thay thế.",
+    "validation.opportunity_primary_contact_cannot_be_detached": "Không thể gỡ liên hệ chính khỏi cơ hội. Hãy chọn một liên hệ chính khác trước."
 }
