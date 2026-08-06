@@ -7,6 +7,7 @@ use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
 use App\Models\Crm\Customer;
 use App\Models\Crm\Staff;
+use App\Models\Sales\Opportunity;
 use App\Models\Sales\Quotation;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -31,7 +32,7 @@ class QuotationFactory extends Factory
             'grand_total' => 1100000,
             'status' => QuotationStatus::Draft,
             'payment_status' => PaymentStatus::Unpaid,
-            'email_status' => EmailStatus::NotSent,
+            'email_status' => EmailStatus::Unsent,
             'customer_snapshot' => ['name' => fake()->name()],
             'payment_snapshot' => [],
             'terms_snapshot' => ['scope' => fake()->sentence(), 'terms' => fake()->sentence()],
@@ -78,5 +79,37 @@ class QuotationFactory extends Factory
             'status' => QuotationStatus::Cancelled,
             'cancelled_at' => now(),
         ]);
+    }
+
+    public function forOpportunity(
+        ?Opportunity $opportunity = null
+    ): static {
+        return $this->state(function () use (
+            $opportunity
+        ): array {
+            $opportunity ??= Opportunity::factory()->create();
+
+            $opportunity->loadMissing([
+                'company',
+                'primaryContact.personalProfile',
+                'primaryContact.businessProfile',
+            ]);
+
+            return [
+                'opportunity_id' => $opportunity->id,
+                'company_id' => $opportunity->company_id,
+                'contact_id' => $opportunity->primary_contact_id,
+                'customer_id' => null,
+                'assigned_staff_id' => $opportunity->assigned_staff_id,
+                'customer_snapshot' => [
+                    'id' => null,
+                    'display_name' => $opportunity->company?->legal_name
+                        ?? $opportunity->primaryContact?->full_name,
+                    'customer_type' => $opportunity->company_id
+                            ? 'business'
+                            : 'personal',
+                ],
+            ];
+        });
     }
 }

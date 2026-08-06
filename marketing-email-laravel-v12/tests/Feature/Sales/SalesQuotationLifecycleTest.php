@@ -32,6 +32,7 @@ use App\Models\Marketing\Contact;
 use App\Models\Marketing\EmailEvent;
 use App\Models\Marketing\EmailTemplate;
 use App\Models\Sales\BankAccount;
+use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
 use App\Models\Sales\PriceBookAccessRule;
 use App\Models\Sales\PriceBookItem;
@@ -224,6 +225,19 @@ class SalesQuotationLifecycleTest extends TestCase
             $items,
             $params,
         );
+    }
+
+    private function createOpportunityQuotation(
+        Opportunity $opportunity,
+        User $user,
+    ): Quotation {
+        return app(QuotationCreationService::class)
+            ->createForOpportunity(
+                $opportunity,
+                $user,
+                $this->priceBook,
+                [$this->itemLine()],
+            );
     }
 
     private function createSentQuotation(array $params = []): Quotation
@@ -449,7 +463,7 @@ class SalesQuotationLifecycleTest extends TestCase
         $this->assertSame((string) $log->id, (string) ($event->event_payload['email_log_id'] ?? null));
 
         $interaction = CustomerInteraction::where('customer_id', $this->customer->id)
-            ->where('interaction_type', 'email')->latest('id')->first();
+            ->where('interaction_type', 'quotation_sent')->latest('id')->first();
         $this->assertNotNull($interaction);
     }
 
@@ -651,8 +665,8 @@ class SalesQuotationLifecycleTest extends TestCase
         $quotation = $this->createQuotation($this->admin, [$this->itemLine()]);
 
         $task = app(QuotationReminderService::class)->createFollowUpTask($quotation, 'Chăm sóc lại');
-        $this->assertSame('follow_up', $task->interaction_type);
-        $this->assertSame(InteractionStatus::Scheduled, $task->status);
+        $this->assertSame('quotation_follow_up', $task->interaction_type);
+        $this->assertSame(InteractionStatus::Completed, $task->status);
     }
 
     // ─── 9. PDF & QR ────────────────────────────────────────────────────

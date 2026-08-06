@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class QuotationPublicAccessService
 {
+    public function __construct(
+        private readonly QuotationInteractionService $interactions,
+        private readonly QuotationOpportunitySyncService $opportunitySync,
+    ) {}
+
     public function findQuotation(string $quotationCode, string $token): ?Quotation
     {
         return Quotation::where('quotation_code', $quotationCode)
@@ -16,6 +21,8 @@ class QuotationPublicAccessService
 
     public function trackView(Quotation $quotation): void
     {
+        $firstView = $quotation->first_viewed_at === null;
+
         if ($quotation->status->value === 'sent') {
             $quotation->update([
                 'status' => 'viewed',
@@ -26,10 +33,18 @@ class QuotationPublicAccessService
             $quotation->increment('view_count');
             $quotation->update(['last_viewed_at' => now()]);
         }
+
+        if ($firstView) {
+            $fresh = $quotation->fresh('opportunity');
+            $this->interactions->logViewed($fresh);
+            $this->opportunitySync->onViewed($fresh);
+        }
     }
 
     public function markViewed(Quotation $quotation): void
     {
+        $firstView = $quotation->first_viewed_at === null;
+
         $update = ['last_viewed_at' => now()];
 
         if ($quotation->status->value === 'sent') {
@@ -38,6 +53,12 @@ class QuotationPublicAccessService
         }
 
         $quotation->update($update);
+
+        if ($firstView) {
+            $fresh = $quotation->fresh('opportunity');
+            $this->interactions->logViewed($fresh);
+            $this->opportunitySync->onViewed($fresh);
+        }
     }
 
     public function checkOtpThrottle(string $key): bool

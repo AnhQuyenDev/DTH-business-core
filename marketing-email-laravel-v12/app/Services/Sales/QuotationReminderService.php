@@ -3,12 +3,16 @@
 namespace App\Services\Sales;
 
 use App\Enums\Sales\QuotationStatus;
-use App\Models\Crm\CustomerInteraction;
 use App\Models\Sales\Quotation;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 class QuotationReminderService
 {
+    public function __construct(
+        private readonly QuotationInteractionService $interactions,
+    ) {}
+
     public function getSentNotViewed(int $days = 2): Collection
     {
         return Quotation::where('status', QuotationStatus::Sent)
@@ -45,17 +49,11 @@ class QuotationReminderService
         return Quotation::where('status', QuotationStatus::RevisionRequested)->get();
     }
 
-    public function createFollowUpTask(Quotation $quotation, string $note): CustomerInteraction
+    public function createFollowUpTask(Quotation $quotation, string $note): Model
     {
-        return CustomerInteraction::query()->create([
-            'customer_id' => $quotation->customer_id,
-            'staff_id' => $quotation->assigned_staff_id,
-            'interaction_type' => 'follow_up',
-            'subject' => 'Nhắc nhở: '.$quotation->quotation_code,
-            'content' => $note,
-            'status' => 'scheduled',
-            'interaction_at' => now(),
-            'next_follow_up_at' => now()->addDay(),
-        ]);
+        return $this->interactions->logFollowUpScheduled(
+            $quotation,
+            $note,
+        );
     }
 }

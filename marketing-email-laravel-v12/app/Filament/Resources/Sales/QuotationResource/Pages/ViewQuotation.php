@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Sales\QuotationResource\Pages;
 
 use App\Enums\Sales\QuotationStatus;
 use App\Filament\Resources\Sales\QuotationResource;
-use App\Models\Crm\Customer;
 use App\Models\Marketing\EmailTemplate;
 use App\Services\Sales\QuotationApprovalService;
 use App\Services\Sales\QuotationMailService;
@@ -54,19 +53,16 @@ class ViewQuotation extends ViewRecord
 
             Action::make('send')->label(__('action.send'))
                 ->form([
-                    Select::make('customer_id')
-                        ->label(__('field.customer'))
-                        ->options(Customer::query()->orderBy('display_name')->pluck('display_name', 'id'))
-                        ->searchable()
-                        ->preload()
-                        ->default($q->customer_id)
-                        ->live()
-                        ->afterStateUpdated(fn (Set $set, ?string $state) => $set('recipient_email', Customer::find($state)?->email)),
+                    TextInput::make('party_name')
+                        ->label(__('field.quotation_recipient'))
+                        ->default($q->party_display_name)
+                        ->disabled()
+                        ->dehydrated(false),
                     TextInput::make('recipient_email')
                         ->label(__('field.recipient_email'))
                         ->email()
                         ->required()
-                        ->default($q->customer?->email),
+                        ->default($q->party_email),
                     Select::make('template_id')
                         ->label(__('field.email_template'))
                         ->options(EmailTemplate::query()->whereHas('categoryRelation', fn ($q) => $q->where('slug', 'quotation'))->where('status', 'active')->pluck('name', 'id'))
@@ -100,7 +96,7 @@ class ViewQuotation extends ViewRecord
                     ]);
                     $this->redirect($this->getUrl(['record' => $this->record]));
                 })
-                ->visible(fn () => $q->status->canSend() && auth()->user()->can('sales.send-quotations')),
+                ->visible(fn () => filled($q->party_email) && $q->status->canSend() && auth()->user()->can('sales.send-quotations')),
 
             Action::make('generate_pdf')->label(__('action.generate_pdf'))
                 ->action(function () use ($q) {

@@ -12,7 +12,16 @@ class QuotationPdfService
 {
     public function generate(Quotation $quotation): QuotationDocument
     {
-        $quotation->loadMissing(['items', 'customer', 'assignedStaff.user', 'bankAccount']);
+        $quotation->loadMissing([
+            'items',
+            'customer',
+            'opportunity',
+            'company',
+            'contact.personalProfile',
+            'contact.businessProfile',
+            'assignedStaff.user',
+            'bankAccount',
+        ]);
 
         $html = view('sales.quotation-pdf', [
             'quotation' => $quotation,

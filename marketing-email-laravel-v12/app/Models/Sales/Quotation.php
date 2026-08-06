@@ -5,8 +5,10 @@ namespace App\Models\Sales;
 use App\Enums\Sales\EmailStatus;
 use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
+use App\Models\Crm\Company;
 use App\Models\Crm\Customer;
 use App\Models\Crm\Staff;
+use App\Models\Marketing\Contact;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +22,9 @@ class Quotation extends Model
 
     protected $fillable = [
         'quotation_code',
+        'opportunity_id',
+        'company_id',
+        'contact_id',
         'customer_id',
         'assigned_staff_id',
         'price_book_id',
@@ -89,6 +94,21 @@ class Quotation extends Model
         ];
     }
 
+    public function opportunity(): BelongsTo
+    {
+        return $this->belongsTo(Opportunity::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function contact(): BelongsTo
+    {
+        return $this->belongsTo(Contact::class);
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
@@ -152,6 +172,55 @@ class Quotation extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function getPartyDisplayNameAttribute(): string
+    {
+        return (string) (
+            data_get($this->customer_snapshot, 'display_name')
+            ?? data_get($this->company_snapshot, 'company_name')
+            ?? $this->customer?->display_name
+            ?? $this->company?->legal_name
+            ?? $this->contact?->full_name
+            ?? __('common.not_available')
+        );
+    }
+
+    public function getPartyEmailAttribute(): ?string
+    {
+        return data_get($this->customer_snapshot, 'email')
+            ?? data_get($this->company_snapshot, 'business_email')
+            ?? $this->customer?->email
+            ?? $this->contact?->businessProfile?->business_email
+            ?? $this->contact?->personalProfile?->email;
+    }
+
+    public function getPartyPhoneAttribute(): ?string
+    {
+        return data_get($this->customer_snapshot, 'phone')
+            ?? data_get($this->company_snapshot, 'business_phone')
+            ?? $this->customer?->phone
+            ?? $this->contact?->businessProfile?->business_phone
+            ?? $this->contact?->personalProfile?->phone;
+    }
+
+    public function getPartyTypeAttribute(): string
+    {
+        return (string) (
+            data_get($this->customer_snapshot, 'customer_type')
+            ?? ($this->company_id ? 'business' : 'personal')
+        );
+    }
+
+    public function isOpportunityQuotation(): bool
+    {
+        return $this->opportunity_id !== null;
+    }
+
+    public function isLegacyCustomerQuotation(): bool
+    {
+        return $this->opportunity_id === null
+            && $this->customer_id !== null;
     }
 
     public function isCurrentVersion(): bool

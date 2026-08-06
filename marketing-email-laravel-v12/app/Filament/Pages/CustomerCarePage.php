@@ -4,7 +4,6 @@ namespace App\Filament\Pages;
 
 use App\Enums\Crm\CustomerAssignmentStatus;
 use App\Enums\Crm\CustomerLifecycleStage;
-use App\Enums\Sales\QuotationStatus;
 use App\Filament\Resources\CustomerResource;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
@@ -98,7 +97,7 @@ class CustomerCarePage extends Page implements HasTable
         $staff = $user->staff;
 
         if (! $staff && ! $user->isAdmin()) {
-            return ['total' => 0, 'needs_follow_up' => 0, 'pending_quotation' => 0, 'unpaid' => 0];
+            return ['total' => 0, 'needs_follow_up' => 0];
         }
 
         $assignedIds = $this->getAccessibleCustomerIds();
@@ -108,13 +107,6 @@ class CustomerCarePage extends Page implements HasTable
             'needs_follow_up' => CustomerInteraction::whereIn('customer_id', $assignedIds)
                 ->where('status', 'scheduled')
                 ->whereDate('next_follow_up_at', '<=', now())
-                ->distinct('customer_id')->count('customer_id'),
-            'pending_quotation' => Quotation::whereIn('customer_id', $assignedIds)
-                ->whereIn('status', [QuotationStatus::Sent, QuotationStatus::Viewed])
-                ->distinct('customer_id')->count('customer_id'),
-            'unpaid' => Quotation::whereIn('customer_id', $assignedIds)
-                ->where('status', QuotationStatus::Accepted)
-                ->where('payment_status', 'unpaid')
                 ->distinct('customer_id')->count('customer_id'),
         ];
     }
@@ -481,17 +473,6 @@ class CustomerCarePage extends Page implements HasTable
             ->where('customer_id', $this->selectedCustomerId)
             ->orderByDesc('created_at')
             ->get();
-    }
-
-    public function getQuotationCreateUrl(): ?string
-    {
-        if (! $this->selectedCustomerId) {
-            return null;
-        }
-
-        return route('filament.admin.resources.sales.quotations.create', [
-            'customer_id' => $this->selectedCustomerId,
-        ]);
     }
 
     private function getBaseQuery(): Builder

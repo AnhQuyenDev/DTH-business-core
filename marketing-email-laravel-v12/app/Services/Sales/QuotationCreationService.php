@@ -4,16 +4,19 @@ namespace App\Services\Sales;
 
 use App\Enums\Crm\CustomerStatus;
 use App\Enums\Sales\DiscountType;
+use App\Enums\Sales\OpportunityStage;
 use App\Enums\Sales\QuotationStatus;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
 use App\Models\Sales\BankAccount;
+use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
 use App\Models\Sales\PriceBookItem;
 use App\Models\Sales\Quotation;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class QuotationCreationService
 {
@@ -23,8 +26,13 @@ class QuotationCreationService
         private readonly PriceBookAccessService $priceBookAccess,
         private readonly QuotationStateMachine $stateMachine,
         private readonly AuditLogService $auditLog,
+        private readonly QuotationPartySnapshotService $partySnapshot,
     ) {}
 
+    /**
+     * Legacy quotation flow for existing Customers.
+     * New CRM v2 quotations must use createForOpportunity().
+     */
     public function create(
         Customer $customer,
         User $user,
@@ -78,6 +86,105 @@ class QuotationCreationService
         });
     }
 
+    public function createForOpportunity(
+        Opportunity $opportunity,
+        User $user,
+        PriceBook $priceBook,
+        array $items,
+        array $params = [],
+    ): Quotation {
+        $opportunity->loadMissing([
+            'company',
+            'primaryContact.personalProfile',
+            'primaryContact.businessProfile',
+            'assignedStaff',
+        ]);
+
+        $this->validateOpportunity($opportunity, $user);
+        $this->validateOpportunityPriceBook(
+            $opportunity,
+            $user,
+            $priceBook,
+        );
+
+        $itemData = $this->buildItemData($items, $priceBook);
+        $totals = $this->pricingService->calculateTotals(
+            collect($itemData)
+        );
+
+        return DB::transaction(function () use (
+            $opportunity,
+            $user,
+            $priceBook,
+            $itemData,
+            $totals,
+            $params,
+        ): Quotation {
+            $locked = Opportunity::query()
+                ->whereKey($opportunity->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $code = $this->codeGenerator->generate();
+
+            $quotation = Quotation::query()->create([
+                'quotation_code' => $code,
+                'opportunity_id' => $locked->id,
+                'company_id' => $locked->company_id,
+                'contact_id' => $locked->primary_contact_id,
+                'customer_id' => null,
+                'assigned_staff_id' => $locked->assigned_staff_id,
+                'price_book_id' => $priceBook->id,
+                'bank_account_id' => $params['bank_account_id'] ?? null,
+                'title' => $params['title']
+                    ?? 'Báo giá '.$locked->title,
+                'version' => 1,
+                'quotation_date' => $params['quotation_date']
+                    ?? now()->toDateString(),
+                'valid_until' => $params['valid_until']
+                    ?? now()->addDays(30)->toDateString(),
+                'currency' => $priceBook->currency,
+                'subtotal' => $totals['subtotal'],
+                'discount_total' => $totals['discount_total'],
+                'tax_total' => $totals['tax_total'],
+                'grand_total' => $totals['grand_total'],
+                'status' => QuotationStatus::Draft,
+                'payment_status' => 'unpaid',
+                'email_status' => 'unsent',
+                'customer_snapshot' => $this->partySnapshot->customerSnapshot($locked),
+                'company_snapshot' => $this->partySnapshot->companySnapshot($locked),
+                'payment_snapshot' => $this->buildPaymentSnapshot($params),
+                'terms_snapshot' => $this->buildTermsSnapshot($priceBook, $params),
+                'metadata' => array_merge(
+                    $params['metadata'] ?? [],
+                    [
+                        'created_from' => 'opportunity',
+                        'opportunity_code' => $locked->opportunity_code,
+                    ]
+                ),
+                'public_token' => $this->codeGenerator->generatePublicToken(),
+                'created_by' => $user->id,
+            ]);
+
+            $this->saveItems($quotation, $itemData);
+
+            $this->auditLog->log(
+                'quotation.created_from_opportunity',
+                $quotation,
+                [],
+                $quotation->toArray(),
+            );
+
+            return $quotation->fresh([
+                'items',
+                'opportunity',
+                'company',
+                'contact',
+                'customer',
+            ]);
+        });
+    }
+
     public function update(Quotation $quotation, array $items, array $params = []): Quotation
     {
         $itemData = $this->buildItemData($items, $quotation->priceBook);
@@ -99,7 +206,13 @@ class QuotationCreationService
 
             $this->auditLog->log('quotation.updated', $quotation, [], $quotation->toArray());
 
-            return $quotation->fresh(['items', 'customer']);
+            return $quotation->fresh([
+                'items',
+                'opportunity',
+                'company',
+                'contact',
+                'customer',
+            ]);
         });
     }
 
@@ -231,6 +344,86 @@ class QuotationCreationService
                 $pbi->maximum_discount_value,
                 $pbi->priceBook?->currency ?? ''
             ));
+        }
+    }
+
+    private function validateOpportunity(
+        Opportunity $opportunity,
+        User $user,
+    ): void {
+        $stage = $opportunity->stage instanceof OpportunityStage
+            ? $opportunity->stage
+            : OpportunityStage::from((string) $opportunity->stage);
+
+        if (! in_array($stage, [
+            OpportunityStage::Qualified,
+            OpportunityStage::Proposal,
+            OpportunityStage::Negotiation,
+        ], true)) {
+            throw ValidationException::withMessages([
+                'opportunity_id' => __(
+                    'validation.opportunity_cannot_create_quotation'
+                ),
+            ]);
+        }
+
+        if ($opportunity->primary_contact_id === null) {
+            throw ValidationException::withMessages([
+                'opportunity_id' => __(
+                    'validation.opportunity_primary_contact_required'
+                ),
+            ]);
+        }
+
+        if (
+            $user->isAdmin()
+            || $user->isCustomerServiceManager()
+        ) {
+            return;
+        }
+
+        if (
+            $user->staff?->id === null
+            || $opportunity->assigned_staff_id !== $user->staff->id
+        ) {
+            throw ValidationException::withMessages([
+                'opportunity_id' => __(
+                    'validation.opportunity_not_assigned_to_user'
+                ),
+            ]);
+        }
+    }
+
+    private function validateOpportunityPriceBook(
+        Opportunity $opportunity,
+        User $user,
+        PriceBook $priceBook,
+    ): void {
+        $partyType = $opportunity->company_id
+            ? 'business'
+            : 'personal';
+
+        $audience = $priceBook->audience_type instanceof \BackedEnum
+            ? $priceBook->audience_type->value
+            : (string) $priceBook->audience_type;
+
+        if (! in_array($audience, [$partyType, 'both'], true)) {
+            throw ValidationException::withMessages([
+                'price_book_id' => __(
+                    'validation.price_book_audience_mismatch'
+                ),
+            ]);
+        }
+
+        if (! $this->priceBookAccess->canCreateQuotation(
+            $user,
+            $priceBook,
+        )) {
+            throw ValidationException::withMessages([
+                'price_book_id' => __(
+                    'validation.price_book_not_accessible'
+                ),
+            ]);
         }
     }
 

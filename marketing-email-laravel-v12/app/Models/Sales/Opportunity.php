@@ -94,6 +94,16 @@ class Opportunity extends Model
             ->orderByDesc('id');
     }
 
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(Quotation::class);
+    }
+
+    public function latestQuotation()
+    {
+        return $this->hasOne(Quotation::class)->latestOfMany();
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

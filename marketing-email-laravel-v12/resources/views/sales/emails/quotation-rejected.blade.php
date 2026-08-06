@@ -23,7 +23,7 @@
             <p>{{ __('sales.email.rejected_intro', ['code' => $quotation->quotation_code . '-V' . $quotation->version]) }}</p>
 
             <div class="details">
-                <p><strong>{{ __('field.customer') }}:</strong> {{ $customer->company_name ?? $customer->display_name ?? __('common.not_available') }}</p>
+                <p><strong>{{ __('field.customer') }}:</strong> {{ $quotation->party_display_name }}</p>
                 <p><strong>{{ __('sales.email.quotation_code') }}:</strong> {{ $quotation->quotation_code }}-V{{ $quotation->version }}</p>
                 <p><strong>{{ __('field.title') }}:</strong> {{ $quotation->title }}</p>
                 <p><strong>{{ __('sales.email.assigned_staff') }}:</strong> {{ $quotation->createdBy?->name ?? __('common.not_available') }}</p>

@@ -10,6 +10,7 @@ use App\Models\Sales\Quotation;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class QuotationPaymentService
 {
@@ -33,6 +34,8 @@ class QuotationPaymentService
             $oldStatus = $quotation->payment_status;
 
             $this->validateTransition($oldStatus, $newStatus);
+
+            $this->assertOpportunityPaidAllowed($quotation, $newStatus);
 
             $quotation->update([
                 'payment_status' => $newStatus,
@@ -63,6 +66,21 @@ class QuotationPaymentService
             throw new \InvalidArgumentException(
                 "Cannot transition payment from {$currentValue} to {$target->value}"
             );
+        }
+    }
+
+    private function assertOpportunityPaidAllowed(Quotation $quotation, PaymentStatus $newStatus): void
+    {
+        if (
+            $newStatus === PaymentStatus::Paid
+            && $quotation->opportunity_id !== null
+            && $quotation->customer_id === null
+        ) {
+            throw ValidationException::withMessages([
+                'payment_status' => __(
+                    'validation.opportunity_payment_requires_conversion_flow'
+                ),
+            ]);
         }
     }
 

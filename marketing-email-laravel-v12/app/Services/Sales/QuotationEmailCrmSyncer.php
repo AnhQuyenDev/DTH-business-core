@@ -3,7 +3,6 @@
 namespace App\Services\Sales;
 
 use App\Enums\Marketing\EmailEventType;
-use App\Models\Crm\CustomerInteraction;
 use App\Models\Marketing\EmailEvent;
 use App\Models\Sales\Quotation;
 use Illuminate\Support\Facades\Log;
@@ -24,23 +23,20 @@ class QuotationEmailCrmSyncer
         ?int $emailLogId = null,
         ?int $staffId = null,
     ): void {
-        if (! $quotation->customer) {
+        if (
+            $quotation->customer_id === null
+            && $quotation->opportunity_id === null
+        ) {
             return;
         }
 
         try {
             $this->recordEmailEvent($quotation, $subject, $context, $emailLogId);
 
-            CustomerInteraction::create([
-                'customer_id' => $quotation->customer_id,
-                'staff_id' => $staffId ?? $quotation->assigned_staff_id,
-                'interaction_type' => 'email',
-                'subject' => $subject,
-                'content' => Str::limit(self::cleanHtmlForContent($rawContent ?? ''), 1000),
-                'outcome' => __('page.customer_care.email_outcome'),
-                'status' => 'completed',
-                'interaction_at' => now(),
-            ]);
+            app(QuotationInteractionService::class)->logSent(
+                $quotation,
+                $quotation->party_email ?? '',
+            );
         } catch (Throwable $e) {
             Log::error('QuotationEmailCrmSyncer: failed to sync email to CRM', [
                 'quotation_code' => $quotation->quotation_code,
@@ -58,17 +54,18 @@ class QuotationEmailCrmSyncer
         string $context = 'quotation',
         ?int $emailLogId = null,
     ): void {
-        $customer = $quotation->customer;
-
-        if (! $customer) {
+        if (
+            $quotation->customer_id === null
+            && $quotation->opportunity_id === null
+        ) {
             return;
         }
 
         try {
             EmailEvent::create([
                 'tracking_token' => (string) Str::uuid(),
-                'customer_id' => $customer->id,
-                'contact_id' => $customer->contact_id,
+                'customer_id' => $quotation->customer_id,
+                'contact_id' => $quotation->contact_id,
                 'event_type' => EmailEventType::Sent->value,
                 'event_payload' => [
                     'subject' => $subject,

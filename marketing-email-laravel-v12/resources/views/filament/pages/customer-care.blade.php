@@ -322,12 +322,10 @@
     @endphp
 
     {{-- ─── Stat cards ─── --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         @foreach ([
             ['total', 'total', 'heroicon-m-users', 'primary'],
             ['needs_follow_up', 'follow_up', 'heroicon-m-bell', 'warning'],
-            ['pending_quotation', 'quotation', 'heroicon-m-document-text', 'info'],
-            ['unpaid', 'unpaid', 'heroicon-m-banknotes', 'danger'],
         ] as [$key, $labelKey, $icon, $color])
             <x-filament::section :icon="$icon" :icon-color="$color" compact>
                 <x-slot name="heading">{{ __("page.customer_care.stat_{$labelKey}") }}</x-slot>
@@ -766,10 +764,6 @@
                                 @svg('heroicon-m-document-text', 'h-5 w-5 text-warning-400')
                                 <h4 class="text-sm font-bold text-gray-950 dark:text-white">{{ __('page.customer_care.tab_quotation') }}</h4>
                             </div>
-                            <x-filament::button color="success" size="sm" icon="heroicon-m-document-plus" tag="a"
-                                :href="$this->getQuotationCreateUrl()">
-                                {{ __('page.customer_care.create_quotation') }}
-                            </x-filament::button>
                         </div>
 
                         <div class="cc-panel-body overflow-x-auto">

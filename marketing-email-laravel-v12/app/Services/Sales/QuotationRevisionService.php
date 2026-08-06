@@ -28,6 +28,9 @@ class QuotationRevisionService
 
             $revision = Quotation::query()->create([
                 'quotation_code' => $this->codeGenerator->generate(),
+                'opportunity_id' => $quotation->opportunity_id,
+                'company_id' => $quotation->company_id,
+                'contact_id' => $quotation->contact_id,
                 'customer_id' => $quotation->customer_id,
                 'assigned_staff_id' => $quotation->assigned_staff_id,
                 'price_book_id' => $quotation->price_book_id,
@@ -91,7 +94,13 @@ class QuotationRevisionService
                 'previous_version' => $quotation->version,
             ], $revision->toArray());
 
-            return $revision->fresh(['items', 'customer']);
+            return $revision->fresh([
+                'items',
+                'opportunity',
+                'company',
+                'contact',
+                'customer',
+            ]);
         });
     }
 

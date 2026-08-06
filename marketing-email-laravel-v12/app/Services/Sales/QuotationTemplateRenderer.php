@@ -21,12 +21,15 @@ class QuotationTemplateRenderer
             'currency' => $quotation->currency,
             'quotation_date' => $quotation->quotation_date?->format('d/m/Y'),
             'valid_until' => $quotation->valid_until?->format('d/m/Y'),
-            'customer_name' => $quotation->customer_snapshot['display_name'] ?? '',
-            'customer_company' => $quotation->customer_snapshot['company_name'] ?? '',
-            'customer_email' => $quotation->customer_snapshot['email'] ?? '',
-            'customer_phone' => $quotation->customer_snapshot['phone'] ?? '',
+            'customer_name' => $quotation->party_display_name,
+            'customer_company' => data_get($quotation->company_snapshot, 'company_name')
+                ?? $quotation->company?->legal_name,
+            'customer_email' => $quotation->party_email ?? '',
+            'customer_phone' => $quotation->party_phone ?? '',
             'company_name' => company_name(),
-            'assigned_staff' => $quotation->assignee?->name ?? '',
+            'assigned_staff' => $quotation->assignedStaff?->full_name ?? '',
+            'opportunity_code' => $quotation->opportunity?->opportunity_code,
+            'opportunity_title' => $quotation->opportunity?->title,
             'public_url' => $publicUrl,
         ];
     }

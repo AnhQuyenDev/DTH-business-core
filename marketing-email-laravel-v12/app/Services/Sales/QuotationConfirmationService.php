@@ -4,7 +4,6 @@ namespace App\Services\Sales;
 
 use App\Enums\Sales\ConfirmationType;
 use App\Enums\Sales\QuotationStatus;
-use App\Models\Crm\CustomerInteraction;
 use App\Models\Sales\Quotation;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +13,8 @@ class QuotationConfirmationService
     public function __construct(
         private readonly QuotationStateMachine $stateMachine,
         private readonly AuditLogService $auditLog,
+        private readonly QuotationInteractionService $interactions,
+        private readonly QuotationOpportunitySyncService $opportunitySync,
     ) {}
 
     public function accept(Quotation $quotation, array $data, ?string $otpVerifiedEmail = null): Quotation
@@ -43,7 +44,12 @@ class QuotationConfirmationService
                 'payment_status' => 'unpaid',
             ]);
 
-            $this->createInteraction($quotation, 'quotation_accepted', $data['signer_name']);
+            $this->interactions->logAccepted(
+                $quotation,
+                $data['signer_name'],
+            );
+
+            $this->opportunitySync->onAccepted($quotation);
             $this->auditLog->log('quotation.accepted', $quotation, [], $data);
 
             return $quotation->fresh();
@@ -73,7 +79,12 @@ class QuotationConfirmationService
                 'rejected_at' => now(),
             ]);
 
-            $this->createInteraction($quotation, 'quotation_rejected', $data['reason'] ?? '');
+            $this->interactions->logRejected(
+                $quotation,
+                $data['reason'] ?? '',
+            );
+
+            $this->opportunitySync->onRejected($quotation);
             $this->auditLog->log('quotation.rejected', $quotation, [], $data);
 
             return $quotation->fresh();
@@ -103,7 +114,12 @@ class QuotationConfirmationService
                 'revision_requested_at' => now(),
             ]);
 
-            $this->createInteraction($quotation, 'quotation_revision_requested', $data['reason'] ?? '');
+            $this->interactions->logRevisionRequested(
+                $quotation,
+                $data['reason'] ?? '',
+            );
+
+            $this->opportunitySync->onRevisionRequested($quotation);
             $this->auditLog->log('quotation.revision_requested', $quotation, [], $data);
 
             return $quotation->fresh();
@@ -123,18 +139,5 @@ class QuotationConfirmationService
         if ($quotation->status === QuotationStatus::Superseded) {
             throw new \InvalidArgumentException('This quotation version has been superseded.');
         }
-    }
-
-    private function createInteraction(Quotation $quotation, string $interactionType, string $content): void
-    {
-        CustomerInteraction::query()->create([
-            'customer_id' => $quotation->customer_id,
-            'staff_id' => $quotation->assigned_staff_id,
-            'interaction_type' => $interactionType,
-            'subject' => sprintf('[%s] %s', $quotation->quotation_code, $quotation->title),
-            'content' => $content,
-            'status' => 'completed',
-            'interaction_at' => now(),
-        ]);
     }
 }

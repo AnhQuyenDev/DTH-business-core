@@ -7,6 +7,7 @@ use App\Mail\Sales\QuotationMail;
 use App\Models\Sales\QuotationDocument;
 use App\Models\Sales\QuotationEmailLog;
 use App\Services\Sales\QuotationEmailCrmSyncer;
+use App\Services\Sales\QuotationOpportunitySyncService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -64,6 +65,9 @@ class SendQuotationEmailJob implements ShouldQueue
             ]);
 
             $this->syncToCrm();
+
+            app(QuotationOpportunitySyncService::class)
+                ->onSent($this->emailLog->quotation->fresh('opportunity'));
         } catch (Throwable $e) {
             Log::error('SendQuotationEmailJob: failed', [
                 'email_log_id' => $this->emailLog->id,
@@ -101,11 +105,11 @@ class SendQuotationEmailJob implements ShouldQueue
      */
     private function syncToCrm(): void
     {
-        $quotation = $this->emailLog->quotation;
-
-        if (! $quotation->customer) {
-            return;
-        }
+        $quotation = $this->emailLog->quotation->fresh([
+            'customer',
+            'opportunity',
+            'contact',
+        ]);
 
         app(QuotationEmailCrmSyncer::class)->recordEmail(
             $quotation,

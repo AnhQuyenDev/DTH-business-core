@@ -12,7 +12,9 @@ use App\Filament\Resources\Sales\QuotationResource\RelationManagers\DocumentsRel
 use App\Filament\Resources\Sales\QuotationResource\RelationManagers\EmailLogsRelationManager;
 use App\Filament\Resources\Sales\QuotationResource\RelationManagers\ItemsRelationManager;
 use App\Models\Crm\Customer;
+use App\Models\Marketing\Contact;
 use App\Models\Marketing\EmailTemplate;
+use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
 use App\Models\Sales\PriceBookItem;
 use App\Models\Sales\Quotation;
@@ -30,6 +32,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -88,35 +91,183 @@ class QuotationResource extends Resource
 
     public static function form(Form $form): Form
     {
-        $user = auth()->user();
-        $customerType = 'personal';
-
-        $priceBooks = app(PriceBookAccessService::class)
-            ->getAccessiblePriceBooks($user, $customerType);
-
         return $form->schema([
             Section::make(__('section.quotation_details'))->schema([
                 Grid::make(2)->schema([
+                    Select::make('opportunity_id')
+                        ->label(__('field.opportunity'))
+                        ->options(function (): array {
+                            $query = Opportunity::query()
+                                ->whereIn('stage', [
+                                    'qualified',
+                                    'proposal',
+                                    'negotiation',
+                                ])
+                                ->with(['company', 'primaryContact'])
+                                ->orderByDesc('created_at');
+
+                            $user = auth()->user();
+
+                            if (
+                                ! $user?->isAdmin()
+                                && ! $user?->isCustomerServiceManager()
+                            ) {
+                                $query->where(
+                                    'assigned_staff_id',
+                                    $user?->staff?->id
+                                );
+                            }
+
+                            return $query->get()->mapWithKeys(
+                                fn (Opportunity $opportunity): array => [
+                                    $opportunity->id => sprintf(
+                                        '%s — %s — %s',
+                                        $opportunity->opportunity_code,
+                                        $opportunity->title,
+                                        $opportunity->company?->legal_name
+                                            ?? $opportunity->primaryContact?->full_name
+                                            ?? __('common.not_available'),
+                                    ),
+                                ]
+                            )->all();
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->live()
+                        ->default(
+                            fn (): ?int => request()->integer(
+                                'opportunity_id'
+                            ) ?: null
+                        )
+                        ->required(
+                            fn (): bool => config(
+                                'business_flow.opportunity_quotation_enabled'
+                            )
+                        )
+                        ->visible(
+                            fn (): bool => config(
+                                'business_flow.opportunity_quotation_enabled'
+                            )
+                        )
+                        ->afterStateUpdated(function (
+                            Set $set,
+                            ?string $state,
+                        ): void {
+                            $set('price_book_id', null);
+                            $set('items', []);
+
+                            if (! $state) {
+                                $set('party_preview', null);
+
+                                return;
+                            }
+
+                            $opportunity = Opportunity::query()
+                                ->with(['company', 'primaryContact'])
+                                ->find($state);
+
+                            $set(
+                                'title',
+                                $opportunity
+                                    ? 'Báo giá '.$opportunity->title
+                                    : null
+                            );
+
+                            $set(
+                                'party_preview',
+                                $opportunity?->company?->legal_name
+                                    ?? $opportunity?->primaryContact?->full_name
+                            );
+                        }),
+
+                    TextInput::make('party_preview')
+                        ->label(__('field.quotation_recipient'))
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->visible(
+                            fn (): bool => config(
+                                'business_flow.opportunity_quotation_enabled'
+                            )
+                        ),
+
                     Select::make('customer_id')
                         ->label(__('field.customer'))
                         ->relationship('customer', 'display_name')
                         ->searchable()
-                        ->required(),
+                        ->required(
+                            fn (): bool => ! config(
+                                'business_flow.opportunity_quotation_enabled'
+                            )
+                        )
+                        ->visible(
+                            fn (): bool => ! config(
+                                'business_flow.opportunity_quotation_enabled'
+                            )
+                        ),
+
                     Select::make('price_book_id')
                         ->label(__('resource.price_book.singular'))
-                        ->options($priceBooks->pluck('name', 'id'))
+                        ->options(function (Get $get): array {
+                            $user = auth()->user();
+                            $partyType = 'personal';
+
+                            if (
+                                config('business_flow.opportunity_quotation_enabled')
+                                && filled($get('opportunity_id'))
+                            ) {
+                                $opportunity = Opportunity::find(
+                                    $get('opportunity_id')
+                                );
+                                $partyType = $opportunity?->company_id
+                                    ? 'business'
+                                    : 'personal';
+                            } elseif (filled($get('customer_id'))) {
+                                $partyType = Customer::find(
+                                    $get('customer_id')
+                                )?->customer_type ?? 'personal';
+                            }
+
+                            return app(PriceBookAccessService::class)
+                                ->getAccessiblePriceBooks(
+                                    $user,
+                                    $partyType,
+                                )
+                                ->pluck('name', 'id')
+                                ->all();
+                        })
                         ->live()
-                        ->afterStateUpdated(function (Set $set, ?string $state): void {
-                            $set('items', static::loadItemsFromPriceBook((int) $state));
+                        ->afterStateUpdated(function (
+                            Set $set,
+                            ?string $state,
+                        ): void {
+                            $set(
+                                'items',
+                                static::loadItemsFromPriceBook(
+                                    (int) $state
+                                )
+                            );
                         })
                         ->required(),
+
                     Select::make('bank_account_id')
                         ->label(__('resource.bank_account.singular'))
                         ->relationship('bankAccount', 'account_name')
                         ->searchable(),
-                    TextInput::make('title')->label(__('field.title'))->required()->maxLength(255),
-                    DatePicker::make('quotation_date')->label(__('field.quotation_date'))->required()->default(now()),
-                    DatePicker::make('valid_until')->label(__('field.valid_until'))->required()->default(now()->addDays(30)),
+
+                    TextInput::make('title')
+                        ->label(__('field.title'))
+                        ->required()
+                        ->maxLength(255),
+
+                    DatePicker::make('quotation_date')
+                        ->label(__('field.quotation_date'))
+                        ->required()
+                        ->default(now()),
+
+                    DatePicker::make('valid_until')
+                        ->label(__('field.valid_until'))
+                        ->required()
+                        ->default(now()->addDays(30)),
                 ]),
             ]),
 
@@ -156,7 +307,85 @@ class QuotationResource extends Resource
             ->columns([
                 TextColumn::make('quotation_code')->label(__('field.quotation_code'))->searchable()->sortable(),
                 TextColumn::make('version')->label(__('field.version'))->sortable(),
-                TextColumn::make('customer.display_name')->label(__('field.customer'))->searchable()->sortable(),
+                TextColumn::make('opportunity.opportunity_code')
+                    ->label(__('field.opportunity'))
+                    ->placeholder(__('common.legacy'))
+                    ->url(
+                        fn (Quotation $record): ?string => $record->opportunity
+                                ? OpportunityResource::getUrl('view', [
+                                    'record' => $record->opportunity,
+                                ])
+                                : null
+                    )
+                    ->toggleable(),
+                TextColumn::make('party_display_name')
+                    ->label(__('field.quotation_recipient'))
+                    ->getStateUsing(
+                        fn (Quotation $record): string => $record->party_display_name
+                    )
+                    ->description(
+                        fn (Quotation $record): ?string => $record->party_email
+                    )
+                    ->searchable(query: function (
+                        Builder $query,
+                        string $search,
+                    ): Builder {
+                        return $query->where(function (Builder $query) use (
+                            $search
+                        ): void {
+                            $query->whereHas(
+                                'customer',
+                                fn (Builder $customerQuery) => $customerQuery->where(
+                                    'display_name',
+                                    'like',
+                                    "%{$search}%"
+                                )
+                            )->orWhereHas(
+                                'company',
+                                fn (Builder $companyQuery) => $companyQuery->where(
+                                    'legal_name',
+                                    'like',
+                                    "%{$search}%"
+                                )
+                            )->orWhereHas(
+                                'contact',
+                                fn (Builder $contactQuery) => $contactQuery->whereKey(
+                                    Contact::query()
+                                        ->whereHas(
+                                            'personalProfile',
+                                            fn (Builder $profileQuery) => $profileQuery->where(
+                                                'first_name',
+                                                'like',
+                                                "%{$search}%"
+                                            )
+                                        )
+                                        ->orWhereHas(
+                                            'personalProfile',
+                                            fn (Builder $profileQuery) => $profileQuery->where(
+                                                'last_name',
+                                                'like',
+                                                "%{$search}%"
+                                            )
+                                        )
+                                        ->select('id')
+                                )
+                            );
+                        });
+                    }),
+                TextColumn::make('quotation_origin')
+                    ->label(__('field.origin'))
+                    ->badge()
+                    ->getStateUsing(
+                        fn (Quotation $record): string => $record->isOpportunityQuotation()
+                                ? 'opportunity'
+                                : 'legacy_customer'
+                    )
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'opportunity' => __('quotation.origin.opportunity'),
+                        default => __('quotation.origin.legacy_customer'),
+                    })
+                    ->color(fn (string $state): string => $state === 'opportunity' ? 'info' : 'gray'
+                    ),
                 TextColumn::make('title')->label(__('field.title'))->searchable()->limit(30),
                 TextColumn::make('grand_total')->label(__('field.grand_total'))->money('VND')->sortable(),
                 TextColumn::make('status')->label(__('field.status'))->badge()
@@ -185,19 +414,20 @@ class QuotationResource extends Resource
                     ->visible(fn (Quotation $q): bool => $q->status->isEditable() && auth()->user()->can('sales.create-quotations')),
                 Action::make('send')->label(__('action.send'))->icon('heroicon-o-paper-airplane')
                     ->form([
-                        Select::make('customer_id')
-                            ->label(__('field.customer'))
-                            ->options(Customer::query()->orderBy('display_name')->pluck('display_name', 'id'))
-                            ->searchable()
-                            ->preload()
-                            ->default(fn (Quotation $q) => $q->customer_id)
-                            ->live()
-                            ->afterStateUpdated(fn (Set $set, ?string $state) => $set('recipient_email', Customer::find($state)?->email)),
+                        TextInput::make('party_name')
+                            ->label(__('field.quotation_recipient'))
+                            ->default(
+                                fn (Quotation $record): string => $record->party_display_name
+                            )
+                            ->disabled()
+                            ->dehydrated(false),
                         TextInput::make('recipient_email')
                             ->label(__('field.recipient_email'))
                             ->email()
                             ->required()
-                            ->default(fn (Quotation $q) => $q->customer?->email),
+                            ->default(
+                                fn (Quotation $record): ?string => $record->party_email
+                            ),
                         Select::make('template_id')
                             ->label(__('field.email_template'))
                             ->options(EmailTemplate::query()->whereHas('categoryRelation', fn ($q) => $q->where('slug', 'quotation'))->where('status', 'active')->pluck('name', 'id'))
@@ -231,7 +461,7 @@ class QuotationResource extends Resource
                         ]);
                         Notification::make()->success()->title(__('notification.email_queued'))->send();
                     })
-                    ->visible(fn (Quotation $q): bool => $q->status->canSend() && auth()->user()->can('sales.send-quotations')),
+                    ->visible(fn (Quotation $q): bool => filled($q->party_email) && $q->status->canSend() && auth()->user()->can('sales.send-quotations')),
                 Action::make('cancel')->label(__('action.cancel'))->icon('heroicon-o-x-circle')->color('danger')
                     ->action(fn (Quotation $q) => app(QuotationApprovalService::class)->logCancellation($q, auth()->user()))
                     ->visible(fn (Quotation $q): bool => ! $q->status->isTerminal()),
@@ -267,7 +497,7 @@ class QuotationResource extends Resource
                         ->requiresConfirmation()
                         ->modalHeading(__('action.bulk_mark_paid'))
                         ->deselectRecordsAfterCompletion()
-                        ->visible(fn (): bool => auth()->user()->can('sales.approve-quotations'))
+                        ->visible(fn (): bool => ! config('business_flow.opportunity_quotation_enabled') && auth()->user()->can('sales.approve-quotations'))
                         ->action(function (Collection $records): void {
                             foreach ($records as $record) {
                                 if ($record->status === QuotationStatus::Accepted && $record->payment_status !== PaymentStatus::Paid) {

@@ -6,6 +6,7 @@ use App\Enums\Sales\OpportunityStage;
 use App\Filament\Resources\Sales\OpportunityResource\Pages;
 use App\Filament\Resources\Sales\OpportunityResource\RelationManagers\ContactsRelationManager;
 use App\Filament\Resources\Sales\OpportunityResource\RelationManagers\InteractionsRelationManager;
+use App\Filament\Resources\Sales\OpportunityResource\RelationManagers\QuotationsRelationManager;
 use App\Models\Crm\Lead;
 use App\Models\Marketing\Contact;
 use App\Models\Sales\Opportunity;
@@ -364,6 +365,35 @@ class OpportunityResource extends Resource
                 ActionGroup::make([
                     ViewAction::make(),
 
+                    Action::make('create_quotation')
+                        ->label(__('action.create_quotation'))
+                        ->icon('heroicon-o-document-plus')
+                        ->color('success')
+                        ->url(
+                            fn (Opportunity $record): string => QuotationResource::getUrl('create', [
+                                'opportunity_id' => $record->id,
+                            ])
+                        )
+                        ->visible(
+                            fn (Opportunity $record): bool => config(
+                                'business_flow.opportunity_quotation_enabled'
+                            )
+                                && static::canProcessOpportunity($record)
+                                && in_array(
+                                    $record->stage instanceof OpportunityStage
+                                        ? $record->stage
+                                        : OpportunityStage::from(
+                                            (string) $record->stage
+                                        ),
+                                    [
+                                        OpportunityStage::Qualified,
+                                        OpportunityStage::Proposal,
+                                        OpportunityStage::Negotiation,
+                                    ],
+                                    true,
+                                )
+                        ),
+
                     Action::make('record_interaction')
                         ->label(__('action.record_interaction'))
                         ->icon('heroicon-o-chat-bubble-left-right')
@@ -466,6 +496,7 @@ class OpportunityResource extends Resource
         return [
             ContactsRelationManager::class,
             InteractionsRelationManager::class,
+            QuotationsRelationManager::class,
         ];
     }
 

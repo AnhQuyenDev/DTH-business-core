@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Sales\OpportunityResource\Pages;
 
 use App\Enums\Sales\OpportunityStage;
 use App\Filament\Resources\Sales\OpportunityResource;
+use App\Filament\Resources\Sales\QuotationResource;
 use App\Services\Sales\OpportunityContactService;
 use App\Services\Sales\OpportunityWorkflowService;
 use Filament\Actions\Action;
@@ -22,6 +23,29 @@ class ViewOpportunity extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('create_quotation')
+                ->label(__('action.create_quotation'))
+                ->icon('heroicon-o-document-plus')
+                ->color('success')
+                ->url(
+                    fn (): string => QuotationResource::getUrl('create', [
+                        'opportunity_id' => $this->record->id,
+                    ])
+                )
+                ->visible(
+                    fn (): bool => config(
+                        'business_flow.opportunity_quotation_enabled'
+                    )
+                        && OpportunityResource::canProcessOpportunity(
+                            $this->record
+                        )
+                        && in_array(
+                            $this->record->stage->value,
+                            ['qualified', 'proposal', 'negotiation'],
+                            true,
+                        )
+                ),
+
             Action::make('record_interaction')
                 ->label(__('action.record_interaction'))
                 ->icon('heroicon-o-chat-bubble-left-right')
