@@ -167,7 +167,10 @@ class MarketingCampaignResource extends Resource
     {
         return $table
             ->modifyQueryUsing(
-                fn (Builder $query): Builder => $query->with('services')
+                fn (Builder $query): Builder => $query->with([
+                    'services',
+                    'landingPages',
+                ])
             )
             ->columns([
                 TextColumn::make('name')
@@ -202,9 +205,18 @@ class MarketingCampaignResource extends Resource
                     )
                     ->wrap()
                     ->toggleable(),
-                TextColumn::make('landingPages_count')
+                TextColumn::make('landing_pages')
                     ->label(__('field.landing_pages'))
-                    ->counts('landingPages'),
+                    ->getStateUsing(
+                        fn (MarketingCampaign $record): string => $record
+                            ->landingPages
+                            ->pluck('name')
+                            ->filter()
+                            ->implode(', ')
+                            ?: '—'
+                    )
+                    ->wrap()
+                    ->toggleable(),
                 TextColumn::make('start_date')
                     ->label(__('field.start_date'))
                     ->date()
