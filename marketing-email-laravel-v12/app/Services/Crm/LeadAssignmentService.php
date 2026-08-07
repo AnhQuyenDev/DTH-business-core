@@ -49,6 +49,7 @@ final class LeadAssignmentService
                 ->firstOrFail();
 
             $lockedStaff = Staff::query()
+                ->with('department')
                 ->whereKey($staff->id)
                 ->lockForUpdate()
                 ->firstOrFail();

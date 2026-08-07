@@ -5,7 +5,6 @@ namespace App\Services\Crm;
 use App\Enums\Crm\ContactQualificationStatus;
 use App\Enums\Crm\DistributionStrategy;
 use App\Enums\Crm\LeadIntakeStatus;
-use App\Enums\Crm\StaffEmploymentStatus;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
 use Illuminate\Support\Collection;
@@ -130,17 +129,7 @@ final class LeadDistributionService
     private function getEligibleStaff(?array $staffIds = null): Collection
     {
         $query = Staff::query()
-            ->where(
-                'employment_status',
-                StaffEmploymentStatus::Active->value
-            )
-            ->where('can_receive_customers', true)
-            ->whereDoesntHave(
-                'availabilities',
-                fn ($query) => $query
-                    ->active()
-                    ->where('can_receive_new_customers', false)
-            );
+            ->eligibleForLeadDistribution();
 
         if ($staffIds !== null) {
             $query->whereIn('id', $staffIds);

@@ -12,10 +12,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 
 class Staff extends Model
 {
     use HasFactory, SoftDeletes;
+
+    public const CUSTOMER_SERVICE_DEPARTMENT_CODE = 'customer_service';
 
     protected $fillable = [
         'user_id',
@@ -129,6 +132,29 @@ class Staff extends Model
             ->where('customer_assignments.status', 'active');
     }
 
+    public function scopeEligibleForLeadDistribution(Builder $query): Builder
+    {
+        return $query
+            ->whereHas(
+                'department',
+                fn (Builder $query): Builder => $query->where(
+                    'code',
+                    self::CUSTOMER_SERVICE_DEPARTMENT_CODE
+                )
+            )
+            ->where(
+                'employment_status',
+                StaffEmploymentStatus::Active->value
+            )
+            ->where('can_receive_customers', true)
+            ->whereDoesntHave(
+                'availabilities',
+                fn ($query) => $query
+                    ->active()
+                    ->where('can_receive_new_customers', false)
+            );
+    }
+
     public function isAvailable(): bool
     {
         return $this->employment_status === StaffEmploymentStatus::Active
@@ -168,7 +194,10 @@ class Staff extends Model
     public function canReceiveNewLeads(): bool
     {
         if (
-            $this->employment_status !== StaffEmploymentStatus::Active
+            $this->department?->code
+                !== self::CUSTOMER_SERVICE_DEPARTMENT_CODE
+            || $this->employment_status
+                !== StaffEmploymentStatus::Active
             || ! $this->can_receive_customers
         ) {
             return false;

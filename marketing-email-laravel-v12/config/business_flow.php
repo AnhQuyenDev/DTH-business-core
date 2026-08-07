@@ -5,4 +5,8 @@ return [
     'company_resolution_enabled' => env('COMPANY_RESOLUTION_ENABLED', false),
     'opportunity_quotation_enabled' => env('OPPORTUNITY_QUOTATION_ENABLED', false),
     'customer_on_paid_only' => env('CUSTOMER_ON_PAID_ONLY', false),
+    'timezone' => env(
+        'BUSINESS_TIMEZONE',
+        'Asia/Ho_Chi_Minh'
+    ),
 ];

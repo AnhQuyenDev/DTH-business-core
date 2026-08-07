@@ -56,11 +56,25 @@ class LeadActivitiesRelationManager extends RelationManager
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('activity_at')
                     ->label(__('field.activity_at'))
-                    ->dateTime('d/m/Y H:i')
+                    ->formatStateUsing(
+                        fn ($state): string => $state
+                            ? $state
+                                ->copy()
+                                ->timezone(config('business_flow.timezone'))
+                                ->format('d/m/Y H:i')
+                            : '—'
+                    )
                     ->sortable(),
                 Tables\Columns\TextColumn::make('next_follow_up_at')
                     ->label(__('field.next_follow_up'))
-                    ->dateTime('d/m/Y H:i')
+                    ->formatStateUsing(
+                        fn ($state): string => $state
+                            ? $state
+                                ->copy()
+                                ->timezone(config('business_flow.timezone'))
+                                ->format('d/m/Y H:i')
+                            : '—'
+                    )
                     ->sortable(),
             ])
             ->actions([

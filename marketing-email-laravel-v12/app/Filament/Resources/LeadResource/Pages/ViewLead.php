@@ -17,6 +17,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 
 class ViewLead extends ViewRecord
 {
@@ -109,15 +111,17 @@ class ViewLead extends ViewRecord
                     Textarea::make('outcome')
                         ->label(__('field.outcome'))
                         ->rows(2),
-                    DateTimePicker::make('activity_at')
-                        ->label(__('field.activity_at'))
-                        ->default(now())
-                        ->required(),
                     DateTimePicker::make('next_follow_up_at')
                         ->label(__('field.next_follow_up'))
+                        ->timezone(config('business_flow.timezone'))
+                        ->native(false)
+                        ->displayFormat('d/m/Y H:i')
+                        ->seconds(false)
                         ->after('now'),
                 ])
                 ->action(function (array $data): void {
+                    $data['activity_at'] = now();
+
                     app(LeadActivityService::class)->record(
                         lead: $this->record,
                         data: $data,
@@ -150,6 +154,10 @@ class ViewLead extends ViewRecord
                 ->form([
                     DateTimePicker::make('next_follow_up_at')
                         ->label(__('field.next_follow_up'))
+                        ->timezone(config('business_flow.timezone'))
+                        ->native(false)
+                        ->displayFormat('d/m/Y H:i')
+                        ->seconds(false)
                         ->after('now')
                         ->required(),
                     Textarea::make('note')
@@ -188,34 +196,108 @@ class ViewLead extends ViewRecord
                         ], true);
                 })
                 ->form([
-                    TextInput::make('service_interest')
-                        ->label(__('field.service_interest'))
-                        ->default($this->record->service_interest)
-                        ->required()
-                        ->maxLength(255),
+                    Placeholder::make('service_interest_display')
+                        ->label('Dịch vụ quan tâm')
+                        ->content(function (): string {
+                            return data_get(
+                                $this->record->metadata,
+                                'service_context.display_label'
+                            )
+                                ?? data_get(
+                                    $this->record->metadata,
+                                    'service_interest_label'
+                                )
+                                ?? $this->record->service_interest
+                                ?? '—';
+                        }),
+
+                    Hidden::make('service_interest')
+                        ->default(
+                            fn (): ?string => $this->record->service_interest
+                        ),
+
                     TextInput::make('estimated_value')
-                        ->label(__('field.estimated_value'))
+                        ->label('Giá trị ước tính')
                         ->default($this->record->estimated_value)
                         ->numeric()
-                        ->minValue(0),
-                    Select::make('priority')
-                        ->label(__('field.priority'))
+                        ->minValue(0)
+                        ->prefix('₫')
+                        ->helperText(
+                            'Giá trị dự kiến của cơ hội bán hàng. '
+                            .'Có thể để trống nếu chưa đủ thông tin.'
+                        ),
+
+                    Select::make('budget_status')
+                        ->label('Tình trạng ngân sách')
                         ->options([
-                            'low' => __('field.priority.low'),
-                            'normal' => __('field.priority.normal'),
-                            'high' => __('field.priority.high'),
-                            'vip' => __('field.priority.vip'),
+                            'confirmed_fit' => 'Đã xác nhận - phù hợp',
+                            'confirmed_unfit' => 'Đã xác nhận - chưa phù hợp',
+                            'unknown' => 'Chưa xác định',
                         ])
-                        ->default($this->record->qualification?->priority ?? 'normal')
                         ->required(),
-                    TextInput::make('score')
-                        ->label(__('field.score'))
+
+                    TextInput::make('budget_amount')
+                        ->label('Ngân sách dự kiến của khách')
                         ->numeric()
                         ->minValue(0)
-                        ->maxValue(100),
-                    Textarea::make('note')
-                        ->label(__('field.note'))
-                        ->rows(3),
+                        ->prefix('₫')
+                        ->helperText(
+                            'Không bắt buộc nếu khách chưa cung cấp con số cụ thể.'
+                        ),
+
+                    Select::make('purchase_timeline')
+                        ->label('Thời gian dự kiến mua')
+                        ->options([
+                            'within_7_days' => 'Trong 7 ngày',
+                            'within_30_days' => 'Trong 30 ngày',
+                            'within_3_months' => 'Trong 3 tháng',
+                            'over_3_months' => 'Trên 3 tháng',
+                            'unknown' => 'Chưa xác định',
+                        ])
+                        ->required(),
+
+                    Select::make('decision_role')
+                        ->label('Vai trò của người liên hệ')
+                        ->options([
+                            'decision_maker' => 'Người quyết định',
+                            'influencer' => 'Người ảnh hưởng / đề xuất',
+                            'information_gatherer' => 'Người thu thập thông tin',
+                            'unknown' => 'Chưa xác định',
+                        ])
+                        ->required(),
+
+                    Select::make('priority')
+                        ->label('Ưu tiên')
+                        ->options([
+                            'low' => 'Thấp',
+                            'normal' => 'Bình thường',
+                            'high' => 'Cao',
+                            'vip' => 'VIP',
+                        ])
+                        ->default(
+                            $this->record->qualification?->priority ?? 'normal'
+                        )
+                        ->required(),
+
+                    TextInput::make('score')
+                        ->label('Điểm Lead')
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(100)
+                        ->helperText(
+                            'Tùy chọn. Chỉ sử dụng nếu doanh nghiệp có quy tắc chấm điểm.'
+                        ),
+
+                    Textarea::make('qualification_note')
+                        ->label('Ghi chú đánh giá')
+                        ->placeholder(
+                            'Ví dụ: Khách xác nhận nhu cầu chuyển 5 website, '
+                            .'ngân sách khoảng 5 triệu, muốn triển khai trong '
+                            .'tháng 8/2026...'
+                        )
+                        ->rows(5)
+                        ->maxLength(2000)
+                        ->required(),
                 ])
                 ->action(function (array $data): void {
                     app(ContactQualificationWorkflowService::class)->transition(
@@ -223,27 +305,48 @@ class ViewLead extends ViewRecord
                         to: ContactQualificationStatus::Qualified,
                         data: [
                             'service_interest' => $data['service_interest'],
-                            'estimated_value' => $data['estimated_value'] ?? null,
-                            'priority' => $data['priority'],
-                            'score' => $data['score'] ?? null,
-                            'qualified_by_staff_id' => auth()->user()?->staff?->id,
+
+                            'estimated_value' =>
+                                $data['estimated_value'] ?? null,
+
+                            'budget_status' =>
+                                $data['budget_status'],
+
+                            'budget_amount' =>
+                                $data['budget_amount'] ?? null,
+
+                            'purchase_timeline' =>
+                                $data['purchase_timeline'],
+
+                            'decision_role' =>
+                                $data['decision_role'],
+
+                            'qualification_note' =>
+                                $data['qualification_note'],
+
+                            'priority' =>
+                                $data['priority'],
+
+                            'score' =>
+                                $data['score'] ?? null,
+
+                            'qualified_by_staff_id' =>
+                                auth()->user()?->staff?->id,
                         ],
                         actorUserId: auth()->id(),
                     );
 
-                    if (filled($data['note'] ?? null)) {
-                        app(LeadActivityService::class)->record(
-                            lead: $this->record,
-                            data: [
-                                'activity_type' => LeadActivityType::Note->value,
-                                'subject' => __('activity.qualification_completed'),
-                                'content' => $data['note'],
-                                'activity_at' => now(),
-                            ],
-                            actorUserId: auth()->id(),
-                            staffId: auth()->user()?->staff?->id,
-                        );
-                    }
+                    app(LeadActivityService::class)->record(
+                        lead: $this->record,
+                        data: [
+                            'activity_type' => LeadActivityType::Note->value,
+                            'subject' => __('activity.qualification_completed'),
+                            'content' => $data['qualification_note'],
+                            'activity_at' => now(),
+                        ],
+                        actorUserId: auth()->id(),
+                        staffId: auth()->user()?->staff?->id,
+                    );
 
                     $this->record->refresh();
 

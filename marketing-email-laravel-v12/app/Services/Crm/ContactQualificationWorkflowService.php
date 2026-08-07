@@ -14,6 +14,28 @@ use Illuminate\Validation\ValidationException;
 
 final class ContactQualificationWorkflowService
 {
+
+    private const BUDGET_STATUSES = [
+        'confirmed_fit',
+        'confirmed_unfit',
+        'unknown',
+    ];
+
+    private const PURCHASE_TIMELINES = [
+        'within_7_days',
+        'within_30_days',
+        'within_3_months',
+        'over_3_months',
+        'unknown',
+    ];
+
+    private const DECISION_ROLES = [
+        'decision_maker',
+        'influencer',
+        'information_gatherer',
+        'unknown',
+    ];
+
     private const ALLOWED_TRANSITIONS = [
         'new' => [
             'assigned',
@@ -140,6 +162,11 @@ final class ContactQualificationWorkflowService
                 'score',
                 'service_interest',
                 'estimated_value',
+                'budget_status',
+                'budget_amount',
+                'purchase_timeline',
+                'decision_role',
+                'qualification_note',
                 'next_follow_up_at',
                 'unqualified_reason',
                 'qualified_by_staff_id',
@@ -213,7 +240,58 @@ final class ContactQualificationWorkflowService
         if ($to === ContactQualificationStatus::Qualified) {
             if (blank($data['service_interest'] ?? $qualification->service_interest)) {
                 throw ValidationException::withMessages([
-                    'service_interest' => __('validation.service_interest_required'),
+                    'service_interest' => 'Dịch vụ quan tâm là bắt buộc.',
+                ]);
+            }
+
+            $budgetStatus = $data['budget_status'] ?? null;
+
+            if (! in_array(
+                $budgetStatus,
+                self::BUDGET_STATUSES,
+                true
+            )) {
+                throw ValidationException::withMessages([
+                    'budget_status' => 'Vui lòng xác định tình trạng ngân sách.',
+                ]);
+            }
+
+            if (
+                array_key_exists('budget_amount', $data)
+                && filled($data['budget_amount'])
+                && (
+                    ! is_numeric($data['budget_amount'])
+                    || (float) $data['budget_amount'] < 0
+                )
+            ) {
+                throw ValidationException::withMessages([
+                    'budget_amount' => 'Ngân sách phải là số không âm.',
+                ]);
+            }
+
+            if (! in_array(
+                $data['purchase_timeline'] ?? null,
+                self::PURCHASE_TIMELINES,
+                true
+            )) {
+                throw ValidationException::withMessages([
+                    'purchase_timeline' => 'Vui lòng xác định thời gian dự kiến mua.',
+                ]);
+            }
+
+            if (! in_array(
+                $data['decision_role'] ?? null,
+                self::DECISION_ROLES,
+                true
+            )) {
+                throw ValidationException::withMessages([
+                    'decision_role' => 'Vui lòng xác định vai trò của người liên hệ.',
+                ]);
+            }
+
+            if (blank($data['qualification_note'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'qualification_note' => 'Ghi chú đánh giá là bắt buộc.',
                 ]);
             }
         }
@@ -274,6 +352,11 @@ final class ContactQualificationWorkflowService
             'qualification_result',
             'service_interest',
             'estimated_value',
+            'budget_status',
+            'budget_amount',
+            'purchase_timeline',
+            'decision_role',
+            'qualification_note',
             'next_follow_up_at',
             'qualified_by_staff_id',
             'unqualified_reason',

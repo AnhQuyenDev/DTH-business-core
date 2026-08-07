@@ -4,7 +4,6 @@ namespace App\Filament\Resources\LeadResource\Pages;
 
 use App\Enums\Crm\ContactQualificationStatus;
 use App\Enums\Crm\DistributionStrategy;
-use App\Enums\Crm\StaffEmploymentStatus;
 use App\Filament\Resources\LeadResource;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\LandingPage;
@@ -53,20 +52,7 @@ class ListLeads extends ListRecords
                         ->multiple()
                         ->options(
                             fn (): array => Staff::query()
-                                ->where(
-                                    'employment_status',
-                                    StaffEmploymentStatus::Active->value
-                                )
-                                ->where('can_receive_customers', true)
-                                ->whereDoesntHave(
-                                    'availabilities',
-                                    fn ($query) => $query
-                                        ->active()
-                                        ->where(
-                                            'can_receive_new_customers',
-                                            false
-                                        )
-                                )
+                                ->eligibleForLeadDistribution()
                                 ->orderBy('full_name')
                                 ->get()
                                 ->mapWithKeys(fn (Staff $staff): array => [
@@ -142,24 +128,27 @@ class ListLeads extends ListRecords
 
             'not_contacted' => Tab::make(
                 __('enum.qualification.not_contacted')
-            )->modifyQueryUsing(fn ($query) => $query->whereHas(
-                'qualification',
-                fn ($query) => $query->where(
-                    'status',
-                    ContactQualificationStatus::New->value
+            )->modifyQueryUsing(
+                fn ($query) => $query->whereHas(
+                    'qualification',
+                    fn ($query) => $query->whereIn('status', [
+                        ContactQualificationStatus::New->value,
+                        ContactQualificationStatus::Assigned->value,
+                    ])
                 )
-            )),
+            ),
 
             'in_progress' => Tab::make(
                 __('enum.qualification.in_progress')
-            )->modifyQueryUsing(fn ($query) => $query->whereHas(
-                'qualification',
-                fn ($query) => $query->whereIn('status', [
-                    ContactQualificationStatus::Assigned->value,
-                    ContactQualificationStatus::Contacting->value,
-                    ContactQualificationStatus::FollowUp->value,
-                ])
-            )),
+            )->modifyQueryUsing(
+                fn ($query) => $query->whereHas(
+                    'qualification',
+                    fn ($query) => $query->whereIn('status', [
+                        ContactQualificationStatus::Contacting->value,
+                        ContactQualificationStatus::FollowUp->value,
+                    ])
+                )
+            ),
 
             'qualified' => Tab::make(
                 __('enum.qualification.qualified')

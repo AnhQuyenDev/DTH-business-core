@@ -200,16 +200,35 @@ class LeadResource extends Resource
                             : ContactQualificationStatus::tryFrom((string) $state)?->label() ?? __('action.not_applicable')),
                     TextEntry::make('qualification.next_follow_up_at')
                         ->label(__('field.next_follow_up'))
-                        ->dateTime('d/m/Y H:i')
-                        ->color(fn ($state): string => $state && $state->isPast() ? 'danger' : 'gray'
+                        ->formatStateUsing(
+                            fn ($state): string => $state
+                                ? $state
+                                    ->copy()
+                                    ->timezone(config('business_flow.timezone'))
+                                    ->format('d/m/Y H:i')
+                                : '—'
                         ),
                     TextEntry::make('qualification.first_contacted_at')
                         ->label(__('field.first_contacted_at'))
-                        ->dateTime('d/m/Y H:i'),
+                        ->formatStateUsing(
+                            fn ($state): string => $state
+                                ? $state
+                                    ->copy()
+                                    ->timezone(config('business_flow.timezone'))
+                                    ->format('d/m/Y H:i')
+                                : '—'
+                        ),
 
-                    TextEntry::make('qualification.last_contacted_at')
-                        ->label(__('field.last_contacted_at'))
-                        ->dateTime('d/m/Y H:i'),
+                    TextEntry::make('qualification.qualified_at')
+                        ->label('Đủ điều kiện lúc')
+                        ->formatStateUsing(
+                            fn ($state): string => $state
+                                ? $state
+                                    ->copy()
+                                    ->timezone(config('business_flow.timezone'))
+                                    ->format('d/m/Y H:i')
+                                : '—'
+                        ),
 
                     TextEntry::make('qualification.qualification_result')
                         ->label(__('field.qualification_result'))
@@ -225,7 +244,60 @@ class LeadResource extends Resource
                     TextEntry::make('qualification.priority')
                         ->label(__('field.priority'))
                         ->badge(),
-                    TextEntry::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i'),
+                    TextEntry::make('qualification.budget_status')
+                        ->label('Tình trạng ngân sách')
+                        ->badge()
+                        ->formatStateUsing(
+                            fn (?string $state): string => match ($state) {
+                                'confirmed_fit' => 'Đã xác nhận - phù hợp',
+                                'confirmed_unfit' => 'Đã xác nhận - chưa phù hợp',
+                                'unknown' => 'Chưa xác định',
+                                default => '—',
+                            }
+                        ),
+
+                    TextEntry::make('qualification.budget_amount')
+                        ->label('Ngân sách dự kiến')
+                        ->money('VND'),
+
+                    TextEntry::make('qualification.purchase_timeline')
+                        ->label('Thời gian dự kiến mua')
+                        ->formatStateUsing(
+                            fn (?string $state): string => match ($state) {
+                                'within_7_days' => 'Trong 7 ngày',
+                                'within_30_days' => 'Trong 30 ngày',
+                                'within_3_months' => 'Trong 3 tháng',
+                                'over_3_months' => 'Trên 3 tháng',
+                                'unknown' => 'Chưa xác định',
+                                default => '—',
+                            }
+                        ),
+
+                    TextEntry::make('qualification.decision_role')
+                        ->label('Vai trò người liên hệ')
+                        ->formatStateUsing(
+                            fn (?string $state): string => match ($state) {
+                                'decision_maker' => 'Người quyết định',
+                                'influencer' => 'Người ảnh hưởng / đề xuất',
+                                'information_gatherer' => 'Người thu thập thông tin',
+                                'unknown' => 'Chưa xác định',
+                                default => '—',
+                            }
+                        ),
+
+                    TextEntry::make('qualification.qualification_note')
+                        ->label('Ghi chú đánh giá')
+                        ->columnSpanFull(),
+                    TextEntry::make('created_at')
+                        ->label(__('field.created_at'))
+                        ->formatStateUsing(
+                            fn ($state): string => $state
+                                ? $state
+                                    ->copy()
+                                    ->timezone(config('business_flow.timezone'))
+                                    ->format('d/m/Y H:i')
+                                : '—'
+                        ),
                 ])->columns(2),
                 Section::make('Thông tin nhu cầu từ biểu mẫu')
                     ->description(
@@ -352,7 +424,23 @@ class LeadResource extends Resource
 
     public static function canProcessLead(Lead $lead): bool
     {
-        return auth()->user()?->can('process', $lead) ?? false;
+        if (! Gate::allows('crm.process-lead')) {
+            return false;
+        }
+
+        $user = auth()->user();
+
+        if ($user === null || $user->isAdmin()) {
+            return false;
+        }
+
+        if ($user->isCustomerServiceManager()) {
+            return true;
+        }
+
+        return $user->isCustomerServiceStaff()
+            && $user->staff?->id !== null
+            && $lead->assigned_staff_id === $user->staff->id;
     }
 
     public static function canArchiveLead(Lead $lead): bool
@@ -401,7 +489,14 @@ class LeadResource extends Resource
                 Tables\Columns\TextColumn::make('assignedStaff.full_name')->label(__('field.assigned_staff'))->searchable()->toggleable(),
                 Tables\Columns\TextColumn::make('assigned_at')
                     ->label(__('field.assigned_at'))
-                    ->dateTime('d/m/Y H:i')
+                    ->formatStateUsing(
+                        fn ($state): string => $state
+                            ? $state
+                                ->copy()
+                                ->timezone(config('business_flow.timezone'))
+                                ->format('d/m/Y H:i')
+                            : '—'
+                    )
                     ->sortable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('qualification.status')
@@ -422,14 +517,28 @@ class LeadResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('qualification.next_follow_up_at')
                     ->label(__('field.next_follow_up'))
-                    ->dateTime('d/m/Y H:i')
+                    ->formatStateUsing(
+                        fn ($state): string => $state
+                            ? $state
+                                ->copy()
+                                ->timezone(config('business_flow.timezone'))
+                                ->format('d/m/Y H:i')
+                            : '—'
+                    )
                     ->sortable()
                     ->toggleable()
                     ->color(fn ($state): string => $state && $state->isPast() ? 'danger' : 'gray'
                     ),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label(__('field.created_at'))
-                    ->dateTime('d/m/Y H:i')
+                    ->formatStateUsing(
+                        fn ($state): string => $state
+                            ? $state
+                                ->copy()
+                                ->timezone(config('business_flow.timezone'))
+                                ->format('d/m/Y H:i')
+                            : '—'
+                    )
                     ->sortable()
                     ->toggleable(),
             ])
