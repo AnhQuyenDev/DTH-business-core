@@ -113,12 +113,45 @@ class FormTemplate extends Model
             'business.industry' => 'Lĩnh vực (Industry)',
         ];
 
-        $base = ['' => '— None —'];
+        $groups = [
+            'Chỉ lưu theo yêu cầu tư vấn' => [
+                '' => 'Chỉ lưu tại Lượt gửi biểu mẫu và Lead',
+            ],
+            'Lead' => [
+                'lead.service_interest' => 'Dịch vụ quan tâm',
+            ],
+        ];
 
-        return match ($audienceType) {
-            'personal' => $base + $personalFields,
-            'business' => $base + $businessFields,
-            default => $base + $personalFields + $businessFields,
-        };
+        if ($audienceType === FormAudienceType::Personal->value) {
+            $groups['Liên hệ cá nhân'] = $personalFields;
+        } elseif ($audienceType === FormAudienceType::Business->value) {
+            $groups['Liên hệ doanh nghiệp / Công ty'] = $businessFields;
+        } else {
+            $groups['Liên hệ cá nhân'] = $personalFields;
+            $groups['Liên hệ doanh nghiệp / Công ty'] = $businessFields;
+        }
+
+        $customFields = CustomField::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['name', 'key'])
+            ->mapWithKeys(fn (CustomField $field): array => [
+                'custom_field:'.$field->key => $field->name,
+            ])
+            ->all();
+
+        if ($customFields !== []) {
+            $groups['Trường tùy chỉnh Liên hệ'] = $customFields;
+        }
+
+        // Các mapping cũ chỉ để đọc/sửa template đã tồn tại. Template mới
+        // phải dùng lead.service_interest để tránh ghi nhu cầu vào hồ sơ Contact.
+        $groups['Tương thích dữ liệu cũ'] = [
+            'personal.service_interest' => 'Dịch vụ quan tâm cá nhân (cũ)',
+            'business.service_interest' => 'Dịch vụ quan tâm doanh nghiệp (cũ)',
+        ];
+
+        return $groups;
     }
+
 }

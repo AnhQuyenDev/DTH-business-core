@@ -508,7 +508,7 @@
     "field.consent_status": "Trạng thái đồng ý nhận email",
     "field.contact": "Liên hệ",
     "field.contact_id": "Liên hệ",
-    "field.contact_mapping": "Ánh xạ tới trường liên hệ",
+    "field.contact_mapping": "Nơi lưu dữ liệu",
     "field.contact_name": "Tên liên hệ",
     "field.contact_position": "Chức vụ",
     "field.contact_preview": "Liên hệ dùng để xem trước biến",
@@ -1650,5 +1650,9 @@
     "validation.converted_customer_required": "Phải có khách hàng được chuyển đổi.",
     "validation.quotation_not_in_opportunity": "Báo giá không thuộc cơ hội kinh doanh được chỉ định.",
     "validation.quotation_must_be_paid": "Báo giá phải ở trạng thái đã thanh toán trước khi chuyển khách hàng.",
-    "validation.manual_customer_conversion_disabled": "Không thể chuyển khách hàng thủ công trong Business Flow V2. Khách hàng chỉ được tạo sau thanh toán thành công."
+    "validation.manual_customer_conversion_disabled": "Không thể chuyển khách hàng thủ công trong Business Flow V2. Khách hàng chỉ được tạo sau thanh toán thành công.",
+    "enum.form_field_type.number": "Số",
+    "enum.form_field_type.date": "Ngày",
+    "enum.form_field_type.radio": "Nút chọn",
+    "enum.form_field_type.multi_select": "Chọn nhiều"
 }

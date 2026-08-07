@@ -5,6 +5,7 @@ namespace App\Services\Marketing;
 use App\Models\Marketing\FormField;
 use App\Models\Marketing\FormTemplate;
 use App\Models\Marketing\LandingPage;
+use Illuminate\Support\Str;
 
 class LandingPageRenderService
 {
@@ -134,6 +135,7 @@ class LandingPageRenderService
             $actionUrl .= '?'.http_build_query($utmQuery);
         }
         $csrfToken = csrf_token();
+        $submissionToken = (string) Str::uuid();
         $submitText = e($formTemplate->submit_button_text ?: 'Gửi thông tin');
         $formName = e($formTemplate->name ?? '');
         $typeSelector = $showTypeSelector ? $this->renderTypeSelector($landingPage, $formType) : '';
@@ -187,6 +189,7 @@ class LandingPageRenderService
                     return '<form'
                         .$attributes
                         .' method="POST"'
+                        .' data-lead-intake-form="{{submission_token}}"'
                         .' action="{{action_url}}">';
                 },
                 $body,
@@ -205,6 +208,7 @@ class LandingPageRenderService
 
             $inject = '<input type="hidden" name="form_template_id" value="'.$formTemplate->id.'">'."\n";
             $inject .= '<input type="hidden" name="submission_type" value="'.$formType.'">'."\n";
+            $inject .= '<input type="hidden" name="_submission_token" value="'.$submissionToken.'">'."\n";
             $body = preg_replace(
                 '/(<form\b[^>]*>)/i',
                 '$1'."\n".$inject,
@@ -217,26 +221,31 @@ class LandingPageRenderService
                 '{{submit_button_text}}' => $submitText,
                 '{{action_url}}' => $actionUrl,
                 '{{csrf_token}}' => $csrfToken,
+                '{{submission_token}}' => $submissionToken,
                 '{{fields}}' => $fieldsHtml,
                 '{{type_selector}}' => $typeSelector,
             ]);
 
-            return $heading.$formHtml;
+            return $heading.$formHtml.$this->renderSubmissionGuardScript($submissionToken);
         }
+
+        $guardScript = $this->renderSubmissionGuardScript($submissionToken);
 
         return $heading.<<<HTML
         <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;box-shadow:0 4px 12px rgba(0,0,0,0.08);box-sizing:border-box;">
             {$typeSelector}
-            <form method="POST" action="{$actionUrl}" novalidate style="margin:0;">
+            <form method="POST" action="{$actionUrl}" data-lead-intake-form="{$submissionToken}" novalidate style="margin:0;">
                 <input type="hidden" name="_token" value="{$csrfToken}">
                 <input type="hidden" name="submission_type" value="{$formType}">
                 <input type="hidden" name="form_template_id" value="{$formTemplate->id}">
+                <input type="hidden" name="_submission_token" value="{$submissionToken}">
                 {$fieldsHtml}
                 <div style="margin-top:20px;">
                     <button type="submit" style="width:100%;padding:14px 20px;background:#2563eb;color:#fff;font-size:16px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:background .2s;">{$submitText}</button>
                 </div>
             </form>
         </div>
+        {$guardScript}
         HTML;
     }
 
@@ -354,8 +363,16 @@ HTML;
         $label = e($field->label);
         $key = e($field->field_key);
         $placeholder = e($field->placeholder ?? '');
-        $required = $field->is_required ? 'required' : '';
-        $requiredMark = $field->is_required ? ' <span style="color:#e53e3e">*</span>' : '';
+        $isServiceInterest = in_array((string) ($field->contact_mapping ?? ''), [
+            'lead.service_interest',
+            'personal.service_interest',
+            'business.service_interest',
+        ], true);
+        $isRequired = $field->is_required || $isServiceInterest;
+        $required = $isRequired ? 'required' : '';
+        $requiredMark = $isRequired
+            ? ' <span style="color:#e53e3e">*</span>'
+            : '';
         $type = $field->field_type->value ?? 'text';
         $inputStyle = 'width:100%;padding:12px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:15px;line-height:1.5;box-sizing:border-box;transition:border-color .2s,box-shadow .2s;outline:none;';
 
@@ -371,15 +388,63 @@ HTML;
                 $inputHtml = "<textarea name=\"{$key}\" placeholder=\"{$placeholder}\" {$required} style=\"{$inputStyle}min-height:100px;resize:vertical;\"></textarea>";
                 break;
 
+            case 'number':
+                $inputHtml = "<input type=\"number\" name=\"{$key}\" placeholder=\"{$placeholder}\" {$required} style=\"{$inputStyle}\">";
+                break;
+
+            case 'date':
+                $inputHtml = "<input type=\"date\" name=\"{$key}\" {$required} style=\"{$inputStyle}\">";
+                break;
+
             case 'select':
                 $options = $field->options ?? [];
                 $optionsHtml = '<option value="">-- Chọn --</option>';
-                foreach ($options as $opt) {
-                    $val = e(is_array($opt) ? ($opt['value'] ?? $opt['label'] ?? $opt) : $opt);
-                    $lbl = e(is_array($opt) ? ($opt['label'] ?? $opt['value'] ?? $opt) : $opt);
+                foreach ($options as $value => $option) {
+                    if (is_array($option)) {
+                        $value = $option['value'] ?? $option['key'] ?? $value;
+                        $option = $option['label'] ?? $option['name'] ?? $value;
+                    } elseif (is_int($value)) {
+                        $value = $option;
+                    }
+                    $val = e((string) $value);
+                    $lbl = e((string) $option);
                     $optionsHtml .= "<option value=\"{$val}\">{$lbl}</option>";
                 }
                 $inputHtml = "<select name=\"{$key}\" {$required} style=\"{$inputStyle}appearance:auto;\">{$optionsHtml}</select>";
+                break;
+
+            case 'multi_select':
+                $options = $field->options ?? [];
+                $optionsHtml = '';
+                foreach ($options as $value => $option) {
+                    if (is_array($option)) {
+                        $value = $option['value'] ?? $option['key'] ?? $value;
+                        $option = $option['label'] ?? $option['name'] ?? $value;
+                    } elseif (is_int($value)) {
+                        $value = $option;
+                    }
+                    $val = e((string) $value);
+                    $lbl = e((string) $option);
+                    $optionsHtml .= "<option value=\"{$val}\">{$lbl}</option>";
+                }
+                $inputHtml = "<select name=\"{$key}[]\" multiple {$required} style=\"{$inputStyle}appearance:auto;min-height:120px;\">{$optionsHtml}</select>";
+                break;
+
+            case 'radio':
+                $options = $field->options ?? [];
+                $html = '';
+                foreach ($options as $value => $option) {
+                    if (is_array($option)) {
+                        $value = $option['value'] ?? $option['key'] ?? $value;
+                        $option = $option['label'] ?? $option['name'] ?? $value;
+                    } elseif (is_int($value)) {
+                        $value = $option;
+                    }
+                    $val = e((string) $value);
+                    $lbl = e((string) $option);
+                    $html .= "<label style=\"display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;font-size:15px;\"><input type=\"radio\" name=\"{$key}\" value=\"{$val}\" {$required} style=\"width:18px;height:18px;accent-color:#2563eb;\"> {$lbl}</label>";
+                }
+                $inputHtml = $html;
                 break;
 
             case 'checkbox':
@@ -387,9 +452,15 @@ HTML;
                 if (! empty($options)) {
                     $html = '';
                     $cbMargin = $inGrid ? 'margin-bottom:0;' : 'margin-bottom:8px;';
-                    foreach ($options as $opt) {
-                        $val = e(is_array($opt) ? ($opt['value'] ?? $opt['label'] ?? $opt) : $opt);
-                        $lbl = e(is_array($opt) ? ($opt['label'] ?? $opt['value'] ?? $opt) : $opt);
+                    foreach ($options as $value => $option) {
+                        if (is_array($option)) {
+                            $value = $option['value'] ?? $option['key'] ?? $value;
+                            $option = $option['label'] ?? $option['name'] ?? $value;
+                        } elseif (is_int($value)) {
+                            $value = $option;
+                        }
+                        $val = e((string) $value);
+                        $lbl = e((string) $option);
                         $html .= "<div style=\"{$cbMargin}\"><label style=\"display:flex;align-items:center;gap:10px;cursor:pointer;font-size:15px;\"><input type=\"checkbox\" name=\"{$key}[]\" value=\"{$val}\" {$required} style=\"width:18px;height:18px;accent-color:#2563eb;\"> {$lbl}</label></div>";
                     }
 
@@ -417,6 +488,32 @@ HTML;
     <label style="display:block;font-weight:600;margin-bottom:6px;font-size:14px;color:#1e293b;">{$label}{$requiredMark}</label>
     {$inputHtml}
 </div>
+HTML;
+    }
+
+    private function renderSubmissionGuardScript(string $submissionToken): string
+    {
+        $token = json_encode($submissionToken, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+
+        return <<<HTML
+<script>
+(function () {
+    const token = {$token};
+    const form = document.querySelector('form[data-lead-intake-form="' + token + '"]');
+
+    if (!form || form.dataset.leadIntakeBound === '1') {
+        return;
+    }
+
+    form.dataset.leadIntakeBound = '1';
+    form.addEventListener('submit', function () {
+        form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (button) {
+            button.disabled = true;
+            button.setAttribute('aria-disabled', 'true');
+        });
+    });
+})();
+</script>
 HTML;
     }
 

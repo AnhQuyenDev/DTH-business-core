@@ -48,6 +48,7 @@ class LeadDistributionTest extends TestCase
         LeadIntakeStatus $status = LeadIntakeStatus::New,
         ContactQualificationStatus $qualificationStatus =
             ContactQualificationStatus::New,
+        bool $intakeReady = true,
     ): Lead {
         $this->leadSequence++;
 
@@ -65,6 +66,12 @@ class LeadDistributionTest extends TestCase
             'source' => 'manual',
             'title' => 'Distribution test',
             'intake_status' => $status->value,
+            'metadata' => [
+                'intake_ready' => $intakeReady,
+                'intake_issues' => $intakeReady
+                    ? []
+                    : ['missing_service_interest'],
+            ],
         ]);
 
         ContactQualification::query()->create([
@@ -209,4 +216,29 @@ class LeadDistributionTest extends TestCase
             'assigned_staff_id' => null,
         ]);
     }
+    public function test_not_ready_leads_are_not_automatically_distributed(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $staff = $this->makeStaff('CS001');
+        $notReady = $this->makeLead(intakeReady: false);
+        $ready = $this->makeLead(intakeReady: true);
+
+        $result = app(LeadDistributionService::class)
+            ->distributeUnassigned(
+                staffIds: [$staff->id],
+                assignedByUserId: $admin->id,
+            );
+
+        $this->assertSame(1, $result['total']);
+        $this->assertSame(1, $result['assigned']);
+        $this->assertDatabaseHas('leads', [
+            'id' => $notReady->id,
+            'assigned_staff_id' => null,
+        ]);
+        $this->assertDatabaseHas('leads', [
+            'id' => $ready->id,
+            'assigned_staff_id' => $staff->id,
+        ]);
+    }
+
 }

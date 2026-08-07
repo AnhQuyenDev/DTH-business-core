@@ -213,11 +213,13 @@ class LandingPageSubmissionResource extends Resource
                             'status' => $data['status'] ?? $record->status,
                         ]);
                     }),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton()])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
                 ]),
             ]);
     }

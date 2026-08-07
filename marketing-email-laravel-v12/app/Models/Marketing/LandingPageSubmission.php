@@ -17,6 +17,8 @@ class LandingPageSubmission extends Model
         'landing_page_id',
         'campaign_id',
         'landing_form_template_id',
+        'submission_token',
+        'payload_fingerprint',
         'contact_id',
         'company_id',
         'data',

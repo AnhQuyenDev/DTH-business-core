@@ -5,6 +5,7 @@ namespace Tests\Feature\Crm;
 use App\Models\Crm\BusinessContactProfile;
 use App\Models\Crm\Company;
 use App\Models\Crm\CompanyMatchCandidate;
+use App\Models\Crm\Lead;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\LandingPage;
 use App\Models\Marketing\LandingPageSubmission;
@@ -83,6 +84,21 @@ class CompanyMatchCandidateWorkflowTest extends TestCase
     {
         $candidate = $this->makePendingCandidate();
         $admin = User::factory()->create(['role' => 'admin']);
+        $lead = Lead::query()->create([
+            'lead_code' => 'LEAD-2026-000001',
+            'submission_id' => $candidate->submission_id,
+            'contact_id' => $candidate->contact_id,
+            'company_id' => null,
+            'source' => 'landing_page',
+            'title' => 'Yêu cầu tư vấn Hosting',
+            'service_interest' => 'hosting_pro',
+            'intake_status' => 'new',
+            'metadata' => ['submission_type' => 'business'],
+        ]);
+
+        $this->assertFalse(
+            (bool) data_get($lead->metadata, 'intake_ready')
+        );
 
         app(CompanyMatchReviewService::class)->accept(
             $candidate,
@@ -92,8 +108,14 @@ class CompanyMatchCandidateWorkflowTest extends TestCase
         $candidate->refresh();
         $candidate->submission->refresh();
         $candidate->contact->businessProfile->refresh();
+        $lead->refresh();
 
         $this->assertSame('accepted', $candidate->status);
+        $this->assertSame($candidate->suggested_company_id, $lead->company_id);
+        $this->assertTrue(
+            (bool) data_get($lead->metadata, 'intake_ready')
+        );
+        $this->assertSame([], data_get($lead->metadata, 'intake_issues'));
         $this->assertSame(
             $candidate->suggested_company_id,
             $candidate->submission->company_id

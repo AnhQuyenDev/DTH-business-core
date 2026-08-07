@@ -18,6 +18,7 @@ final class LeadCreationService
         LandingPageSubmission $submission,
         ?int $companyId = null,
         ?string $serviceInterest = null,
+        array $formAnswers = [],
         ?int $userId = null,
     ): Lead {
         $existing = Lead::query()
@@ -28,22 +29,62 @@ final class LeadCreationService
             return $existing->loadMissing('qualification');
         }
 
+        $serviceInterestAnswer = collect($formAnswers)
+            ->first(function (mixed $answer): bool {
+                if (! is_array($answer)) {
+                    return false;
+                }
+
+                return in_array($answer['mapping'] ?? null, [
+                    'lead.service_interest',
+                    'personal.service_interest',
+                    'business.service_interest',
+                ], true);
+            });
+        $serviceInterestLabel = is_array($serviceInterestAnswer)
+            ? ($serviceInterestAnswer['display_value'] ?? $serviceInterest)
+            : $serviceInterest;
+        $resolvedCompanyId = $companyId ?? $submission->company_id;
+        $intakeIssues = [];
+
+        if (blank($serviceInterest)) {
+            $intakeIssues[] = 'missing_service_interest';
+        }
+
+        if ($submission->contact_id === null) {
+            $intakeIssues[] = 'missing_contact';
+        }
+
+        if (
+            $submission->submission_type === 'business'
+            && $resolvedCompanyId === null
+        ) {
+            $intakeIssues[] = 'company_resolution_pending';
+        }
+
         $lead = Lead::query()->create([
             'lead_code' => $this->codeGenerator->next(),
             'submission_id' => $submission->id,
             'contact_id' => $submission->contact_id,
-            'company_id' => $companyId ?? $submission->company_id,
+            'company_id' => $resolvedCompanyId,
             'source' => 'landing_page',
             'source_detail' => $submission->landingPage?->name,
-            'title' => filled($serviceInterest)
-                ? 'Yêu cầu tư vấn: '.$serviceInterest
+            'title' => filled($serviceInterestLabel)
+                ? 'Yêu cầu tư vấn: '.$serviceInterestLabel
                 : 'Yêu cầu tư vấn từ Landing Page',
             'service_interest' => $serviceInterest,
             'intake_status' => LeadIntakeStatus::New->value,
             'metadata' => [
+                'service_interest_label' => $serviceInterestLabel,
                 'submission_type' => $submission->submission_type,
                 'landing_page_id' => $submission->landing_page_id,
                 'campaign_id' => $submission->campaign_id,
+                'form_template_id' => $submission->landing_form_template_id,
+                'captured_at' => $submission->submitted_at?->toIso8601String()
+                    ?? now()->toIso8601String(),
+                'intake_ready' => $intakeIssues === [],
+                'intake_issues' => $intakeIssues,
+                'form_answers' => array_values($formAnswers),
             ],
             'created_by' => $userId,
         ]);

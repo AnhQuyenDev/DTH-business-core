@@ -2196,7 +2196,7 @@ php artisan test --filter=LeadActivity
 
 ---
 
-# PHASE 6 — THÊM SALES OPPORTUNITY/CƠ HỘI KINH DOANH
+# PHASE 6" — THÊM SALES OPPORTUNITY/CƠ HỘI KINH DOANH
 
 ## Mục tiêu
 

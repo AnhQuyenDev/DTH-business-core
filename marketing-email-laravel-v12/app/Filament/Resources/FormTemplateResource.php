@@ -7,6 +7,7 @@ use App\Enums\Marketing\FormFieldType;
 use App\Enums\Marketing\FormTemplateStatus;
 use App\Filament\Resources\FormTemplateResource\Pages;
 use App\Models\Marketing\FormTemplate;
+use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
@@ -129,13 +130,59 @@ class FormTemplateResource extends Resource
                             TextInput::make('field_key')->label(__('field.field_key'))->required()->maxLength(255),
                             Select::make('field_type')->label(__('field.field_type_text'))->options(FormFieldType::options())->required()->default(FormFieldType::Text->value)->live(),
                             TextInput::make('placeholder')->label(__('field.placeholder'))->maxLength(255),
-                            TagsInput::make('options')
+                            KeyValue::make('options')
                                 ->label(__('field.field_options'))
-                                ->visible(fn (Get $get): bool => in_array((string) $get('field_type'), [FormFieldType::Select->value, FormFieldType::Checkbox->value], true)),
+                                ->keyLabel('Giá trị kỹ thuật')
+                                ->valueLabel('Nhãn hiển thị')
+                                ->addActionLabel('Thêm lựa chọn')
+                                ->helperText(
+                                    'Ví dụ: hosting_pro => Web Hosting - Trung bình. '
+                                    .'Giá trị kỹ thuật phải ổn định để dữ liệu lịch sử không đổi khi sửa nhãn.'
+                                )
+                                ->afterStateHydrated(function ($component, mixed $state): void {
+                                    if (! is_array($state) || ! array_is_list($state)) {
+                                        return;
+                                    }
+
+                                    $component->state(
+                                        collect($state)
+                                            ->mapWithKeys(function (mixed $option): array {
+                                                if (is_array($option)) {
+                                                    $value = $option['value']
+                                                        ?? $option['key']
+                                                        ?? null;
+                                                    $label = $option['label']
+                                                        ?? $option['name']
+                                                        ?? $value;
+
+                                                    return $value === null
+                                                        ? []
+                                                        : [(string) $value => (string) $label];
+                                                }
+
+                                                return [(string) $option => (string) $option];
+                                            })
+                                            ->all()
+                                    );
+                                })
+                                ->visible(fn (Get $get): bool => in_array(
+                                    (string) $get('field_type'),
+                                    [
+                                        FormFieldType::Select->value,
+                                        FormFieldType::Radio->value,
+                                        FormFieldType::MultiSelect->value,
+                                        FormFieldType::Checkbox->value,
+                                    ],
+                                    true
+                                )),
                             TextInput::make('default_value')->label(__('field.value'))->maxLength(255),
                             Toggle::make('is_required')->label(__('field.is_required'))->default(false),
                             Select::make('contact_mapping')
                                 ->label(__('field.contact_mapping'))
+                                ->helperText(
+                                    'Thông tin ổn định lưu vào Contact/Company; '
+                                    .'nhu cầu của từng lần tư vấn lưu vào Lead hoặc chỉ lưu theo lượt gửi.'
+                                )
                                 ->options(fn (Get $get): array => FormTemplate::contactMappingOptions($get('../../audience_type')))
                                 ->searchable(),
                             TextInput::make('validation_rules')->label(__('field.validation_rules'))->maxLength(255),

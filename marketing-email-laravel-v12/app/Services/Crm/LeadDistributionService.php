@@ -32,6 +32,7 @@ final class LeadDistributionService
         $query = Lead::query()
             ->whereNull('assigned_staff_id')
             ->where('intake_status', LeadIntakeStatus::New->value)
+            ->where('metadata->intake_ready', true)
             ->whereHas(
                 'qualification',
                 fn ($query) => $query->where(

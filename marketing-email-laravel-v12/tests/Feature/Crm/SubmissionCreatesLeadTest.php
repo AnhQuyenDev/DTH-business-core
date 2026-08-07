@@ -144,7 +144,7 @@ class SubmissionCreatesLeadTest extends TestCase
         $this->assertNotNull($lead->qualification);
     }
 
-    public function test_reprocessing_same_submission_does_not_duplicate_lead(): void
+    public function test_duplicate_payload_within_window_reuses_submission_and_lead(): void
     {
         $page = $this->createPersonalLandingPage();
 
@@ -162,10 +162,11 @@ class SubmissionCreatesLeadTest extends TestCase
             'personal_email' => 'a@example.com',
         ])->assertSessionHasNoErrors();
 
-        $this->assertSame(2, LandingPageSubmission::query()->count());
+        $this->assertSame(1, LandingPageSubmission::query()->count());
 
         app(LeadCreationService::class)->createFromSubmission($submission);
 
+        $this->assertSame(1, Lead::query()->count());
         $this->assertSame(
             1,
             Lead::query()->where('submission_id', $submission->id)->count()

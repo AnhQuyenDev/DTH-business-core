@@ -500,7 +500,7 @@
     "field.consent_status": "Consent Status",
     "field.contact": "Contact",
     "field.contact_id": "Contact",
-    "field.contact_mapping": "Map to Contact Field",
+    "field.contact_mapping": "Data destination",
     "field.contact_name": "Contact Name",
     "field.contact_position": "Position",
     "field.contact_preview": "Contact (for placeholder preview)",
@@ -1640,5 +1640,9 @@
     "validation.converted_customer_required": "A converted customer is required.",
     "validation.quotation_not_in_opportunity": "The quotation does not belong to the selected opportunity.",
     "validation.quotation_must_be_paid": "The quotation must be paid before customer conversion.",
-    "validation.manual_customer_conversion_disabled": "Manual customer conversion is disabled in Business Flow V2. Customers are created only after successful payment."
+    "validation.manual_customer_conversion_disabled": "Manual customer conversion is disabled in Business Flow V2. Customers are created only after successful payment.",
+    "enum.form_field_type.number": "Number",
+    "enum.form_field_type.date": "Date",
+    "enum.form_field_type.radio": "Radio",
+    "enum.form_field_type.multi_select": "Multi select"
 }

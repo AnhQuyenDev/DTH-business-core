@@ -24,154 +24,537 @@ use App\Services\Crm\CompanyContactLinkService;
 use App\Services\Crm\CompanyNormalizationService;
 use App\Services\Crm\CompanyResolutionService;
 use App\Services\Crm\LeadCreationService;
+use App\Services\Crm\LeadFormAnswerSnapshotService;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class LandingPageSubmissionService
 {
-    public function handle(LandingPage $landingPage, array $payload, Request $request, ?int $campaignId = null): LandingPageSubmission
-    {
-        return DB::transaction(function () use ($landingPage, $payload, $request, $campaignId) {
-            $submissionType = $payload['submission_type'] ?? 'personal';
+    public function handle(
+        LandingPage $landingPage,
+        array $payload,
+        Request $request,
+        ?int $campaignId = null,
+    ): LandingPageSubmission {
+        $this->validateEnvelope($payload);
 
-            // Generic form dùng customer_type từ payload để xác định personal/business
-            $resolvedType = $submissionType;
-            if ($submissionType === 'generic' && ! empty($payload['customer_type'])) {
-                $resolvedType = $payload['customer_type'];
-            }
+        $submissionType = (string) ($payload['submission_type'] ?? 'personal');
+        $resolvedType = $submissionType === 'generic'
+            ? (string) ($payload['customer_type'] ?? '')
+            : $submissionType;
 
-            $landingPageForm = $landingPage->forms()
-                ->where('form_type', $submissionType)
-                ->where('status', 'active')
-                ->first();
-            $formTemplate = $landingPageForm?->formTemplate;
-            $formTemplateId = $formTemplate?->id;
+        $landingPageForm = $landingPage->forms()
+            ->where('form_type', $submissionType)
+            ->where('status', 'active')
+            ->first();
+        $formTemplate = $landingPageForm?->formTemplate;
 
-            $validatedData = $this->validatePayload($formTemplate, $payload, $submissionType);
-            $utm = app(LandingPageTrackingService::class)->extractUtm($request);
-
-            $emailField = $resolvedType === 'business' ? 'business_email' : 'email';
-            $phoneField = $resolvedType === 'business' ? 'business_phone' : 'phone';
-            $emailKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, $emailField);
-            $phoneKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, $phoneField);
-            $normalizedEmail = isset($validatedData[$emailKey]) ? strtolower(trim($validatedData[$emailKey])) : null;
-            $normalizedPhone = isset($validatedData[$phoneKey]) ? preg_replace('/[^0-9]/', '', $validatedData[$phoneKey]) : null;
-
-            $contact = $this->findDuplicateContact($normalizedEmail, $normalizedPhone, $validatedData);
-
-            if (! $contact) {
-                $contact = Contact::create(['contact_type' => $resolvedType]);
-                $action = LandingPageContactAction::Created;
-            } else {
-                $action = LandingPageContactAction::Updated;
-            }
-
-            $company = null;
-
-            if ($resolvedType === 'personal') {
-                $this->savePersonalProfile($contact, $validatedData, $normalizedEmail, $normalizedPhone, $formTemplate);
-            } elseif ($resolvedType === 'business') {
-                $profile = $this->saveBusinessProfile($contact, $validatedData, $normalizedEmail, $normalizedPhone, $formTemplate);
-                // Tax code verification happens manually via the "Xác thực MST" button on Form Submissions page
-            }
-
-            $this->applyTagsAndLists($contact, $landingPage, $formTemplate, $validatedData);
-            $this->saveCustomFields($contact, $formTemplate, $validatedData);
-
-            $taxCodeKey = $this->findFieldKeyByMapping($formTemplate, $resolvedType, 'tax_code');
-
-            $submission = LandingPageSubmission::create([
-                'landing_page_id' => $landingPage->id,
-                'campaign_id' => $campaignId,
-                'landing_form_template_id' => $formTemplateId,
-                'contact_id' => $contact->id,
-                'data' => $payload,
-                'normalized_email' => $normalizedEmail,
-                'status' => LandingPageSubmissionStatus::Processed,
-                'contact_action' => $action,
-                'submission_type' => $submissionType,
-                'business_tax_code' => $taxCodeKey ? ($validatedData[$taxCodeKey] ?? null) : null,
-                'qualification_status' => 'received',
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'referrer' => $request->headers->get('referer'),
-                'utm_source' => $utm['utm_source'] ?? null,
-                'utm_medium' => $utm['utm_medium'] ?? null,
-                'utm_campaign' => $utm['utm_campaign'] ?? null,
-                'utm_content' => $utm['utm_content'] ?? null,
-                'utm_term' => $utm['utm_term'] ?? null,
-                'submitted_at' => now(),
+        if ($formTemplate === null) {
+            throw ValidationException::withMessages([
+                'submission_type' => 'Biểu mẫu đang không hoạt động hoặc chưa được gắn vào trang đích.',
             ]);
+        }
 
-            $company = null;
+        $formTemplate->loadMissing('fields');
+        $validatedData = $this->validatePayload(
+            $formTemplate,
+            $payload,
+            $resolvedType,
+        );
 
-            if ($resolvedType === 'business' && isset($profile)) {
-                $company = $this->resolveCompany(
-                    $contact,
-                    $profile,
-                    $validatedData,
-                    $formTemplate,
-                    $submission
+        $submissionToken = filled($payload['_submission_token'] ?? null)
+            ? (string) $payload['_submission_token']
+            : null;
+
+        if ($submissionToken !== null && ! Str::isUuid($submissionToken)) {
+            throw ValidationException::withMessages([
+                '_submission_token' => 'Mã gửi biểu mẫu không hợp lệ. Vui lòng tải lại trang và thử lại.',
+            ]);
+        }
+
+        $payloadFingerprint = $this->buildPayloadFingerprint(
+            $landingPage,
+            $resolvedType,
+            $validatedData,
+        );
+        $lockIdentity = $submissionToken !== null
+            ? 'token:'.$submissionToken
+            : 'fingerprint:'.$payloadFingerprint;
+        $lockKey = 'landing-page-submission:'
+            .$landingPage->id.':'
+            .hash('sha256', $lockIdentity);
+
+        try {
+            return Cache::lock($lockKey, 20)->block(5, function () use (
+                $landingPage,
+                $formTemplate,
+                $validatedData,
+                $payload,
+                $request,
+                $campaignId,
+                $resolvedType,
+                $submissionToken,
+                $payloadFingerprint,
+            ): LandingPageSubmission {
+                $existing = $this->findExistingSubmission(
+                    $landingPage,
+                    $submissionToken,
+                    $payloadFingerprint,
                 );
-            }
 
-            if (config('business_flow.v2_enabled')) {
-                $submission->refresh();
+                if ($existing !== null) {
+                    return $existing;
+                }
 
-                app(LeadCreationService::class)->createFromSubmission(
-                    submission: $submission->loadMissing('landingPage'),
-                    companyId: $company?->id ?? $submission->company_id,
-                    serviceInterest: $this->resolveServiceInterest(
+                return DB::transaction(function () use (
+                    $landingPage,
+                    $formTemplate,
+                    $validatedData,
+                    $payload,
+                    $request,
+                    $campaignId,
+                    $resolvedType,
+                    $submissionToken,
+                    $payloadFingerprint,
+                ): LandingPageSubmission {
+                    // Kiểm tra lại trong transaction để bảo vệ khi cache lock
+                    // không dùng chung giữa nhiều application instance.
+                    $existing = $this->findExistingSubmission(
+                        $landingPage,
+                        $submissionToken,
+                        $payloadFingerprint,
+                    );
+
+                    if ($existing !== null) {
+                        return $existing;
+                    }
+
+                    $emailField = $resolvedType === 'business'
+                        ? 'business_email'
+                        : 'email';
+                    $phoneField = $resolvedType === 'business'
+                        ? 'business_phone'
+                        : 'phone';
+                    $emailKey = $this->findFieldKeyByMapping(
                         $formTemplate,
                         $resolvedType,
-                        $validatedData
-                    ),
-                    userId: auth()->id(),
-                );
-            } else {
-                ContactQualification::query()->firstOrCreate(
-                    ['contact_id' => $contact->id],
-                    ['status' => ContactQualificationStatus::New->value]
-                );
+                        $emailField,
+                    );
+                    $phoneKey = $this->findFieldKeyByMapping(
+                        $formTemplate,
+                        $resolvedType,
+                        $phoneField,
+                    );
+                    $normalizedEmail = $emailKey !== null
+                        && filled($validatedData[$emailKey] ?? null)
+                        ? strtolower(trim((string) $validatedData[$emailKey]))
+                        : null;
+                    $normalizedPhone = $phoneKey !== null
+                        && filled($validatedData[$phoneKey] ?? null)
+                        ? preg_replace(
+                            '/[^0-9]/',
+                            '',
+                            (string) $validatedData[$phoneKey]
+                        )
+                        : null;
+
+                    $contact = $this->findDuplicateContact(
+                        $normalizedEmail,
+                        $normalizedPhone,
+                        $validatedData,
+                    );
+
+                    if ($contact === null) {
+                        $contact = Contact::create([
+                            'contact_type' => $resolvedType,
+                        ]);
+                        $action = LandingPageContactAction::Created;
+                    } else {
+                        $action = LandingPageContactAction::Updated;
+                    }
+
+                    $profile = null;
+
+                    if ($resolvedType === 'personal') {
+                        $this->savePersonalProfile(
+                            $contact,
+                            $validatedData,
+                            $normalizedEmail,
+                            $normalizedPhone,
+                            $formTemplate,
+                        );
+                    } elseif ($resolvedType === 'business') {
+                        $profile = $this->saveBusinessProfile(
+                            $contact,
+                            $validatedData,
+                            $normalizedEmail,
+                            $normalizedPhone,
+                            $formTemplate,
+                        );
+                    }
+
+                    $this->applyTagsAndLists(
+                        $contact,
+                        $landingPage,
+                        $formTemplate,
+                        $validatedData,
+                    );
+                    $this->saveCustomFields(
+                        $contact,
+                        $formTemplate,
+                        $validatedData,
+                    );
+
+                    $taxCodeKey = $this->findFieldKeyByMapping(
+                        $formTemplate,
+                        $resolvedType,
+                        'tax_code',
+                    );
+                    $utm = app(LandingPageTrackingService::class)
+                        ->extractUtm($request);
+
+                    $submission = LandingPageSubmission::create([
+                        'landing_page_id' => $landingPage->id,
+                        'campaign_id' => $campaignId,
+                        'landing_form_template_id' => $formTemplate->id,
+                        'submission_token' => $submissionToken,
+                        'payload_fingerprint' => $payloadFingerprint,
+                        'contact_id' => $contact->id,
+                        'data' => array_merge(
+                            $validatedData,
+                            [
+                                'submission_type' => $resolvedType,
+                                'customer_type' => $payload['customer_type'] ?? null,
+                            ],
+                        ),
+                        'normalized_email' => $normalizedEmail,
+                        'status' => LandingPageSubmissionStatus::Processed,
+                        'contact_action' => $action,
+                        'submission_type' => $resolvedType,
+                        'business_tax_code' => $taxCodeKey !== null
+                            ? ($validatedData[$taxCodeKey] ?? null)
+                            : null,
+                        'qualification_status' => 'received',
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'referrer' => $request->headers->get('referer'),
+                        'utm_source' => $utm['utm_source'] ?? null,
+                        'utm_medium' => $utm['utm_medium'] ?? null,
+                        'utm_campaign' => $utm['utm_campaign'] ?? null,
+                        'utm_content' => $utm['utm_content'] ?? null,
+                        'utm_term' => $utm['utm_term'] ?? null,
+                        'submitted_at' => now(),
+                    ]);
+
+                    $company = null;
+
+                    if ($resolvedType === 'business' && $profile !== null) {
+                        $company = $this->resolveCompany(
+                            $contact,
+                            $profile,
+                            $validatedData,
+                            $formTemplate,
+                            $submission,
+                        );
+                    }
+
+                    if (config('business_flow.v2_enabled')) {
+                        $submission->refresh();
+                        $serviceInterest = $this->resolveServiceInterest(
+                            $formTemplate,
+                            $resolvedType,
+                            $validatedData,
+                        );
+                        $formAnswers = app(
+                            LeadFormAnswerSnapshotService::class
+                        )->build($formTemplate, $validatedData);
+
+                        app(LeadCreationService::class)->createFromSubmission(
+                            submission: $submission->loadMissing('landingPage'),
+                            companyId: $company?->id ?? $submission->company_id,
+                            serviceInterest: $serviceInterest,
+                            formAnswers: $formAnswers,
+                            userId: auth()->id(),
+                        );
+                    } else {
+                        ContactQualification::query()->firstOrCreate(
+                            ['contact_id' => $contact->id],
+                            ['status' => ContactQualificationStatus::New->value]
+                        );
+                    }
+
+                    if ($landingPage->auto_create_segment) {
+                        $this->autoCreateSegmentIfNeeded($landingPage);
+                    }
+
+                    return $submission;
+                });
+            });
+        } catch (LockTimeoutException) {
+            $existing = $this->findExistingSubmission(
+                $landingPage,
+                $submissionToken,
+                $payloadFingerprint,
+            );
+
+            if ($existing !== null) {
+                return $existing;
             }
 
-            if ($landingPage->auto_create_segment) {
-                $this->autoCreateSegmentIfNeeded($landingPage);
+            throw ValidationException::withMessages([
+                '_submission_token' => 'Yêu cầu đang được xử lý. Vui lòng chờ vài giây rồi thử lại.',
+            ]);
+        } catch (QueryException $exception) {
+            // Nếu hai request đồng thời vượt qua cache lock trên hai node khác
+            // nhau, unique index của submission token là lớp bảo vệ cuối cùng.
+            $existing = $this->findExistingSubmission(
+                $landingPage,
+                $submissionToken,
+                $payloadFingerprint,
+            );
+
+            if ($existing !== null) {
+                return $existing;
             }
 
-            return $submission;
-        });
+            throw $exception;
+        }
     }
 
-    public function validatePayload($formTemplate, array $payload, string $submissionType): array
-    {
+    public function validatePayload(
+        mixed $formTemplate,
+        array $payload,
+        string $submissionType,
+    ): array {
         $rules = [];
+        $attributes = [];
+        $hiddenValues = [];
 
         if ($formTemplate && $formTemplate->fields) {
             foreach ($formTemplate->fields as $field) {
-                if ($field->field_type->value === 'hidden') {
+                $type = $field->field_type?->value
+                    ?? (string) $field->field_type;
+                $attributes[$field->field_key] = $field->label;
+
+                if ($type === 'hidden') {
+                    $hiddenValues[$field->field_key] = $field->default_value;
+
                     continue;
                 }
-                $fieldRules = [];
-                if ($field->is_required) {
-                    $fieldRules[] = 'required';
-                } else {
-                    $fieldRules[] = 'nullable';
-                }
-                if ($field->field_type->value === 'email') {
+
+                $mapping = (string) ($field->contact_mapping ?? '');
+                $isServiceInterest = in_array($mapping, [
+                    'lead.service_interest',
+                    'personal.service_interest',
+                    'business.service_interest',
+                ], true);
+                $fieldRules = [
+                    ($field->is_required || $isServiceInterest)
+                        ? 'required'
+                        : 'nullable',
+                ];
+
+                if ($type === 'email') {
                     $fieldRules[] = 'email:rfc';
                 }
-                if ($field->validation_rules) {
-                    foreach (explode('|', $field->validation_rules) as $r) {
-                        $fieldRules[] = $r;
+
+                if ($type === 'number') {
+                    $fieldRules[] = 'numeric';
+                }
+
+                if ($type === 'date') {
+                    $fieldRules[] = 'date';
+                }
+
+                $allowedValues = $this->allowedOptionValues(
+                    $field->options ?? []
+                );
+
+                if (in_array($type, ['select', 'radio'], true)) {
+                    $fieldRules[] = Rule::in($allowedValues);
+                }
+
+                if (
+                    $type === 'multi_select'
+                    || ($type === 'checkbox' && $allowedValues !== [])
+                ) {
+                    $fieldRules[] = 'array';
+                    $rules[$field->field_key.'.*'] = [
+                        Rule::in($allowedValues),
+                    ];
+                }
+
+                if (
+                    $type === 'checkbox'
+                    && $allowedValues === []
+                    && $field->is_required
+                ) {
+                    $fieldRules[] = 'accepted';
+                }
+
+                if (filled($field->validation_rules)) {
+                    foreach (
+                        explode('|', (string) $field->validation_rules)
+                        as $rule
+                    ) {
+                        $rule = trim($rule);
+
+                        if ($rule !== '') {
+                            $fieldRules[] = $rule;
+                        }
                     }
                 }
+
                 $rules[$field->field_key] = $fieldRules;
             }
         }
 
-        return $rules ? validator($payload, $rules)->validate() : $payload;
+        $validated = $rules === []
+            ? []
+            : validator(
+                $payload,
+                $rules,
+                [
+                    '*.required' => 'Vui lòng nhập :attribute.',
+                    '*.in' => 'Giá trị của :attribute không hợp lệ.',
+                    '*.array' => ':attribute phải là danh sách hợp lệ.',
+                    '*.email' => ':attribute không đúng định dạng email.',
+                    '*.numeric' => ':attribute phải là số.',
+                    '*.date' => ':attribute không đúng định dạng ngày.',
+                    '*.accepted' => 'Bạn phải xác nhận :attribute.',
+                ],
+                $attributes,
+            )->validate();
+
+        return array_merge($validated, $hiddenValues);
+    }
+
+    private function validateEnvelope(array $payload): void
+    {
+        validator($payload, [
+            'submission_type' => [
+                'nullable',
+                Rule::in(['personal', 'business', 'generic']),
+            ],
+            'customer_type' => [
+                'nullable',
+                Rule::in(['personal', 'business']),
+            ],
+        ])->validate();
+
+        if (
+            ($payload['submission_type'] ?? null) === 'generic'
+            && blank($payload['customer_type'] ?? null)
+        ) {
+            throw ValidationException::withMessages([
+                'customer_type' => 'Vui lòng chọn loại khách hàng.',
+            ]);
+        }
+    }
+
+    private function findExistingSubmission(
+        LandingPage $landingPage,
+        ?string $submissionToken,
+        string $payloadFingerprint,
+    ): ?LandingPageSubmission {
+        if ($submissionToken !== null) {
+            $byToken = LandingPageSubmission::query()
+                ->where('landing_page_id', $landingPage->id)
+                ->where('submission_token', $submissionToken)
+                ->first();
+
+            if ($byToken !== null) {
+                if (
+                    filled($byToken->payload_fingerprint)
+                    && $byToken->payload_fingerprint !== $payloadFingerprint
+                ) {
+                    throw ValidationException::withMessages([
+                        '_submission_token' => 'Mã gửi đã được sử dụng cho dữ liệu khác. Vui lòng tải lại trang.',
+                    ]);
+                }
+
+                return $byToken;
+            }
+        }
+
+        return LandingPageSubmission::query()
+            ->where('landing_page_id', $landingPage->id)
+            ->where('payload_fingerprint', $payloadFingerprint)
+            ->where('created_at', '>=', now()->subSeconds(60))
+            ->first();
+    }
+
+    /** @return array<int, string> */
+    private function allowedOptionValues(mixed $options): array
+    {
+        if (! is_array($options)) {
+            return [];
+        }
+
+        if (! array_is_list($options)) {
+            return array_map('strval', array_keys($options));
+        }
+
+        return collect($options)
+            ->map(function (mixed $option): ?string {
+                if (is_array($option)) {
+                    $value = $option['value'] ?? $option['key'] ?? null;
+
+                    return $value === null ? null : (string) $value;
+                }
+
+                return (string) $option;
+            })
+            ->filter(fn (?string $value): bool => filled($value))
+            ->values()
+            ->all();
+    }
+
+    private function buildPayloadFingerprint(
+        LandingPage $landingPage,
+        string $resolvedType,
+        array $validatedData,
+    ): string {
+        $normalized = $this->sortRecursively([
+            'landing_page_id' => $landingPage->id,
+            'submission_type' => $resolvedType,
+            'answers' => $validatedData,
+        ]);
+
+        return hash(
+            'sha256',
+            json_encode(
+                $normalized,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            ) ?: ''
+        );
+    }
+
+    private function sortRecursively(array $value): array
+    {
+        foreach ($value as $key => $item) {
+            if (is_array($item)) {
+                $value[$key] = $this->sortRecursively($item);
+            }
+        }
+
+        if (array_is_list($value)) {
+            if (collect($value)->every(fn (mixed $item): bool => is_scalar($item))) {
+                sort($value, SORT_STRING);
+            }
+
+            return $value;
+        }
+
+        ksort($value);
+
+        return $value;
     }
 
     protected function findDuplicateContact(?string $normalizedEmail, ?string $normalizedPhone, array $validatedData): ?Contact
@@ -224,6 +607,9 @@ class LandingPageSubmissionService
                     continue;
                 }
                 $profileField = explode('.', $mapping, 2)[1] ?? null;
+                if ($profileField === 'service_interest') {
+                    continue;
+                }
                 if (! $profileField || ! isset($validatedData[$field->field_key])) {
                     continue;
                 }
@@ -266,6 +652,9 @@ class LandingPageSubmissionService
                     continue;
                 }
                 $profileField = explode('.', $mapping, 2)[1] ?? null;
+                if ($profileField === 'service_interest') {
+                    continue;
+                }
                 if (! $profileField || ! isset($validatedData[$field->field_key])) {
                     continue;
                 }
@@ -588,10 +977,61 @@ class LandingPageSubmissionService
             }
 
             ContactCustomFieldValue::updateOrCreate(
-                ['contact_id' => $contact->id, 'custom_field_id' => $customField->id],
-                ['value' => $value]
+                [
+                    'contact_id' => $contact->id,
+                    'custom_field_id' => $customField->id,
+                ],
+                $this->customFieldValuePayload($customField, $value)
             );
         }
+    }
+
+    /** @return array<string, mixed> */
+    private function customFieldValuePayload(
+        CustomField $customField,
+        mixed $value,
+    ): array {
+        $payload = [
+            'value_text' => null,
+            'value_number' => null,
+            'value_date' => null,
+            'value_boolean' => null,
+            'value_json' => null,
+        ];
+
+        switch ($customField->type) {
+            case 'number':
+                $payload['value_number'] = $value;
+                break;
+
+            case 'date':
+                $payload['value_date'] = $value;
+                break;
+
+            case 'boolean':
+                $payload['value_boolean'] = filter_var(
+                    $value,
+                    FILTER_VALIDATE_BOOLEAN,
+                    FILTER_NULL_ON_FAILURE
+                );
+                break;
+
+            case 'multi_select':
+                $payload['value_json'] = is_array($value)
+                    ? array_values($value)
+                    : [$value];
+                break;
+
+            default:
+                if (is_array($value)) {
+                    $payload['value_json'] = array_values($value);
+                } else {
+                    $payload['value_text'] = (string) $value;
+                }
+                break;
+        }
+
+        return $payload;
     }
 
     protected function findFieldKeyByMapping($formTemplate, string $type, string $field): ?string
@@ -610,21 +1050,34 @@ class LandingPageSubmissionService
     }
 
     protected function resolveServiceInterest(
-        $formTemplate,
+        mixed $formTemplate,
         string $resolvedType,
         array $validatedData,
     ): ?string {
-        $key = $this->findFieldKeyByMapping(
-            $formTemplate,
-            $resolvedType,
-            'service_interest'
-        );
-
-        if ($key === null) {
+        if (! $formTemplate || ! $formTemplate->fields) {
             return null;
         }
 
-        $value = $validatedData[$key] ?? null;
+        $field = collect($formTemplate->fields)->first(
+            fn ($field): bool => $field->contact_mapping
+                === 'lead.service_interest'
+        );
+
+        if ($field === null) {
+            $legacyMapping = $resolvedType === 'personal'
+                ? 'personal.service_interest'
+                : 'business.service_interest';
+            $field = collect($formTemplate->fields)->first(
+                fn ($field): bool => $field->contact_mapping
+                    === $legacyMapping
+            );
+        }
+
+        if ($field === null) {
+            return null;
+        }
+
+        $value = $validatedData[$field->field_key] ?? null;
 
         if (is_array($value)) {
             $value = implode(', ', array_filter($value));
@@ -632,4 +1085,5 @@ class LandingPageSubmissionService
 
         return filled($value) ? trim((string) $value) : null;
     }
+
 }

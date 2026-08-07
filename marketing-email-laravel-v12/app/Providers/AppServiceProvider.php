@@ -17,8 +17,11 @@ use App\Models\Crm\Staff;
 use App\Models\Sales\Opportunity;
 use App\Models\Sales\Quotation;
 use App\Models\User;
+use App\Models\Marketing\LandingPageSubmission;
 use App\Observers\Crm\CustomerAssignmentObserver;
 use App\Observers\Crm\StaffObserver;
+use App\Observers\Crm\LeadObserver;
+use App\Observers\Marketing\LandingPageSubmissionObserver;
 use App\Policies\CompanyPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\LeadPolicy;
@@ -42,6 +45,10 @@ class AppServiceProvider extends ServiceProvider
         // ─── Observers ──────────────────────────────────────────────────
         Staff::observe(StaffObserver::class);
         CustomerAssignment::observe(CustomerAssignmentObserver::class);
+        LandingPageSubmission::observe(
+            LandingPageSubmissionObserver::class
+        );
+        Lead::observe(LeadObserver::class);
 
         // ─── Event Listeners ────────────────────────────────────────────
         Event::listen(Login::class, LogSuccessfulLogin::class);

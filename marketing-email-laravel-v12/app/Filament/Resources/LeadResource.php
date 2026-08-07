@@ -17,6 +17,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
@@ -147,7 +148,42 @@ class LeadResource extends Resource
                     TextEntry::make('source')->label(__('field.source')),
                     TextEntry::make('source_detail')->label(__('field.source_detail')),
                     TextEntry::make('title')->label(__('field.title')),
-                    TextEntry::make('service_interest')->label(__('field.service_interest')),
+                    TextEntry::make('service_interest')
+                        ->label(__('field.service_interest'))
+                        ->formatStateUsing(
+                            fn ($state, Lead $record): string => (string) (
+                                data_get(
+                                    $record->metadata,
+                                    'service_interest_label'
+                                ) ?? $state ?? '—'
+                            )
+                        ),
+                    TextEntry::make('metadata.intake_ready')
+                        ->label('Sẵn sàng phân phối')
+                        ->badge()
+                        ->formatStateUsing(
+                            fn ($state): string => $state
+                                ? 'Đủ dữ liệu'
+                                : 'Cần kiểm tra'
+                        )
+                        ->color(
+                            fn ($state): string => $state
+                                ? 'success'
+                                : 'warning'
+                        ),
+                    TextEntry::make('metadata.intake_issues')
+                        ->label('Vấn đề dữ liệu')
+                        ->formatStateUsing(
+                            fn ($state): string => collect($state ?? [])
+                                ->map(fn (string $issue): string => match ($issue) {
+                                    'missing_service_interest' => 'Thiếu dịch vụ quan tâm',
+                                    'missing_contact' => 'Thiếu liên hệ',
+                                    'company_resolution_pending' => 'Chờ đối chiếu công ty',
+                                    default => $issue,
+                                })
+                                ->implode(', ')
+                        )
+                        ->placeholder('Không có'),
                     TextEntry::make('estimated_value')->label(__('field.estimated_value'))->money('VND'),
                     TextEntry::make('assignedStaff.full_name')->label(__('field.assigned_staff')),
                     TextEntry::make('qualification.status')
@@ -185,6 +221,27 @@ class LeadResource extends Resource
                         ->badge(),
                     TextEntry::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i'),
                 ])->columns(2),
+                Section::make('Thông tin nhu cầu từ biểu mẫu')
+                    ->description(
+                        'Snapshot dữ liệu khách đã gửi tại thời điểm phát sinh Lead.'
+                    )
+                    ->schema([
+                        RepeatableEntry::make('metadata.form_answers')
+                            ->label('')
+                            ->schema([
+                                TextEntry::make('label')
+                                    ->label('Trường'),
+                                TextEntry::make('display_value')
+                                    ->label('Giá trị')
+                                    ->placeholder('—'),
+                            ])
+                            ->columns(2),
+                    ])
+                    ->visible(
+                        fn (Lead $record): bool => ! empty(
+                            data_get($record->metadata, 'form_answers', [])
+                        )
+                    ),
             ]);
     }
 
@@ -313,7 +370,21 @@ class LeadResource extends Resource
                     ->formatStateUsing(fn (?ContactType $state): string => $state?->label() ?? '—')
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('source')->label(__('field.source'))->toggleable(),
-                Tables\Columns\TextColumn::make('service_interest')->label(__('field.service_interest'))->searchable(),
+                Tables\Columns\TextColumn::make('service_interest')
+                    ->label(__('field.service_interest'))
+                    ->formatStateUsing(
+                        fn ($state, Lead $record): string => (string) (
+                            data_get(
+                                $record->metadata,
+                                'service_interest_label'
+                            ) ?? $state ?? '—'
+                        )
+                    )
+                    ->searchable(),
+                Tables\Columns\IconColumn::make('metadata.intake_ready')
+                    ->label('Đủ dữ liệu')
+                    ->boolean()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('assignedStaff.full_name')->label(__('field.assigned_staff'))->searchable()->toggleable(),
                 Tables\Columns\TextColumn::make('assigned_at')
                     ->label(__('field.assigned_at'))
