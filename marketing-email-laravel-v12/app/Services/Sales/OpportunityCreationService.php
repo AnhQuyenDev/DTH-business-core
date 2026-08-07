@@ -200,11 +200,19 @@ final class OpportunityCreationService
                 'updated_by' => $actorUserId,
             ]);
 
+            if ($opportunity->wasRecentlyCreated) {
+                $opportunity->contacts()->syncWithoutDetaching([
+                    $lead->contact_id => [
+                        'role' => 'primary_contact',
+                        'is_primary' => true,
+                    ],
+                ]);
 
-            $lockedLead->forceFill([
-                'converted_to_opportunity_at' => now(),
-                'updated_by' => $actorUserId,
-            ])->save();
+                $lockedLead->forceFill([
+                    'converted_to_opportunity_at' => now(),
+                    'updated_by' => $actorUserId,
+                ])->save();  
+            }
 
             return $opportunity->fresh([
                 'lead',

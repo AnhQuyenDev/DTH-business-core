@@ -436,13 +436,13 @@ class OpportunityResource extends Resource
             TextInput::make('outcome')
                 ->label(__('field.outcome'))
                 ->maxLength(255),
-            DateTimePicker::make('interaction_at')
-                ->label(__('field.interaction_at'))
-                ->default(now())
-                ->required(),
             DateTimePicker::make('next_follow_up_at')
-                ->label(__('field.next_follow_up'))
-                ->after('now'),
+                    ->label(__('field.next_follow_up'))
+                    ->timezone(config('business_flow.timezone'))
+                    ->native(false)
+                    ->displayFormat('d/m/Y H:i')
+                    ->seconds(false)
+                    ->after('now'),
         ];
     }
 
@@ -659,6 +659,7 @@ class OpportunityResource extends Resource
                         )
                         ->action(function (Opportunity $record, array $data): void {
                             $record->interactions()->create(array_merge($data, [
+                                'interaction_at' => now(),
                                 'staff_id' => auth()->user()?->staff?->id,
                             ]));
 

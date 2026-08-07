@@ -58,7 +58,8 @@ class ViewOpportunity extends ViewRecord
                 )
                 ->action(function (array $data): void {
                     $this->record->interactions()->create(array_merge($data, [
-                        'staff_id' => auth()->user()?->staff?->id,
+                        'interaction_at' => now(),
+                        'staff_id' => auth()->user()    ?->staff?->id,
                     ]));
 
                     $this->record->refresh();
