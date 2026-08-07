@@ -218,4 +218,32 @@ class Staff extends Model
             ])
             ->count();
     }
+
+    public function scopeEligibleForOpportunityOwnership(
+        Builder $query
+    ): Builder {
+        return $query
+            ->whereHas(
+                'department',
+                fn (Builder $query): Builder => $query->where(
+                    'code',
+                    'sales'
+                )
+            )
+            ->whereHas(
+                'user',
+                fn (Builder $query): Builder => $query->whereIn(
+                    'role',
+                    [
+                        'sales_manager',
+                        'sales_staff',
+                    ]
+                )
+            )
+            ->where(
+                'employment_status',
+                StaffEmploymentStatus::Active->value
+            )
+            ->where('can_receive_customers', true);
+    }
 }

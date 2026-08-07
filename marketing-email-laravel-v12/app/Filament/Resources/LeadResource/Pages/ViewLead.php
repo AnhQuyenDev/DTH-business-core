@@ -19,6 +19,9 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
+use App\Enums\UserRole;
+use App\Services\Sales\OpportunityCreationService;
+use Filament\Forms\Components\DatePicker;
 
 class ViewLead extends ViewRecord
 {
@@ -352,6 +355,180 @@ class ViewLead extends ViewRecord
 
                     Notification::make()
                         ->title(__('notification.lead_qualified'))
+                        ->success()
+                        ->send();
+                }),
+            
+            Action::make('handoff_to_sales')
+                ->label('Bàn giao sang Sales')
+                ->icon('heroicon-o-arrow-right-circle')
+                ->color('success')
+                ->visible(function (): bool {
+                    $user = auth()->user();
+
+                    if (
+                        $user === null
+                        || ! $user->hasRole(
+                            UserRole::CustomerServiceManager
+                        )
+                    ) {
+                        return false;
+                    }
+
+                    $status =
+                        $this->record
+                            ->qualification
+                            ?->status
+                            ?->value
+                        ?? $this->record
+                            ->qualification
+                            ?->status;
+
+                    return $status
+                            === ContactQualificationStatus::Qualified->value
+                        && $this->record->opportunity === null;
+                })
+
+                ->form([
+                    Placeholder::make('lead_display')
+                        ->label('Lead')
+                        ->content(
+                            fn (): string =>
+                                $this->record->lead_code
+                                .' — '
+                                .($this->record->contact?->full_name
+                                    ?? $this->record->title)
+                        ),
+
+                    Placeholder::make('company_display')
+                        ->label('Công ty')
+                        ->content(
+                            fn (): string =>
+                                $this->record->company?->legal_name
+                                ?? 'Khách hàng cá nhân'
+                        ),
+
+                    Placeholder::make('service_display')
+                        ->label('Dịch vụ quan tâm')
+                        ->content(
+                            fn (): string =>
+                                data_get(
+                                    $this->record->metadata,
+                                    'service_context.display_label'
+                                )
+                                ?? data_get(
+                                    $this->record->metadata,
+                                    'service_interest_label'
+                                )
+                                ?? $this->record->service_interest
+                                ?? '—'
+                        ),
+
+                    Placeholder::make('estimated_value_display')
+                        ->label('Giá trị ước tính')
+                        ->content(
+                            fn (): string =>
+                                $this->record->estimated_value !== null
+                                    ? number_format(
+                                        (float) $this->record->estimated_value,
+                                        0,
+                                        ',',
+                                        '.'
+                                    ).' đ'
+                                    : '—'
+                        ),
+
+                    TextInput::make('title')
+                        ->label('Tên cơ hội')
+                        ->default(function (): string {
+                            $service = data_get(
+                                $this->record->metadata,
+                                'service_context.display_label'
+                            )
+                                ?? $this->record->service_interest
+                                ?? 'Cơ hội';
+
+                            $account =
+                                $this->record->company?->legal_name
+                                ?? $this->record->contact?->full_name
+                                ?? $this->record->lead_code;
+
+                            return $service.' - '.$account;
+                        })
+                        ->required()
+                        ->maxLength(255),
+
+                    Select::make('sales_staff_id')
+                        ->label('Sales phụ trách')
+                        ->options(
+                            fn (): array => Staff::query()
+                                ->eligibleForOpportunityOwnership()
+                                ->orderBy('full_name')
+                                ->get()
+                                ->mapWithKeys(
+                                    fn (Staff $staff): array => [
+                                        $staff->id =>
+                                            $staff->full_name
+                                            .' ('
+                                            .$staff->employee_code
+                                            .')',
+                                    ]
+                                )
+                                ->all()
+                        )
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+
+                    TextInput::make('probability')
+                        ->label('Xác suất thành công')
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(100)
+                        ->suffix('%')
+                        ->default(50)
+                        ->required(),
+
+                    DatePicker::make('expected_close_date')
+                        ->label('Ngày dự kiến chốt')
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->minDate(now()->toDateString())
+                        ->default(
+                            now()->addDays(21)->toDateString()
+                        ),
+
+                    Textarea::make('handoff_note')
+                        ->label('Ghi chú bàn giao')
+                        ->rows(3)
+                        ->placeholder(
+                            'Thông tin bổ sung dành cho Sales nếu có.'
+                        )
+                        ->maxLength(2000),
+                ])
+
+                ->action(function (array $data): void {
+                    $opportunity = app(
+                        OpportunityCreationService::class
+                    )->createFromQualifiedLead(
+                        lead: $this->record,
+                        salesOwner: Staff::query()
+                            ->findOrFail($data['sales_staff_id']),
+                        data: $data,
+                        actorUserId: auth()->id(),
+                    );
+
+                    $this->record->refresh();
+
+                    Notification::make()
+                        ->title('Đã bàn giao sang Sales')
+                        ->body(
+                            'Đã tạo cơ hội '
+                            .$opportunity->opportunity_code
+                            .' và giao cho '
+                            .$opportunity->assignedStaff?->full_name
+                            .'.'
+                        )
                         ->success()
                         ->send();
                 }),
