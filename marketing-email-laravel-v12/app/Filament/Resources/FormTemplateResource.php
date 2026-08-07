@@ -17,6 +17,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
@@ -136,8 +137,9 @@ class FormTemplateResource extends Resource
                                 ->valueLabel('Nhãn hiển thị')
                                 ->addActionLabel('Thêm lựa chọn')
                                 ->helperText(
-                                    'Ví dụ: hosting_pro => Web Hosting - Trung bình. '
-                                    .'Giá trị kỹ thuật phải ổn định để dữ liệu lịch sử không đổi khi sửa nhãn.'
+                                    'Chỉ dùng cho lựa chọn riêng của biểu mẫu. '
+                                    .'Nếu trường được lưu vào Lead → Dịch vụ quan tâm, '
+                                    .'các lựa chọn sẽ tự lấy từ Dịch vụ/Gói của Landing Page.'
                                 )
                                 ->afterStateHydrated(function ($component, mixed $state): void {
                                     if (! is_array($state) || ! array_is_list($state)) {
@@ -165,26 +167,42 @@ class FormTemplateResource extends Resource
                                             ->all()
                                     );
                                 })
-                                ->visible(fn (Get $get): bool => in_array(
-                                    (string) $get('field_type'),
-                                    [
-                                        FormFieldType::Select->value,
-                                        FormFieldType::Radio->value,
-                                        FormFieldType::MultiSelect->value,
-                                        FormFieldType::Checkbox->value,
-                                    ],
-                                    true
-                                )),
+                                ->visible(fn (Get $get): bool =>
+                                    $get('contact_mapping') !== 'lead.service_interest'
+                                    && in_array(
+                                        (string) $get('field_type'),
+                                        [
+                                            FormFieldType::Select->value,
+                                            FormFieldType::Radio->value,
+                                            FormFieldType::MultiSelect->value,
+                                            FormFieldType::Checkbox->value,
+                                        ],
+                                        true
+                                    )
+                                ),
                             TextInput::make('default_value')->label(__('field.value'))->maxLength(255),
                             Toggle::make('is_required')->label(__('field.is_required'))->default(false),
                             Select::make('contact_mapping')
                                 ->label(__('field.contact_mapping'))
                                 ->helperText(
                                     'Thông tin ổn định lưu vào Contact/Company; '
-                                    .'nhu cầu của từng lần tư vấn lưu vào Lead hoặc chỉ lưu theo lượt gửi.'
+                                    .'nhu cầu của từng lần tư vấn lưu vào Lead hoặc chỉ lưu theo lượt gửi. '
+                                    .'Riêng Lead → Dịch vụ quan tâm sẽ lấy lựa chọn động từ Landing Page.'
                                 )
                                 ->options(fn (Get $get): array => FormTemplate::contactMappingOptions($get('../../audience_type')))
-                                ->searchable(),
+                                ->searchable()
+                                ->live()
+                                ->afterStateUpdated(function (
+                                    ?string $state,
+                                    Set $set
+                                ): void {
+                                    if ($state !== 'lead.service_interest') {
+                                        return;
+                                    }
+
+                                    $set('field_type', FormFieldType::Select->value);
+                                    $set('is_required', true);
+                                }),
                             TextInput::make('validation_rules')->label(__('field.validation_rules'))->maxLength(255),
                             Toggle::make('tag_from_value')->label(__('field.auto_tag'))->default(false),
                             TextInput::make('sort_order')->label(__('field.sort_order'))->numeric()->default(0),

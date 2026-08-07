@@ -16,6 +16,7 @@ class LandingPageSubmission extends Model
     protected $fillable = [
         'landing_page_id',
         'campaign_id',
+        'marketing_campaign_id',
         'landing_form_template_id',
         'submission_token',
         'payload_fingerprint',
@@ -65,6 +66,11 @@ class LandingPageSubmission extends Model
     public function campaign(): BelongsTo
     {
         return $this->belongsTo(Campaign::class);
+    }
+
+    public function marketingCampaign(): BelongsTo
+    {
+        return $this->belongsTo(MarketingCampaign::class, 'marketing_campaign_id');
     }
 
     public function formTemplate(): BelongsTo

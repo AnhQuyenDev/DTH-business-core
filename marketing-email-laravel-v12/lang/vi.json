@@ -1654,5 +1654,9 @@
     "enum.form_field_type.number": "Số",
     "enum.form_field_type.date": "Ngày",
     "enum.form_field_type.radio": "Nút chọn",
-    "enum.form_field_type.multi_select": "Chọn nhiều"
+    "enum.form_field_type.multi_select": "Chọn nhiều",
+    "enum.crm.lead_source.landing_page": "Landing Page",
+    "enum.crm.lead_source.manual": "Nhập thủ công",
+    "enum.crm.lead_source.import": "Nhập dữ liệu",
+    "enum.crm.lead_source.referral": "Giới thiệu"
 }

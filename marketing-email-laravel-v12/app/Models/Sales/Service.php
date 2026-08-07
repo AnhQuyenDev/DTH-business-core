@@ -2,11 +2,13 @@
 
 namespace App\Models\Sales;
 
+use App\Models\Marketing\MarketingCampaign;
 use App\Enums\Sales\ServiceStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -38,6 +40,14 @@ class Service extends Model
     public function packages(): HasMany
     {
         return $this->hasMany(ServicePackage::class);
+    }
+
+    public function marketingCampaigns(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            MarketingCampaign::class,
+            'marketing_campaign_service'
+        )->withTimestamps();
     }
 
     public function createdBy(): BelongsTo

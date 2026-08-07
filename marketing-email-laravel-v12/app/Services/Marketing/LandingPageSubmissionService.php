@@ -36,12 +36,29 @@ use Illuminate\Validation\ValidationException;
 
 class LandingPageSubmissionService
 {
+    public function __construct(
+        private readonly LandingPageServiceCatalogService $serviceCatalog,
+        private readonly MarketingCampaignServiceScopeService $campaignScope,
+    ) {}
+
     public function handle(
         LandingPage $landingPage,
         array $payload,
         Request $request,
         ?int $campaignId = null,
     ): LandingPageSubmission {
+        // Lớp bảo vệ runtime: kể cả dữ liệu bị sửa trực tiếp trong DB hoặc
+        // Landing Page cũ chưa được người dùng mở lại trên Filament, submission
+        // vẫn không được tạo nếu dịch vụ của Landing Page nằm ngoài scope Campaign.
+        $this->campaignScope->assertLandingPageServiceAllowed(
+            $landingPage->marketing_campaign_id !== null
+                ? (int) $landingPage->marketing_campaign_id
+                : null,
+            $landingPage->service_id !== null
+                ? (int) $landingPage->service_id
+                : null,
+        );
+
         $this->validateEnvelope($payload);
 
         $submissionType = (string) ($payload['submission_type'] ?? 'personal');
@@ -66,6 +83,7 @@ class LandingPageSubmissionService
             $formTemplate,
             $payload,
             $resolvedType,
+            $landingPage,
         );
 
         $submissionToken = filled($payload['_submission_token'] ?? null)
@@ -222,6 +240,7 @@ class LandingPageSubmissionService
                     $submission = LandingPageSubmission::create([
                         'landing_page_id' => $landingPage->id,
                         'campaign_id' => $campaignId,
+                        'marketing_campaign_id' => $landingPage->marketing_campaign_id,
                         'landing_form_template_id' => $formTemplate->id,
                         'submission_token' => $submissionToken,
                         'payload_fingerprint' => $payloadFingerprint,
@@ -271,15 +290,45 @@ class LandingPageSubmissionService
                             $resolvedType,
                             $validatedData,
                         );
+                        $serviceInterestField = $this->resolveServiceInterestField(
+                            $formTemplate,
+                            $resolvedType,
+                        );
+                        $serviceOptions = $landingPage->service_id !== null
+                            ? $this->serviceCatalog->options(
+                                $landingPage,
+                                $resolvedType,
+                            )
+                            : [];
+                        $optionOverrides = $serviceInterestField !== null
+                            && $serviceOptions !== []
+                            ? [
+                                $serviceInterestField->field_key => $serviceOptions,
+                            ]
+                            : [];
                         $formAnswers = app(
                             LeadFormAnswerSnapshotService::class
-                        )->build($formTemplate, $validatedData);
+                        )->build(
+                            $formTemplate,
+                            $validatedData,
+                            $optionOverrides,
+                        );
+                        $serviceContext = $landingPage->service_id !== null
+                            ? $this->serviceCatalog->selectionContext(
+                                $landingPage,
+                                $serviceInterest,
+                                $resolvedType,
+                            )
+                            : [];
 
                         app(LeadCreationService::class)->createFromSubmission(
-                            submission: $submission->loadMissing('landingPage'),
+                            submission: $submission->loadMissing(
+                                'landingPage.marketingCampaign'
+                            ),
                             companyId: $company?->id ?? $submission->company_id,
                             serviceInterest: $serviceInterest,
                             formAnswers: $formAnswers,
+                            serviceContext: $serviceContext,
                             userId: auth()->id(),
                         );
                     } else {
@@ -331,6 +380,7 @@ class LandingPageSubmissionService
         mixed $formTemplate,
         array $payload,
         string $submissionType,
+        ?LandingPage $landingPage = null,
     ): array {
         $rules = [];
         $attributes = [];
@@ -372,11 +422,26 @@ class LandingPageSubmissionService
                     $fieldRules[] = 'date';
                 }
 
+                $effectiveOptions = $field->options ?? [];
+
+                if (
+                    $isServiceInterest
+                    && $landingPage?->service_id !== null
+                ) {
+                    $effectiveOptions = $this->serviceCatalog->options(
+                        $landingPage,
+                        $submissionType,
+                    );
+                }
+
                 $allowedValues = $this->allowedOptionValues(
-                    $field->options ?? []
+                    $effectiveOptions
                 );
 
-                if (in_array($type, ['select', 'radio'], true)) {
+                if (
+                    in_array($type, ['select', 'radio'], true)
+                    || $isServiceInterest
+                ) {
                     $fieldRules[] = Rule::in($allowedValues);
                 }
 
@@ -1054,24 +1119,10 @@ class LandingPageSubmissionService
         string $resolvedType,
         array $validatedData,
     ): ?string {
-        if (! $formTemplate || ! $formTemplate->fields) {
-            return null;
-        }
-
-        $field = collect($formTemplate->fields)->first(
-            fn ($field): bool => $field->contact_mapping
-                === 'lead.service_interest'
+        $field = $this->resolveServiceInterestField(
+            $formTemplate,
+            $resolvedType,
         );
-
-        if ($field === null) {
-            $legacyMapping = $resolvedType === 'personal'
-                ? 'personal.service_interest'
-                : 'business.service_interest';
-            $field = collect($formTemplate->fields)->first(
-                fn ($field): bool => $field->contact_mapping
-                    === $legacyMapping
-            );
-        }
 
         if ($field === null) {
             return null;
@@ -1084,6 +1135,33 @@ class LandingPageSubmissionService
         }
 
         return filled($value) ? trim((string) $value) : null;
+    }
+
+    protected function resolveServiceInterestField(
+        mixed $formTemplate,
+        string $resolvedType,
+    ): mixed {
+        if (! $formTemplate || ! $formTemplate->fields) {
+            return null;
+        }
+
+        $field = collect($formTemplate->fields)->first(
+            fn ($field): bool => $field->contact_mapping
+                === 'lead.service_interest'
+        );
+
+        if ($field !== null) {
+            return $field;
+        }
+
+        $legacyMapping = $resolvedType === 'personal'
+            ? 'personal.service_interest'
+            : 'business.service_interest';
+
+        return collect($formTemplate->fields)->first(
+            fn ($field): bool => $field->contact_mapping
+                === $legacyMapping
+        );
     }
 
 }

@@ -145,7 +145,13 @@ class LeadResource extends Resource
                         ->label(__('field.intake_status'))
                         ->badge()
                         ->formatStateUsing(fn (LeadIntakeStatus $state): string => $state->label()),
-                    TextEntry::make('source')->label(__('field.source')),
+                    TextEntry::make('source')
+                        ->label(__('field.source'))
+                        ->formatStateUsing(
+                            fn ($state): string => Lead::sourceLabel(
+                                filled($state) ? (string) $state : null
+                            )
+                        ),
                     TextEntry::make('source_detail')->label(__('field.source_detail')),
                     TextEntry::make('title')->label(__('field.title')),
                     TextEntry::make('service_interest')
@@ -369,7 +375,14 @@ class LeadResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn (?ContactType $state): string => $state?->label() ?? '—')
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('source')->label(__('field.source'))->toggleable(),
+                Tables\Columns\TextColumn::make('source')
+                    ->label(__('field.source'))
+                    ->formatStateUsing(
+                        fn ($state): string => Lead::sourceLabel(
+                            filled($state) ? (string) $state : null
+                        )
+                    )
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('service_interest')
                     ->label(__('field.service_interest'))
                     ->formatStateUsing(

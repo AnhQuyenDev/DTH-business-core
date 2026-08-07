@@ -19,6 +19,7 @@ final class LeadCreationService
         ?int $companyId = null,
         ?string $serviceInterest = null,
         array $formAnswers = [],
+        array $serviceContext = [],
         ?int $userId = null,
     ): Lead {
         $existing = Lead::query()
@@ -78,13 +79,20 @@ final class LeadCreationService
                 'service_interest_label' => $serviceInterestLabel,
                 'submission_type' => $submission->submission_type,
                 'landing_page_id' => $submission->landing_page_id,
+                'landing_page_name' => $submission->landingPage?->name,
+                // campaign_id là Email Campaign attribution cũ.
                 'campaign_id' => $submission->campaign_id,
+                // marketing_campaign_id là Ads Campaign nghiệp vụ của Landing Page.
+                'marketing_campaign_id' => $submission->marketing_campaign_id,
+                'marketing_campaign_name' => $submission
+                    ->landingPage?->marketingCampaign?->name,
                 'form_template_id' => $submission->landing_form_template_id,
                 'captured_at' => $submission->submitted_at?->toIso8601String()
                     ?? now()->toIso8601String(),
                 'intake_ready' => $intakeIssues === [],
                 'intake_issues' => $intakeIssues,
                 'form_answers' => array_values($formAnswers),
+                'service_context' => $serviceContext,
             ],
             'created_by' => $userId,
         ]);

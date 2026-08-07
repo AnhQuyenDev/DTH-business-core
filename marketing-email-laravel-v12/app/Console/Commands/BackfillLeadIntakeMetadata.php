@@ -32,6 +32,7 @@ final class BackfillLeadIntakeMetadata extends Command
             ->whereNotNull('submission_id')
             ->with([
                 'submission.formTemplate.fields',
+                'submission.landingPage.marketingCampaign',
                 'qualification',
             ])
             ->orderBy('id')
@@ -112,7 +113,14 @@ final class BackfillLeadIntakeMetadata extends Command
                                 : $serviceInterest,
                             'submission_type' => $resolvedType,
                             'landing_page_id' => $submission->landing_page_id,
+                            'landing_page_name' => $submission
+                                ->landingPage?->name,
+                            // campaign_id là Email Campaign attribution cũ.
                             'campaign_id' => $submission->campaign_id,
+                            'marketing_campaign_id' => $submission
+                                ->marketing_campaign_id,
+                            'marketing_campaign_name' => $submission
+                                ->landingPage?->marketingCampaign?->name,
                             'form_template_id' => $submission
                                 ->landing_form_template_id,
                             'captured_at' => $submission->submitted_at

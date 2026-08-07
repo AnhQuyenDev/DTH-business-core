@@ -20,6 +20,7 @@ final class LeadFormAnswerSnapshotService
     public function build(
         ?FormTemplate $formTemplate,
         array $validatedData,
+        array $optionOverrides = [],
     ): array {
         if ($formTemplate === null) {
             return [];
@@ -71,7 +72,10 @@ final class LeadFormAnswerSnapshotService
                 (int) ($field->sort_order ?? 0),
                 (int) $field->id,
             ])
-            ->map(function ($field) use ($validatedData): array {
+            ->map(function ($field) use (
+                $validatedData,
+                $optionOverrides,
+            ): array {
                 $value = $validatedData[$field->field_key];
 
                 return [
@@ -82,7 +86,9 @@ final class LeadFormAnswerSnapshotService
                     'value' => $value,
                     'display_value' => $this->displayValue(
                         $value,
-                        $field->options ?? []
+                        $optionOverrides[$field->field_key]
+                            ?? $field->options
+                            ?? []
                     ),
                     'mapping' => filled($field->contact_mapping)
                         ? (string) $field->contact_mapping

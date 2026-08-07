@@ -118,7 +118,7 @@ class FormTemplate extends Model
                 '' => 'Chỉ lưu tại Lượt gửi biểu mẫu và Lead',
             ],
             'Lead' => [
-                'lead.service_interest' => 'Dịch vụ quan tâm',
+                'lead.service_interest' => 'Dịch vụ quan tâm (lấy từ Landing Page)',
             ],
         ];
 

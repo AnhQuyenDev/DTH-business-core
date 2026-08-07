@@ -1644,5 +1644,9 @@
     "enum.form_field_type.number": "Number",
     "enum.form_field_type.date": "Date",
     "enum.form_field_type.radio": "Radio",
-    "enum.form_field_type.multi_select": "Multi select"
+    "enum.form_field_type.multi_select": "Multi select",
+    "enum.crm.lead_source.landing_page": "Landing Page",
+    "enum.crm.lead_source.manual": "Manual entry",
+    "enum.crm.lead_source.import": "Import",
+    "enum.crm.lead_source.referral": "Referral"
 }

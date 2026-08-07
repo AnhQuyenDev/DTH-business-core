@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Lead extends Model
 {
@@ -106,5 +107,21 @@ class Lead extends Model
         return $this->hasMany(LeadActivity::class)
             ->orderByDesc('activity_at')
             ->orderByDesc('id');
+    }
+
+
+    public static function sourceLabel(?string $source): string
+    {
+        if (blank($source)) {
+            return '—';
+        }
+
+        return match ($source) {
+            'landing_page' => __('enum.crm.lead_source.landing_page'),
+            'manual' => __('enum.crm.lead_source.manual'),
+            'import' => __('enum.crm.lead_source.import'),
+            'referral' => __('enum.crm.lead_source.referral'),
+            default => Str::headline($source),
+        };
     }
 }

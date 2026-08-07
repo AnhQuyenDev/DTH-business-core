@@ -10,6 +10,10 @@ use App\Filament\Resources\LandingPageResource\RelationManagers\UtmUrlsRelationM
 use App\Models\Marketing\FormTemplate;
 use App\Models\Marketing\LandingPage;
 use App\Models\Marketing\LandingPageUtmUrl;
+use App\Models\Marketing\MarketingCampaign;
+use App\Models\Sales\Service;
+use App\Models\Sales\ServicePackage;
+use App\Services\Marketing\MarketingCampaignServiceScopeService;
 use App\Support\UtmOptions;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -21,6 +25,8 @@ use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
@@ -80,7 +86,39 @@ class LandingPageResource extends Resource
     {
         return $form->schema([
             Section::make(__('section.landing_page_details'))->columns(2)->schema([
-                Select::make('marketing_campaign_id')->label(__('field.marketing_campaign'))->relationship('marketingCampaign', 'name')->searchable(),
+                Select::make('marketing_campaign_id')
+                    ->label(__('field.marketing_campaign'))
+                    ->options(
+                        fn (): array => MarketingCampaign::query()
+                            ->with('services:id,name')
+                            ->orderBy('name')
+                            ->get()
+                            ->mapWithKeys(function (MarketingCampaign $campaign): array {
+                                $services = $campaign->services
+                                    ->pluck('name')
+                                    ->implode(', ');
+
+                                return [
+                                    $campaign->id => $campaign->name
+                                        .' — '
+                                        .($services !== ''
+                                            ? $services
+                                            : 'Chưa cấu hình dịch vụ'),
+                                ];
+                            })
+                            ->all()
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('service_id', null);
+                        $set('service_package_ids', []);
+                    })
+                    ->helperText(
+                        'Tên chiến dịch hiển thị kèm phạm vi dịch vụ quảng bá. '
+                        .'Campaign chưa cấu hình dịch vụ vẫn nhìn thấy để dễ phát hiện, nhưng không thể gắn Landing Page cho tới khi cấu hình xong.'
+                    ),
                 Select::make('campaign_id')->label(__('field.linked_email_campaign'))->relationship('defaultCampaign', 'name')->searchable(),
                 TextInput::make('name')->label(__('field.name'))->required()->maxLength(255),
                 TextInput::make('slug')->label(__('field.slug'))->required()->maxLength(255)->unique(ignoreRecord: true),
@@ -91,6 +129,65 @@ class LandingPageResource extends Resource
                 Select::make('status')->label(__('field.status'))->options(LandingPageStatus::options())->default('draft')->required(),
                 DateTimePicker::make('published_at')->label(__('field.published_at')),
             ]),
+            Section::make('Dịch vụ của trang đích')
+                ->description(
+                    'Form Template chỉ định trường cần thu thập. Dịch vụ và gói '
+                    .'được cấu hình tại Landing Page để cùng một Form có thể tái '
+                    .'sử dụng cho Hosting, VPS, Email doanh nghiệp và các dịch vụ khác.'
+                )
+                ->columns(2)
+                ->schema([
+                    Select::make('service_id')
+                        ->label('Dịch vụ chính')
+                        ->options(
+                            fn (Get $get): array => app(
+                                MarketingCampaignServiceScopeService::class
+                            )->serviceOptionsForCampaign(
+                                filled($get('marketing_campaign_id'))
+                                    ? (int) $get('marketing_campaign_id')
+                                    : null
+                            )
+                        )
+                        ->searchable()
+                        ->preload()
+                        ->live()
+                        ->afterStateUpdated(
+                            fn (Set $set): mixed => $set(
+                                'service_package_ids',
+                                []
+                            )
+                        )
+                        ->helperText(
+                            fn (Get $get): string => filled($get('marketing_campaign_id'))
+                                ? 'Chỉ được chọn dịch vụ nằm trong phạm vi Dịch vụ quảng bá của Campaign.'
+                                : 'Đây là ngữ cảnh nghiệp vụ của Landing Page. Ví dụ: Web Hosting hoặc VPS.'
+                        ),
+                    Select::make('service_package_ids')
+                        ->label('Các gói được phép chọn')
+                        ->multiple()
+                        ->options(function (Get $get): array {
+                            $serviceId = $get('service_id');
+
+                            if (blank($serviceId)) {
+                                return [];
+                            }
+
+                            return ServicePackage::query()
+                                ->where('service_id', $serviceId)
+                                ->where('status', 'active')
+                                ->orderBy('sort_order')
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all();
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->disabled(fn (Get $get): bool => blank($get('service_id')))
+                        ->helperText(
+                            'Để trống = dùng tất cả gói đang hoạt động của dịch vụ. '
+                            .'Nếu chọn, Form chỉ hiển thị các gói này.'
+                        ),
+                ]),
             Section::make(__('section.landing_page_forms'))
                 ->description(
                     'Mỗi Landing Page cần một Form cá nhân và một Form doanh nghiệp. '
@@ -247,6 +344,7 @@ class LandingPageResource extends Resource
                 }),
             TextColumn::make('defaultCampaign.name')->label(__('resource.campaign.singular'))->toggleable(),
             TextColumn::make('marketingCampaign.name')->label(__('resource.marketing_campaign.singular'))->toggleable(),
+            TextColumn::make('service.name')->label('Dịch vụ chính')->toggleable(),
             TextColumn::make('published_at')->label(__('field.published_at'))->dateTime()->sortable(),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable(),
         ])
@@ -274,6 +372,51 @@ class LandingPageResource extends Resource
 
                                 return;
                             }
+                            if ($record->marketing_campaign_id !== null) {
+                                try {
+                                    app(MarketingCampaignServiceScopeService::class)
+                                        ->assertLandingPageServiceAllowed(
+                                            (int) $record->marketing_campaign_id,
+                                            $record->service_id !== null
+                                                ? (int) $record->service_id
+                                                : null,
+                                        );
+                                } catch (\Illuminate\Validation\ValidationException $exception) {
+                                    $message = collect($exception->errors())
+                                        ->flatten()
+                                        ->first() ?? 'Dịch vụ của Landing Page không phù hợp với chiến dịch quảng cáo.';
+
+                                    Notification::make()
+                                        ->title('Chưa thể xuất bản Landing Page')
+                                        ->body($message)
+                                        ->danger()
+                                        ->send();
+
+                                    return;
+                                }
+                            }
+
+                            $usesServiceInterest = $record->forms()
+                                ->where('status', 'active')
+                                ->whereHas('formTemplate.fields', function ($query): void {
+                                    $query->whereIn('contact_mapping', [
+                                        'lead.service_interest',
+                                        'personal.service_interest',
+                                        'business.service_interest',
+                                    ]);
+                                })
+                                ->exists();
+
+                            if ($usesServiceInterest && $record->service_id === null) {
+                                Notification::make()
+                                    ->title('Chưa thể xuất bản Landing Page')
+                                    ->body('Landing Page có trường Dịch vụ quan tâm nên phải chọn Dịch vụ chính.')
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
+
                             $hasPersonalForm = $record->forms()
                                 ->where('form_type', 'personal')
                                 ->where('status', 'active')

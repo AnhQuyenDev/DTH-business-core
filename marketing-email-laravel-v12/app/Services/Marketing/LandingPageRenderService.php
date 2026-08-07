@@ -9,7 +9,10 @@ use Illuminate\Support\Str;
 
 class LandingPageRenderService
 {
-    public function __construct(private readonly LandingPageThemeService $themeService) {}
+    public function __construct(
+        private readonly LandingPageThemeService $themeService,
+        private readonly LandingPageServiceCatalogService $serviceCatalog,
+    ) {}
 
     public function render(
         LandingPage $landingPage,
@@ -147,11 +150,20 @@ class LandingPageRenderService
         }
         foreach ($groups as $fields) {
             if (count($fields) === 1) {
-                $fieldsHtml .= $this->renderField($fields[0]);
+                $fieldsHtml .= $this->renderField(
+                    $fields[0],
+                    $landingPage,
+                    $formType
+                );
             } else {
                 $fieldsHtml .= '<div style="display:grid;grid-template-columns:repeat('.count($fields).',1fr);gap:16px;margin-bottom:16px;">';
                 foreach ($fields as $field) {
-                    $fieldsHtml .= $this->renderField($field, true);
+                    $fieldsHtml .= $this->renderField(
+                        $field,
+                        $landingPage,
+                        $formType,
+                        true
+                    );
                 }
                 $fieldsHtml .= '</div>';
             }
@@ -358,8 +370,12 @@ HTML;
         return null;
     }
 
-    protected function renderField(FormField $field, bool $inGrid = false): string
-    {
+    protected function renderField(
+        FormField $field,
+        LandingPage $landingPage,
+        string $formType,
+        bool $inGrid = false,
+    ): string {
         $label = e($field->label);
         $key = e($field->field_key);
         $placeholder = e($field->placeholder ?? '');
@@ -398,6 +414,17 @@ HTML;
 
             case 'select':
                 $options = $field->options ?? [];
+
+                if (
+                    $isServiceInterest
+                    && $landingPage->service_id !== null
+                ) {
+                    $options = $this->serviceCatalog->options(
+                        $landingPage,
+                        $formType,
+                    );
+                }
+
                 $optionsHtml = '<option value="">-- Chọn --</option>';
                 foreach ($options as $value => $option) {
                     if (is_array($option)) {
