@@ -200,12 +200,7 @@ final class OpportunityCreationService
                 'updated_by' => $actorUserId,
             ]);
 
-            /*
-             * Mark Lead đã được bàn giao sang Opportunity,
-             * KHÔNG đổi Qualification thành Converted.
-             *
-             * Converted chỉ dùng sau khi Customer thật sự hình thành.
-             */
+
             $lockedLead->forceFill([
                 'converted_to_opportunity_at' => now(),
                 'updated_by' => $actorUserId,

@@ -31,6 +31,7 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class OpportunityResource extends Resource
 {
@@ -112,43 +113,265 @@ class OpportunityResource extends Resource
     {
         return $infolist
             ->schema([
-                Section::make()->schema([
-                    TextEntry::make('opportunity_code')->label(__('field.opportunity_code')),
-                    TextEntry::make('title')->label(__('field.title')),
-                    TextEntry::make('lead.lead_code')->label(__('field.lead_code')),
-                    TextEntry::make('company.legal_name')->label(__('field.company')),
-                    TextEntry::make('primaryContact.full_name')->label(__('field.primary_contact')),
-                    TextEntry::make('assignedStaff.full_name')->label(__('field.assigned_staff')),
-                    TextEntry::make('stage')
-                        ->label(__('field.stage'))
-                        ->badge()
-                        ->formatStateUsing(
-                            fn (OpportunityStage $state): string => $state->label()
+                /*
+                * 1. THÔNG TIN CƠ HỘI
+                */
+                Section::make('Thông tin cơ hội')
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('opportunity_code')
+                            ->label('Mã cơ hội'),
+
+                        TextEntry::make('title')
+                            ->label('Tiêu đề'),
+
+                        TextEntry::make('lead.lead_code')
+                            ->label('Mã Lead'),
+
+                        TextEntry::make('company.legal_name')
+                            ->label('Công ty')
+                            ->placeholder('—'),
+
+                        TextEntry::make('assignedStaff.full_name')
+                            ->label('Sales phụ trách')
+                            ->placeholder('—'),
+
+                        TextEntry::make('stage')
+                            ->label('Giai đoạn')
+                            ->badge()
+                            ->formatStateUsing(
+                                fn (OpportunityStage $state): string => $state->label()
+                            )
+                            ->color(
+                                fn (OpportunityStage $state): string => $state->color()
+                            ),
+
+                        /*
+                        * DB tiếp tục lưu mã kỹ thuật PPH02.
+                        * Sales nhìn thấy tên gói.
+                        */
+                        TextEntry::make('service_interest')
+                            ->label('Dịch vụ quan tâm')
+                            ->formatStateUsing(
+                                function ($state, Opportunity $record): string {
+                                    return data_get(
+                                        $record->lead?->metadata,
+                                        'service_context.display_label'
+                                    )
+                                        ?? data_get(
+                                            $record->lead?->metadata,
+                                            'service_interest_label'
+                                        )
+                                        ?? $state
+                                        ?? '—';
+                                }
+                            ),
+
+                        TextEntry::make('estimated_value')
+                            ->label('Giá trị ước tính')
+                            ->money('VND'),
+
+                        TextEntry::make('probability')
+                            ->label('Xác suất')
+                            ->suffix('%'),
+
+                        TextEntry::make('expected_close_date')
+                            ->label('Ngày dự kiến chốt')
+                            ->date('d/m/Y'),
+
+                        TextEntry::make('won_at')
+                            ->label('Ngày thành công')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+
+                        TextEntry::make('lost_at')
+                            ->label('Ngày thất bại')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+
+                        TextEntry::make('lost_reason')
+                            ->label('Lý do thất bại')
+                            ->placeholder('—'),
+
+                        TextEntry::make('created_at')
+                            ->label('Tạo lúc')
+                            ->dateTime('d/m/Y H:i'),
+                    ]),
+
+                /*
+                * 2. NGƯỜI SALES PHẢI LIÊN HỆ
+                */
+                Section::make('Người liên hệ chính')
+                    ->description(
+                        'Thông tin Sales sử dụng để liên hệ trực tiếp với khách hàng.'
+                    )
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make('primaryContact.full_name')
+                            ->label('Họ và tên')
+                            ->placeholder('—'),
+
+                        TextEntry::make(
+                            'primaryContact.businessProfile.contact_position'
                         )
-                        ->color(
-                            fn (OpportunityStage $state): string => $state->color()
-                        ),
-                    TextEntry::make('service_interest')->label(__('field.service_interest')),
-                    TextEntry::make('estimated_value')
-                        ->label(__('field.estimated_value'))
-                        ->money('VND'),
-                    TextEntry::make('probability')
-                        ->label(__('field.probability'))
-                        ->suffix('%'),
-                    TextEntry::make('expected_close_date')
-                        ->label(__('field.expected_close_date'))
-                        ->date('d/m/Y'),
-                    TextEntry::make('won_at')
-                        ->label(__('field.won_at'))
-                        ->dateTime('d/m/Y H:i'),
-                    TextEntry::make('lost_at')
-                        ->label(__('field.lost_at'))
-                        ->dateTime('d/m/Y H:i'),
-                    TextEntry::make('lost_reason')->label(__('field.lost_reason')),
-                    TextEntry::make('created_at')
-                        ->label(__('field.created_at'))
-                        ->dateTime('d/m/Y H:i'),
-                ])->columns(2),
+                            ->label('Chức vụ')
+                            ->placeholder('—'),
+
+                        TextEntry::make('primaryContact.phone')
+                            ->label('Số điện thoại')
+                            ->copyable()
+                            ->placeholder('—'),
+
+                        TextEntry::make('primaryContact.email')
+                            ->label('Email')
+                            ->copyable()
+                            ->placeholder('—'),
+
+                        TextEntry::make('company.legal_name')
+                            ->label('Công ty')
+                            ->placeholder('—'),
+
+                        TextEntry::make(
+                            'primaryContact.businessProfile.tax_code'
+                        )
+                            ->label('Mã số thuế')
+                            ->placeholder('—'),
+                    ]),
+
+                /*
+                * 3. THÔNG TIN CSKH ĐÃ XÁC MINH
+                */
+                Section::make('Thông tin bàn giao từ CSKH')
+                    ->description(
+                        'Kết quả xác minh Lead trước khi bàn giao cho bộ phận Kinh doanh.'
+                    )
+                    ->columns(2)
+                    ->schema([
+                        TextEntry::make(
+                            'lead.qualification.budget_status'
+                        )
+                            ->label('Tình trạng ngân sách')
+                            ->badge()
+                            ->formatStateUsing(
+                                fn (?string $state): string => match ($state) {
+                                    'confirmed_fit' =>
+                                        'Đã xác nhận - phù hợp',
+
+                                    'confirmed_unfit' =>
+                                        'Đã xác nhận - chưa phù hợp',
+
+                                    'unknown' =>
+                                        'Chưa xác định',
+
+                                    default => '—',
+                                }
+                            ),
+
+                        TextEntry::make(
+                            'lead.qualification.budget_amount'
+                        )
+                            ->label('Ngân sách dự kiến')
+                            ->money('VND')
+                            ->placeholder('—'),
+
+                        TextEntry::make(
+                            'lead.qualification.purchase_timeline'
+                        )
+                            ->label('Thời gian dự kiến mua')
+                            ->formatStateUsing(
+                                fn (?string $state): string => match ($state) {
+                                    'within_7_days' =>
+                                        'Trong 7 ngày',
+
+                                    'within_30_days' =>
+                                        'Trong 30 ngày',
+
+                                    'within_3_months' =>
+                                        'Trong 3 tháng',
+
+                                    'over_3_months' =>
+                                        'Trên 3 tháng',
+
+                                    'unknown' =>
+                                        'Chưa xác định',
+
+                                    default => '—',
+                                }
+                            ),
+
+                        TextEntry::make(
+                            'lead.qualification.decision_role'
+                        )
+                            ->label('Vai trò người liên hệ')
+                            ->formatStateUsing(
+                                fn (?string $state): string => match ($state) {
+                                    'decision_maker' =>
+                                        'Người quyết định',
+
+                                    'influencer' =>
+                                        'Người ảnh hưởng / đề xuất',
+
+                                    'information_gatherer' =>
+                                        'Người thu thập thông tin',
+
+                                    'unknown' =>
+                                        'Chưa xác định',
+
+                                    default => '—',
+                                }
+                            ),
+
+                        TextEntry::make('lead.qualification.score')
+                            ->label('Điểm Lead')
+                            ->placeholder('—'),
+
+                        TextEntry::make('lead.qualification.priority')
+                            ->label('Ưu tiên')
+                            ->badge()
+                            ->formatStateUsing(
+                                function ($state): string {
+                                    $value = $state instanceof \BackedEnum
+                                        ? $state->value
+                                        : $state;
+
+                                    return match ($value) {
+                                        'low' => 'Thấp',
+                                        'normal' => 'Bình thường',
+                                        'high' => 'Cao',
+                                        'vip' => 'VIP',
+                                        default => '—',
+                                    };
+                                }
+                            ),
+
+                        TextEntry::make(
+                            'lead.qualification.qualifiedBy.full_name'
+                        )
+                            ->label('CSKH đánh giá')
+                            ->placeholder('—'),
+
+                        TextEntry::make(
+                            'lead.qualification.qualified_at'
+                        )
+                            ->label('Đủ điều kiện lúc')
+                            ->formatStateUsing(
+                                fn ($state): string => $state
+                                    ? $state
+                                        ->copy()
+                                        ->timezone(
+                                            config('business_flow.timezone')
+                                        )
+                                        ->format('d/m/Y H:i')
+                                    : '—'
+                            ),
+
+                        TextEntry::make(
+                            'lead.qualification.qualification_note'
+                        )
+                            ->label('Ghi chú đánh giá')
+                            ->columnSpanFull()
+                            ->placeholder('—'),
+                    ]),
             ]);
     }
 
@@ -263,32 +486,61 @@ class OpportunityResource extends Resource
         ];
     }
 
-    public static function addContactForm(): array
+    public static function addContactForm(Opportunity $record): array
     {
         return [
             Select::make('contact_id')
                 ->label(__('field.contact'))
-                ->options(
-                    Contact::query()
+                ->options(function () use ($record): array {
+                    $query = Contact::query();
+
+                    if ($record->company_id !== null) {
+                        $query->whereHas(
+                            'companies',
+                            fn (Builder $query): Builder => $query
+                                ->whereKey($record->company_id)
+                        );
+                    } else {
+                        $query->whereKey($record->primary_contact_id);
+                    }
+
+                    return $query
                         ->orderBy('id')
                         ->get()
-                        ->mapWithKeys(fn (Contact $contact): array => [
-                            $contact->id => $contact->full_name
-                                ?: 'Contact #'.$contact->id,
-                        ])
-                )
+                        ->mapWithKeys(
+                            fn (Contact $contact): array => [
+                                $contact->id =>
+                                    $contact->full_name
+                                    ?: 'Contact #'.$contact->id,
+                            ]
+                        )
+                        ->all();
+                })
                 ->searchable()
+                ->preload()
                 ->required(),
+
             Select::make('role')
                 ->label(__('field.role'))
                 ->options([
-                    'primary_contact' => __('field.role.primary_contact'),
-                    'decision_maker' => __('field.role.decision_maker'),
-                    'influencer' => __('field.role.influencer'),
-                    'technical_contact' => __('field.role.technical_contact'),
-                    'other' => __('field.role.other'),
+                    'primary_contact' =>
+                        __('field.role.primary_contact'),
+
+                    'decision_maker' =>
+                        __('field.role.decision_maker'),
+
+                    'influencer' =>
+                        __('field.role.influencer'),
+
+                    'technical_contact' =>
+                        __('field.role.technical_contact'),
+
+                    'other' =>
+                        __('field.role.other'),
                 ])
-                ->default('other'),
+                ->default('other')
+                ->required(),
+
             Toggle::make('is_primary')
                 ->label(__('field.is_primary'))
                 ->default(false),
@@ -419,12 +671,27 @@ class OpportunityResource extends Resource
                     Action::make('add_contact')
                         ->label(__('action.add_contact'))
                         ->icon('heroicon-o-user-plus')
-                        ->form(static::addContactForm())
+                        ->form(
+                            fn (Opportunity $record): array =>
+                                static::addContactForm($record)
+                        )
                         ->visible(
                             fn (Opportunity $record): bool => static::canProcessOpportunity($record)
                                 && ! $record->isTerminal()
                         )
                         ->action(function (Opportunity $record, array $data): void {
+                            $contactId = (int) $data['contact_id'];
+                            if (
+                                ! static::contactCanJoinOpportunity(
+                                    $record,
+                                    $contactId
+                                )
+                            ) {
+                                throw ValidationException::withMessages([
+                                    'contact_id' =>
+                                        'Liên hệ này không thuộc công ty của cơ hội kinh doanh.',
+                                ]);
+                            }
                             app(OpportunityContactService::class)->upsert(
                                 opportunity: $record,
                                 contactId: (int) $data['contact_id'],

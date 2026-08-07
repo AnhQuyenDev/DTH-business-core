@@ -27,10 +27,26 @@ final class OpportunityContactService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            /*
-             * Không cho hạ Primary Contact hiện tại xuống thường
-             * nếu chưa chọn một Primary Contact thay thế.
-             */
+            if ($locked->company_id !== null) {
+                $belongsToCompany = $locked
+                    ->company
+                    ?->contacts()
+                    ->whereKey($contactId)
+                    ->exists() ?? false;
+
+                if (! $belongsToCompany) {
+                    throw ValidationException::withMessages([
+                        'contact_id' =>
+                            'Liên hệ này không thuộc công ty của cơ hội kinh doanh.',
+                    ]);
+                }
+            } elseif ($locked->primary_contact_id !== $contactId) {
+                throw ValidationException::withMessages([
+                    'contact_id' =>
+                        'Liên hệ này không thuộc cơ hội kinh doanh cá nhân.',
+                ]);
+            }
+            
             if (
                 ! $isPrimary
                 && $locked->primary_contact_id === $contactId

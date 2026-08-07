@@ -10,6 +10,8 @@ use App\Services\Sales\OpportunityWorkflowService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Validation\ValidationException;
+use App\Models\Sales\Opportunity;
 
 class ViewOpportunity extends ViewRecord
 {
@@ -70,7 +72,10 @@ class ViewOpportunity extends ViewRecord
             Action::make('add_contact')
                 ->label(__('action.add_contact'))
                 ->icon('heroicon-o-user-plus')
-                ->form(OpportunityResource::addContactForm())
+                ->form(
+                    fn (): array =>
+                        OpportunityResource::addContactForm($this->record)
+                )
                 ->visible(
                     fn (): bool => OpportunityResource::canProcessOpportunity($this->record)
                         && ! $this->record->isTerminal()
@@ -144,5 +149,28 @@ class ViewOpportunity extends ViewRecord
                         ->send();
                 }),
         ];
+    }
+
+    public static function contactCanJoinOpportunity(
+        Opportunity $opportunity,
+        int $contactId
+    ): bool {
+        /*
+        * Opportunity doanh nghiệp:
+        * Contact phải thuộc đúng Company.
+        */
+        if ($opportunity->company_id !== null) {
+            return $opportunity
+                ->company
+                ?->contacts()
+                ->whereKey($contactId)
+                ->exists() ?? false;
+        }
+
+        /*
+        * Opportunity cá nhân:
+        * chỉ Contact chính của Opportunity.
+        */
+        return $opportunity->primary_contact_id === $contactId;
     }
 }
