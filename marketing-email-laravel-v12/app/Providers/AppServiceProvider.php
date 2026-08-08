@@ -126,6 +126,8 @@ class AppServiceProvider extends ServiceProvider
             'sales.view-services',
             fn (User $user): bool => $user->hasAnyRole([
                 UserRole::Admin,
+                UserRole::Executive,
+                UserRole::Viewer,
                 UserRole::MarketingManager,
                 UserRole::MarketingStaff,
                 UserRole::CustomerServiceManager,
@@ -147,6 +149,8 @@ class AppServiceProvider extends ServiceProvider
             'sales.view-service-packages',
             fn (User $user): bool => $user->hasAnyRole([
                 UserRole::Admin,
+                UserRole::Executive,
+                UserRole::Viewer,
                 UserRole::MarketingManager,
                 UserRole::MarketingStaff,
                 UserRole::CustomerServiceManager,
@@ -168,6 +172,7 @@ class AppServiceProvider extends ServiceProvider
             'sales.view-bank-accounts',
             fn (User $user): bool => $user->hasAnyRole([
                 UserRole::Admin,
+                UserRole::Executive,
                 UserRole::SalesManager,
                 UserRole::SalesStaff,
                 UserRole::FinanceStaff,
@@ -188,6 +193,8 @@ class AppServiceProvider extends ServiceProvider
             'sales.view-price-books',
             fn (User $user): bool => $user->hasAnyRole([
                 UserRole::Admin,
+                UserRole::Executive,
+                UserRole::Viewer,
                 UserRole::SalesManager,
                 UserRole::SalesStaff,
                 UserRole::FinanceStaff,
@@ -216,6 +223,8 @@ class AppServiceProvider extends ServiceProvider
             'sales.view-quotations',
             fn (User $user): bool => $user->hasAnyRole([
                 UserRole::Admin,
+                UserRole::Executive,
+                UserRole::Viewer,
                 UserRole::SalesManager,
                 UserRole::SalesStaff,
                 UserRole::FinanceStaff,
@@ -277,6 +286,8 @@ class AppServiceProvider extends ServiceProvider
             'sales.view-opportunities',
             fn (User $user): bool => $user->hasAnyRole([
                 UserRole::Admin,
+                UserRole::Executive,
+                UserRole::Viewer,
                 UserRole::CustomerServiceManager,
                 UserRole::SalesManager,
                 UserRole::SalesStaff,

@@ -35,7 +35,8 @@ class PriceBookAccessService
                     $q->where('access_type', 'staff')->where('staff_id', $staff->id);
                 })
                 ->orWhere(function ($q) use ($user) {
-                    $q->where('access_type', 'role')->where('role', $user->role);
+                    $q->where('access_type', 'role')
+                        ->whereIn('role', $user->effectiveRoleKeys());
                 })
                 ->orWhere(function ($q) use ($staff) {
                     $q->where('access_type', 'department')->where('department', $staff->department?->code);
@@ -72,7 +73,8 @@ class PriceBookAccessService
                         $q->where('access_type', 'staff')->where('staff_id', $staff->id);
                     })
                     ->orWhere(function ($q) use ($user) {
-                        $q->where('access_type', 'role')->where('role', $user->role);
+                        $q->where('access_type', 'role')
+                            ->whereIn('role', $user->effectiveRoleKeys());
                     })
                     ->orWhere(function ($q) use ($staff) {
                         $q->where('access_type', 'department')->where('department', $staff->department?->code);
@@ -97,7 +99,7 @@ class PriceBookAccessService
             ->where(function ($q) use ($staff, $user) {
                 $q->where('access_type', 'all')
                     ->orWhere('staff_id', $staff->id)
-                    ->orWhere('role', $user->role)
+                    ->orWhereIn('role', $user->effectiveRoleKeys())
                     ->orWhere('department', $staff->department?->code);
             })
             ->whereNotNull('discount_limit_value')

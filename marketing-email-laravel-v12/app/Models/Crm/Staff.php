@@ -4,6 +4,7 @@ namespace App\Models\Crm;
 
 use App\Enums\Crm\LeadIntakeStatus;
 use App\Enums\Crm\StaffEmploymentStatus;
+use App\Enums\UserRole;
 use App\Models\Marketing\AuditLog;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -239,13 +240,13 @@ class Staff extends Model
             )
             ->whereHas(
                 'user',
-                fn (Builder $query): Builder => $query->whereIn(
-                    'role',
-                    [
-                        'sales_manager',
-                        'sales_staff',
-                    ]
-                )
+                fn (Builder $query): Builder => $query
+                    ->where('is_active', true)
+                    ->whereIn('role', [
+                        UserRole::User->value,
+                        UserRole::SalesManager->value,
+                        UserRole::SalesStaff->value,
+                    ])
             )
             ->where(
                 'employment_status',

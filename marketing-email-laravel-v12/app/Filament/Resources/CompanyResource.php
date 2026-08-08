@@ -207,6 +207,7 @@ class CompanyResource extends Resource
 
         if (
             $user->isAdmin()
+            || $user->canReadAcrossBusiness()
             || $user->isCustomerServiceManager()
             || $user->isMarketingManager()
             || $user->isSalesManager()
@@ -220,7 +221,7 @@ class CompanyResource extends Resource
             return $query->whereRaw('0 = 1');
         }
 
-        if ($user->role === 'customer_service_staff') {
+        if ($user->isCustomerServiceStaff()) {
             return $query->where(function (Builder $query) use ($staffId): void {
                 $query
                     ->where('account_owner_staff_id', $staffId)
@@ -232,7 +233,7 @@ class CompanyResource extends Resource
             });
         }
 
-        if ($user->role === 'sales_staff') {
+        if ($user->isSalesStaff()) {
             return $query->whereHas(
                 'opportunities',
                 fn (Builder $opportunityQuery): Builder => $opportunityQuery

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Sales\PriceBookResource\RelationManagers;
 
 use App\Enums\Sales\DiscountType;
 use App\Enums\Sales\PriceBookAccessType;
+use App\Enums\UserRole;
 use App\Models\Crm\Department;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -41,12 +42,8 @@ class PriceBookAccessRuleRelationManager extends RelationManager
                 ->options(PriceBookAccessType::options())
                 ->required(),
             Select::make('role')
-                ->label(__('field.role'))
-                ->options([
-                    'admin' => __('enum.role.admin'),
-                    'manager' => __('field.manager'),
-                    'staff' => __('field.staff'),
-                ])
+                ->label(__('field.system_role'))
+                ->options(UserRole::options())
                 ->nullable(),
             Select::make('department')
                 ->label(__('field.department'))

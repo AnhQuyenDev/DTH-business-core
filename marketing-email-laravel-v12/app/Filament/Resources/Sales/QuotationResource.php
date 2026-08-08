@@ -654,14 +654,15 @@ class QuotationResource extends Resource
 
         if (
             $user->isAdmin()
+            || $user->canReadAcrossBusiness()
             || $user->isSalesManager()
-            || $user->role === 'finance_staff'
+            || $user->isFinanceStaff()
         ) {
             return $query;
         }
 
         if (
-            $user->role !== 'sales_staff'
+            ! $user->isSalesStaff()
             || $user->staff?->id === null
         ) {
             return $query->whereRaw('0 = 1');

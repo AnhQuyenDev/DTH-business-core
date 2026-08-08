@@ -8,9 +8,20 @@ use App\Models\User;
 
 class CustomerPolicy
 {
-    public function before(User $user): ?bool
+    public function before(User $user, string $ability): ?bool
     {
-        return $user->isAdmin() ? true : null;
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if (
+            $user->canReadAcrossBusiness()
+            && in_array($ability, ['viewAny', 'view'], true)
+        ) {
+            return true;
+        }
+
+        return null;
     }
 
     public function viewAny(User $user): bool

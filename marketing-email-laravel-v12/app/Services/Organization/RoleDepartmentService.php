@@ -12,26 +12,21 @@ class RoleDepartmentService
 {
     public function requiredFunction(UserRole|string|null $role): ?DepartmentFunction
     {
-        if ($role === null || $role === '') {
-            return null;
-        }
-
-        $resolved = $role instanceof UserRole
-            ? $role
-            : UserRole::tryFrom($role);
+        $resolved = $this->resolveRole($role);
 
         return $resolved?->requiredDepartmentFunction();
     }
 
     public function requiresStaff(UserRole|string|null $role): bool
     {
-        return $this->requiredFunction($role) !== null;
+        return $this->resolveRole($role)?->requiresStaff() ?? false;
     }
 
     public function isCompatible(UserRole|string|null $role, ?Department $department): bool
     {
         $required = $this->requiredFunction($role);
 
+        // Vai trò mới không chứa ý nghĩa phòng ban.
         if ($required === null) {
             return true;
         }
@@ -41,21 +36,32 @@ class RoleDepartmentService
 
     public function assertCompatible(UserRole|string|null $role, ?Staff $staff): void
     {
-        $required = $this->requiredFunction($role);
+        $resolved = $this->resolveRole($role);
 
-        if ($required === null) {
+        if ($resolved === null) {
             return;
         }
 
-        if ($staff === null) {
+        if ($resolved->requiresStaff() && $staff === null) {
             throw ValidationException::withMessages([
                 'staff_id' => __('validation.staff_required_for_role'),
             ]);
         }
 
+        if ($staff === null) {
+            return;
+        }
+
+        $required = $resolved->requiredDepartmentFunction();
+
+        // admin/executive/user/viewer không bị gắn cứng với phòng ban.
+        if ($required === null) {
+            return;
+        }
+
         $staff->loadMissing('department');
 
-        if (! $this->isCompatible($role, $staff->department)) {
+        if (! $this->isCompatible($resolved, $staff->department)) {
             throw ValidationException::withMessages([
                 'role' => __('validation.role_department_mismatch', [
                     'department' => $staff->department?->name ?? __('common.not_available'),
@@ -63,5 +69,16 @@ class RoleDepartmentService
                 ]),
             ]);
         }
+    }
+
+    private function resolveRole(UserRole|string|null $role): ?UserRole
+    {
+        if ($role === null || $role === '') {
+            return null;
+        }
+
+        return $role instanceof UserRole
+            ? $role
+            : UserRole::tryFrom($role);
     }
 }

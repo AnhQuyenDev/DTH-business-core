@@ -492,11 +492,15 @@ class CustomerCarePage extends Page implements HasTable
     {
         $user = auth()->user();
 
-        if ($user->isAdmin() || $user->isCustomerServiceManager()) {
+        if (
+            $user->isAdmin()
+            || $user->canReadAcrossBusiness()
+            || $user->isCustomerServiceManager()
+        ) {
             return Customer::query();
         }
 
-        if ($user->role !== 'customer_service_staff') {
+        if (! $user->isCustomerServiceStaff()) {
             return Customer::query()->whereRaw('0 = 1');
         }
 

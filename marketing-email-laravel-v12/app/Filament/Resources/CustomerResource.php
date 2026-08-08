@@ -394,12 +394,16 @@ class CustomerResource extends Resource
             return $query->whereRaw('0 = 1');
         }
 
-        if ($user->isAdmin() || $user->isCustomerServiceManager()) {
+        if (
+            $user->isAdmin()
+            || $user->canReadAcrossBusiness()
+            || $user->isCustomerServiceManager()
+        ) {
             return $query;
         }
 
         if (
-            $user->role !== 'customer_service_staff'
+            ! $user->isCustomerServiceStaff()
             || $user->staff?->id === null
         ) {
             return $query->whereRaw('0 = 1');

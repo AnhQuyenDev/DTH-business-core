@@ -10,8 +10,9 @@ use App\Services\Sales\OpportunityWorkflowService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Validation\ValidationException;
 use App\Models\Sales\Opportunity;
+use App\Models\Crm\Staff;
+use App\Services\Sales\OpportunityAssignmentService;
 
 class ViewOpportunity extends ViewRecord
 {
@@ -146,6 +147,35 @@ class ViewOpportunity extends ViewRecord
 
                     Notification::make()
                         ->title(__('notification.opportunity_lost'))
+                        ->success()
+                        ->send();
+                }),
+            Action::make('reassign_owner')
+                ->label('Chuyển người phụ trách')
+                ->icon('heroicon-o-arrow-right-circle')
+                ->color('warning')
+                ->form(
+                    fn (): array =>
+                        OpportunityResource::reassignOwnerForm($this->record)
+                )
+                ->visible(
+                    fn (): bool =>
+                        OpportunityResource::canReassignOpportunity($this->record)
+                )
+                ->action(function (array $data): void {
+                    app(OpportunityAssignmentService::class)->reassign(
+                        opportunity: $this->record,
+                        newOwner: Staff::query()->findOrFail(
+                            (int) $data['assigned_staff_id']
+                        ),
+                        reason: (string) $data['reason'],
+                        actorUserId: (int) auth()->id(),
+                    );
+
+                    $this->record->refresh();
+
+                    Notification::make()
+                        ->title('Đã chuyển người phụ trách cơ hội')
                         ->success()
                         ->send();
                 }),

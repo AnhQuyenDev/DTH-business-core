@@ -102,15 +102,16 @@ class LeadResource extends Resource
 
         if (
             $user->isAdmin()
+            || $user->canReadAcrossBusiness()
             || $user->isMarketingManager()
-            || $user->role === 'marketing_staff'
+            || $user->isMarketingStaff()
             || $user->isCustomerServiceManager()
         ) {
             return $query;
         }
 
         if (
-            $user->role !== 'customer_service_staff'
+            ! $user->isCustomerServiceStaff()
             || $user->staff?->id === null
         ) {
             return $query->whereRaw('0 = 1');

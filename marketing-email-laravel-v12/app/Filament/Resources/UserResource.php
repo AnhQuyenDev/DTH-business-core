@@ -163,12 +163,12 @@ class UserResource extends Resource
                 ->unique(ignoreRecord: true),
 
             Select::make('role')
-                ->label(__('field.role'))
+                ->label(__('field.system_role'))
                 ->options(UserRole::options())
                 ->required()
                 ->searchable()
                 ->live()
-                ->helperText(__('helper.role_department_function')),
+                ->helperText(__('helper.system_role_separation')),
 
             Toggle::make('is_active')
                 ->label(__('field.account_active'))
@@ -208,7 +208,7 @@ class UserResource extends Resource
                 ->placeholder(__('common.not_available'))
                 ->toggleable(),
             TextColumn::make('role')
-                ->label(__('field.role'))
+                ->label(__('field.system_role'))
                 ->badge()
                 ->formatStateUsing(
                     fn (?string $state): string => $state

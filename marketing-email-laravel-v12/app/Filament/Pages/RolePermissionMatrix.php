@@ -36,18 +36,17 @@ class RolePermissionMatrix extends Page
     protected function getViewData(): array
     {
         return [
-            'roles' => collect(UserRole::cases())->map(function (UserRole $role): array {
-                $function = $role->requiredDepartmentFunction();
-
-                return [
+            'roles' => collect(UserRole::assignableCases())
+                ->map(fn (UserRole $role): array => [
                     'code' => $role->value,
                     'label' => $role->label(),
                     'color' => $role->color(),
-                    'department_function' => $function?->label()
-                        ?? __('role_permissions.no_department_requirement'),
+                    'staff_required' => $role->requiresStaff()
+                        ? __('field.yes')
+                        : __('field.no'),
                     'summary' => __('role_permissions.summary.'.$role->value),
-                ];
-            })->all(),
+                ])
+                ->all(),
         ];
     }
 }

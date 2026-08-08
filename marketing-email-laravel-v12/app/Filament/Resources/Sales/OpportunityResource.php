@@ -2,14 +2,17 @@
 
 namespace App\Filament\Resources\Sales;
 
+use App\Enums\Crm\StaffEmploymentStatus;
 use App\Enums\Sales\OpportunityStage;
 use App\Filament\Resources\Sales\OpportunityResource\Pages;
 use App\Filament\Resources\Sales\OpportunityResource\RelationManagers\ContactsRelationManager;
 use App\Filament\Resources\Sales\OpportunityResource\RelationManagers\InteractionsRelationManager;
 use App\Filament\Resources\Sales\OpportunityResource\RelationManagers\QuotationsRelationManager;
 use App\Models\Crm\Lead;
+use App\Models\Crm\Staff;
 use App\Models\Marketing\Contact;
 use App\Models\Sales\Opportunity;
+use App\Services\Sales\OpportunityAssignmentService;
 use App\Services\Sales\OpportunityContactService;
 use App\Services\Sales\OpportunityWorkflowService;
 use Filament\Forms\Components\DatePicker;
@@ -107,6 +110,81 @@ class OpportunityResource extends Resource
                     $opportunity
                 ) ?? false
             );
+    }
+
+
+    public static function canReassignOpportunity(
+        ?Opportunity $opportunity = null,
+    ): bool {
+        $user = auth()->user();
+
+        return $opportunity !== null
+            && ! $opportunity->isTerminal()
+            && $user !== null
+            && ! $user->isAdmin()
+            && $user->isSalesManager();
+    }
+
+    public static function reassignOwnerForm(
+        Opportunity $record,
+    ): array {
+        return [
+            Select::make('assigned_staff_id')
+                ->label('Sales phụ trách mới')
+                ->options(function () use ($record): array {
+                    return Staff::query()
+                        ->where(
+                            'employment_status',
+                            StaffEmploymentStatus::Active->value
+                        )
+                        ->where('can_receive_customers', true)
+                        ->where('id', '!=', $record->assigned_staff_id)
+                        ->whereHas(
+                            'department',
+                            fn (Builder $query): Builder => $query->where(
+                                'function_key',
+                                'sales'
+                            )
+                        )
+                        ->whereHas(
+                            'user',
+                            fn (Builder $query): Builder => $query->where(
+                                'is_active',
+                                true
+                            )
+                        )
+                        ->whereDoesntHave(
+                            'availabilities',
+                            fn (Builder $query): Builder => $query
+                                ->active()
+                                ->where(
+                                    'can_receive_new_customers',
+                                    false
+                                )
+                        )
+                        ->orderBy('full_name')
+                        ->get()
+                        ->mapWithKeys(
+                            fn (Staff $staff): array => [
+                                $staff->id => sprintf(
+                                    '%s (%s)',
+                                    $staff->full_name,
+                                    $staff->employee_code,
+                                ),
+                            ]
+                        )
+                        ->all();
+                })
+                ->searchable()
+                ->preload()
+                ->required(),
+
+            Textarea::make('reason')
+                ->label('Lý do phân công lại')
+                ->required()
+                ->rows(3)
+                ->maxLength(1000),
+        ];
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -649,6 +727,40 @@ class OpportunityResource extends Resource
                                 )
                         ),
 
+                    Action::make('reassign_owner')
+                        ->label('Chuyển người phụ trách')
+                        ->icon('heroicon-o-arrow-right-circle')
+                        ->color('warning')
+                        ->form(
+                            fn (Opportunity $record): array =>
+                                static::reassignOwnerForm($record)
+                        )
+                        ->visible(
+                            fn (Opportunity $record): bool =>
+                                static::canReassignOpportunity($record)
+                        )
+                        ->action(function (
+                            Opportunity $record,
+                            array $data,
+                        ): void {
+                            app(OpportunityAssignmentService::class)
+                                ->reassign(
+                                    opportunity: $record,
+                                    newOwner: Staff::query()->findOrFail(
+                                        (int) $data['assigned_staff_id']
+                                    ),
+                                    reason: (string) $data['reason'],
+                                    actorUserId: (int) auth()->id(),
+                                );
+
+                            $record->refresh();
+
+                            Notification::make()
+                                ->title('Đã chuyển người phụ trách cơ hội')
+                                ->success()
+                                ->send();
+                        }),
+
                     Action::make('record_interaction')
                         ->label(__('action.record_interaction'))
                         ->icon('heroicon-o-chat-bubble-left-right')
@@ -789,6 +901,7 @@ class OpportunityResource extends Resource
 
         if (
             $user->isAdmin()
+            || $user->canReadAcrossBusiness()
             || $user->isCustomerServiceManager()
             || $user->isSalesManager()
         ) {
@@ -796,7 +909,7 @@ class OpportunityResource extends Resource
         }
 
         if (
-            $user->role !== 'sales_staff'
+            ! $user->isSalesStaff()
             || $user->staff?->id === null
         ) {
             return $query->whereRaw('0 = 1');
