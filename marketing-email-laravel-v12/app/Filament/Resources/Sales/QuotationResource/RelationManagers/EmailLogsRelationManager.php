@@ -25,14 +25,44 @@ class EmailLogsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('recipient_email')->label(__('field.recipient_email')),
-                TextColumn::make('subject')->label(__('field.subject'))->limit(50),
-                TextColumn::make('status')->label(__('field.status'))->badge()
-                    ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label') ? $state->label() : ($state ?? ''))
-                    ->color(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'color') ? $state->color() : 'gray'),
-                TextColumn::make('queued_at')->label(__('field.queued_at'))->dateTime(),
-                TextColumn::make('sent_at')->label(__('field.sent_at'))->dateTime(),
-                TextColumn::make('error_message')->label(__('field.error_message'))->limit(50),
+                TextColumn::make('sender_name')
+                    ->label('Người gửi')
+                    ->description(fn ($record): ?string => $record->sender_email)
+                    ->placeholder('—'),
+                TextColumn::make('sendingAccount.name')
+                    ->label('Tài khoản gửi')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('recipient_email')
+                    ->label(__('field.recipient_email')),
+                TextColumn::make('subject')
+                    ->label(__('field.subject'))
+                    ->limit(50),
+                TextColumn::make('status')
+                    ->label(__('field.status'))
+                    ->badge()
+                    ->formatStateUsing(
+                        fn ($state): string => $state instanceof \BackedEnum
+                            && method_exists($state, 'label')
+                                ? $state->label()
+                                : ($state ?? '')
+                    )
+                    ->color(
+                        fn ($state): string => $state instanceof \BackedEnum
+                            && method_exists($state, 'color')
+                                ? $state->color()
+                                : 'gray'
+                    ),
+                TextColumn::make('queued_at')
+                    ->label(__('field.queued_at'))
+                    ->dateTime('d/m/Y H:i:s'),
+                TextColumn::make('sent_at')
+                    ->label(__('field.sent_at'))
+                    ->dateTime('d/m/Y H:i:s'),
+                TextColumn::make('error_message')
+                    ->label(__('field.error_message'))
+                    ->wrap()
+                    ->limit(120),
             ])
             ->defaultSort('created_at', 'desc')
             ->actions([])

@@ -23,6 +23,7 @@ use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\HtmlString;
+use App\Enums\Sales\QuotationEmailStatus;
 
 class ViewQuotation extends ViewRecord
 {
@@ -84,11 +85,6 @@ class ViewQuotation extends ViewRecord
                             ),
                         ])
                         ->all();
-
-                    // Legacy customer quotations may not have an Opportunity
-                    // contact pivot. Keep their snapshotted commercial email as
-                    // the only allowed confirmer rather than presenting an empty
-                    // required dropdown.
                     $partyEmail = mb_strtolower(trim((string) ($q->party_email ?? '')));
                     if ($signers === [] && $partyEmail !== '') {
                         $signers[$partyEmail] = collect([
@@ -219,23 +215,39 @@ class ViewQuotation extends ViewRecord
                     ];
                 })
                 ->action(function (array $data) use ($q): void {
-                    app(QuotationMailService::class)->send(
-                        $q,
-                        auth()->user(),
-                        (string) $data['recipient_email'],
-                        [
-                            'authorized_signer_email' => $data['authorized_signer_email'],
+                    $log = app(QuotationMailService::class)->send(
+                        quotation: $q,
+                        user: auth()->user(),
+                        recipientEmail: (string) $data['recipient_email'],
+                        options: [
                             'subject' => $data['subject'] ?? null,
                             'body' => $data['body'] ?? null,
+                            'sending_account_id' => $data['sending_account_id'] ?? null,
                         ],
                     );
 
+                    $this->record->refresh();
+
+                    if ($log->status === QuotationEmailStatus::Failed) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Gửi báo giá thất bại')
+                            ->body($log->error_message ?: 'Không thể gửi email bằng tài khoản gửi đã cấu hình.')
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
                     Notification::make()
                         ->success()
-                        ->title('Báo giá đã được đưa vào hàng đợi gửi email')
+                        ->title(
+                            $log->status === QuotationEmailStatus::Sent
+                                ? 'Đã gửi báo giá'
+                                : 'Báo giá đã được đưa vào hàng đợi gửi email'
+                        )
+                        ->body('Từ: '.($log->sender_email ?: '—').' → '.$log->recipient_email)
                         ->send();
-
-                    $this->redirect($this->getUrl(['record' => $this->record]));
                 })
                 ->visible(fn () => filled($q->party_email)
                     && (auth()->user()?->can('send', $q) ?? false)),

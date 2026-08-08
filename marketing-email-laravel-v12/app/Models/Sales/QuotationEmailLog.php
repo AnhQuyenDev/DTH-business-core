@@ -3,6 +3,7 @@
 namespace App\Models\Sales;
 
 use App\Enums\Sales\QuotationEmailStatus;
+use App\Models\Marketing\SendingAccount;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,9 @@ class QuotationEmailLog extends Model
 
     protected $fillable = [
         'quotation_id',
+        'sending_account_id',
+        'sender_email',
+        'sender_name',
         'recipient_email',
         'cc',
         'bcc',
@@ -44,6 +48,11 @@ class QuotationEmailLog extends Model
     public function quotation(): BelongsTo
     {
         return $this->belongsTo(Quotation::class);
+    }
+
+    public function sendingAccount(): BelongsTo
+    {
+        return $this->belongsTo(SendingAccount::class);
     }
 
     public function createdBy(): BelongsTo
