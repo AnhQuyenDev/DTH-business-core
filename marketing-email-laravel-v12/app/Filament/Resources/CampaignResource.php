@@ -48,17 +48,17 @@ class CampaignResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.view-campaigns') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.manage-campaigns') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.manage-campaigns') ?? false;
     }
 
     public static function form(Form $form): Form

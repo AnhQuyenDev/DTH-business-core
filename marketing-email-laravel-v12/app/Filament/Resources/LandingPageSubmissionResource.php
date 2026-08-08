@@ -50,9 +50,7 @@ class LandingPageSubmissionResource extends Resource
 
     public static function canViewAny(): bool
     {
-        $user = auth()->user();
-
-        return ($user?->isMarketingStaff() || $user?->isCustomerServiceStaff()) ?? false;
+        return auth()->user()?->can('marketing.view-landing-page-submissions') ?? false;
     }
 
     public static function form(Form $form): Form

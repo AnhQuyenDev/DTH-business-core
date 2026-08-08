@@ -87,23 +87,25 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('marketing.view-audit', fn (User $user) => $user->isAdmin());
 
         // ─── Marketing Manage Gates ─────────────────────────────────────
-        Gate::define('marketing.manage-contacts', fn (User $user) => $user->isMarketingStaff());
-        Gate::define('marketing.manage-tags', fn (User $user) => $user->isMarketingStaff());
-        Gate::define('marketing.manage-lists', fn (User $user) => $user->isMarketingStaff());
-        Gate::define('marketing.manage-segments', fn (User $user) => $user->isMarketingStaff());
-        Gate::define('marketing.manage-custom-fields', fn (User $user) => $user->isMarketingStaff());
-        Gate::define('marketing.manage-templates', fn (User $user) => $user->isMarketingStaff());
-        Gate::define('marketing.manage-campaigns', fn (User $user) => $user->isMarketingStaff());
-        Gate::define('marketing.send-campaigns', fn (User $user) => $user->isMarketingManager());
+        Gate::define('marketing.manage-contacts', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
+        Gate::define('marketing.manage-tags', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
+        Gate::define('marketing.manage-lists', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
+        Gate::define('marketing.manage-segments', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
+        Gate::define('marketing.manage-custom-fields', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
+        Gate::define('marketing.manage-templates', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
+        Gate::define('marketing.manage-campaigns', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
+        Gate::define('marketing.send-campaigns', fn (User $user) => $user->isAdmin() || $user->isMarketingManager());
         Gate::define('marketing.manage-sending', fn (User $user) => $user->isAdmin());
-        Gate::define('marketing.manage-suppression', fn (User $user) => $user->isMarketingManager());
+        Gate::define('marketing.view-suppression', fn (User $user) => $user->isAdmin() || $user->isMarketingManager());
+        Gate::define('marketing.manage-suppression', fn (User $user) => $user->isAdmin() || $user->isMarketingManager());
         Gate::define('marketing.export-data', fn (User $user) => $user->isMarketingManager());
 
         // ─── Landing Page Gates ─────────────────────────────────────────
         Gate::define('marketing.view-landing-pages', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.manage-landing-pages', fn (User $user) => $user->isMarketingStaff());
+        Gate::define('marketing.manage-landing-pages', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
         Gate::define('marketing.view-landing-page-submissions', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.manage-landing-form-templates', fn (User $user) => $user->isMarketingStaff());
+        Gate::define('marketing.view-landing-form-templates', fn (User $user) => $user->canViewMarketingModule());
+        Gate::define('marketing.manage-landing-form-templates', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
 
         // ─── CRM Gates ──────────────────────────────────────────────────
         Gate::define(
@@ -234,8 +236,10 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define(
             'sales.create-quotations',
-            fn (User $user): bool => $user->isSalesStaff()
-                && ! $user->isSalesManager()
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+            ])
         );
 
         Gate::define(

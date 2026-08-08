@@ -50,17 +50,17 @@ class EmailTemplateResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.view-templates') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.manage-templates') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.manage-templates') ?? false;
     }
 
     public static function form(Form $form): Form

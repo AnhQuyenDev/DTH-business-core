@@ -41,7 +41,7 @@ class SuppressionEntryResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('marketing.manage-suppression') ?? false;
+        return auth()->user()?->can('marketing.view-suppression') ?? false;
     }
 
     public static function form(Form $form): Form
