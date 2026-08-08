@@ -3,7 +3,6 @@
 namespace Tests\Feature\Sales;
 
 use App\Enums\Crm\StaffEmploymentStatus;
-use App\Enums\Sales\DocumentType;
 use App\Enums\Sales\EmailStatus;
 use App\Enums\Sales\OpportunityStage;
 use App\Enums\Sales\PackageStatus;
@@ -14,11 +13,13 @@ use App\Jobs\Sales\SendQuotationEmailJob;
 use App\Models\Crm\Department;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\EmailEvent;
+use App\Models\Marketing\SendingAccount;
+use App\Models\Sales\BankAccount;
 use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
+use App\Models\Sales\PriceBookAccessRule;
 use App\Models\Sales\PriceBookItem;
 use App\Models\Sales\Quotation;
-use App\Models\Sales\QuotationDocument;
 use App\Models\Sales\Service;
 use App\Models\Sales\ServicePackage;
 use App\Models\User;
@@ -34,9 +35,11 @@ class QuotationMailWithoutCustomerTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $admin;
-
     private User $manager;
+
+    private User $staffUser;
+
+    private Staff $staff;
 
     private PriceBook $priceBook;
 
@@ -44,41 +47,62 @@ class QuotationMailWithoutCustomerTest extends TestCase
 
     private Opportunity $opportunity;
 
+    private BankAccount $bankAccount;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->admin = User::query()->create([
-            'name' => 'Admin',
-            'email' => 'admin-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
-            'password' => 'secret',
-            'role' => 'admin',
-        ]);
+        $salesDepartment = Department::query()->firstOrCreate(
+            ['code' => 'sales'],
+            [
+                'name' => 'Kinh doanh',
+                'function_key' => 'sales',
+                'sort_order' => 4,
+                'is_active' => true,
+            ]
+        );
 
         $this->manager = User::query()->create([
-            'name' => 'CSM',
-            'email' => 'csm-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
+            'name' => 'Sales Manager',
+            'email' => 'sales-manager-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
             'password' => 'secret',
-            'role' => 'customer_service_manager',
+            'role' => 'sales_manager',
         ]);
 
-        $staffUser = User::query()->create([
-            'name' => 'Staff',
-            'email' => 'staff-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
+        $this->staffUser = User::query()->create([
+            'name' => 'Sales Staff',
+            'email' => 'sales-staff-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
             'password' => 'secret',
-            'role' => 'customer_service_staff',
+            'role' => 'sales_staff',
         ]);
 
-        $staff = Staff::query()->create([
-            'user_id' => $staffUser->id,
+        $this->staff = Staff::query()->create([
+            'user_id' => $this->staffUser->id,
             'employee_code' => 'NV'.fake()->unique()->numberBetween(1000, 999999),
-            'full_name' => 'Staff',
-            'department_id' => Department::query()->firstOrCreate(
-                ['code' => 'sales'],
-                ['name' => 'Kinh doanh', 'sort_order' => 4, 'is_active' => true]
-            )->id,
+            'full_name' => 'Sales Staff',
+            'department_id' => $salesDepartment->id,
             'employment_status' => StaffEmploymentStatus::Active,
             'can_receive_customers' => true,
+        ]);
+
+        SendingAccount::query()->create([
+            'name' => 'Sales SMTP',
+            'provider' => 'smtp',
+            'from_name' => 'DTH Sales',
+            'from_email' => 'sales@example.test',
+            'reply_to' => 'sales@example.test',
+            'config_encrypted' => [
+                'host' => 'smtp.example.test',
+                'port' => 587,
+                'username' => 'sales@example.test',
+                'password' => 'secret',
+                'encryption' => 'tls',
+            ],
+            'daily_limit' => 1000,
+            'hourly_limit' => 100,
+            'status' => 'active',
+            'department_id' => $salesDepartment->id,
         ]);
 
         $service = Service::query()->create([
@@ -93,7 +117,7 @@ class QuotationMailWithoutCustomerTest extends TestCase
             'package_code' => 'PK-WEB-BASIC',
             'name' => 'Gói website cơ bản',
             'audience_type' => 'both',
-            'unit' => 'tháng',
+            'unit' => 'gói',
             'default_quantity' => 1,
             'status' => PackageStatus::Active,
         ]);
@@ -116,30 +140,53 @@ class QuotationMailWithoutCustomerTest extends TestCase
             'sort_order' => 1,
         ]);
 
+        PriceBookAccessRule::query()->create([
+            'price_book_id' => $this->priceBook->id,
+            'access_type' => 'department',
+            'department' => 'sales',
+            'can_view' => true,
+            'can_create_quotation' => true,
+        ]);
+
+        $this->bankAccount = BankAccount::query()->create([
+            'bank_code' => 'VCB',
+            'bank_name' => 'Vietcombank',
+            'account_number' => '1032666491',
+            'account_name' => 'CONG TY TNHH TEST',
+            'status' => 'active',
+            'is_default' => true,
+        ]);
+
         $this->opportunity = Opportunity::factory()
             ->qualified()
-            ->assignedTo($staff)
-            ->create();
+            ->assignedTo($this->staff)
+            ->create([
+                'service_interest' => 'PK-WEB-BASIC',
+            ]);
     }
 
     private function makeApprovedQuotation(): Quotation
     {
         $quotation = app(QuotationCreationService::class)->createForOpportunity(
             $this->opportunity,
-            $this->admin,
+            $this->staffUser,
             $this->priceBook,
             [[
                 'price_book_item_id' => $this->item->id,
                 'quantity' => 1,
-                'unit_price' => 1_000_000,
             ]],
+            [
+                'bank_account_id' => $this->bankAccount->id,
+            ],
+        );
+
+        $quotation = app(QuotationApprovalService::class)->submitForApproval(
+            $quotation,
+            $this->staffUser,
         );
 
         return app(QuotationApprovalService::class)->approve(
-            app(QuotationApprovalService::class)->submitForApproval(
-                $quotation,
-                $this->manager,
-            ),
+            $quotation,
             $this->manager,
         );
     }
@@ -155,11 +202,12 @@ class QuotationMailWithoutCustomerTest extends TestCase
 
         $log = app(QuotationMailService::class)->send(
             $quotation,
-            $this->admin,
+            $this->staffUser,
             $quotation->party_email,
         );
 
         $this->assertSame($quotation->party_email, $log->recipient_email);
+        Queue::assertPushed(SendQuotationEmailJob::class);
     }
 
     public function test_email_job_runs_without_customer_and_syncs_crm(): void
@@ -169,27 +217,20 @@ class QuotationMailWithoutCustomerTest extends TestCase
 
         $quotation = $this->makeApprovedQuotation();
 
-        QuotationDocument::query()->create([
-            'quotation_id' => $quotation->id,
-            'version' => 1,
-            'document_type' => DocumentType::Pdf,
-            'file_path' => 'quotations/'.$quotation->quotation_code.'/fake.pdf',
-            'file_name' => 'fake.pdf',
-            'mime_type' => 'application/pdf',
-            'file_size' => 123,
-            'file_hash' => 'abc',
-            'generated_at' => now(),
-        ]);
-
         $log = app(QuotationMailService::class)->send(
             $quotation,
-            $this->admin,
+            $this->staffUser,
             $quotation->party_email,
         );
 
         Queue::assertPushed(SendQuotationEmailJob::class);
 
-        (new SendQuotationEmailJob($log, $log->quotation->documents()->latest('id')->first()))->handle();
+        $pdfDoc = $quotation->documents()->latest('id')->firstOrFail();
+        (new SendQuotationEmailJob($log, $pdfDoc))->handle(
+            app(\App\Services\Sales\QuotationSendingAccountService::class),
+            app(\App\Services\Sales\QuotationStateMachine::class),
+            app(\App\Services\Sales\QuotationInteractionService::class),
+        );
 
         $this->assertSame(QuotationEmailStatus::Sent, $log->fresh()->status);
         $this->assertSame(EmailStatus::Sent, $quotation->fresh()->email_status);

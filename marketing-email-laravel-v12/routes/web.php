@@ -42,12 +42,12 @@ Route::get('/lp/{slug}/thank-you', [LandingPageController::class, 'thankYou'])->
 Route::prefix('q')->name('sales.quotation.public.')->group(function (): void {
     Route::get('/{quotationCode}/{token}', [QuotationPublicController::class, 'show'])->name('show');
     Route::get('/{quotationCode}/{token}/pdf', [QuotationPublicController::class, 'pdf'])->name('pdf');
-    Route::post('/{quotationCode}/{token}/mark-viewed', [QuotationPublicController::class, 'markViewed'])->name('mark-viewed');
     Route::post('/{quotationCode}/{token}/accept', [QuotationPublicController::class, 'accept'])->name('accept');
     Route::post('/{quotationCode}/{token}/reject', [QuotationPublicController::class, 'reject'])->name('reject');
     Route::post('/{quotationCode}/{token}/request-revision', [QuotationPublicController::class, 'requestRevision'])->name('request-revision');
     Route::post('/{quotationCode}/{token}/send-otp', [QuotationPublicController::class, 'sendOtp'])->name('send-otp');
     Route::post('/{quotationCode}/{token}/verify-otp', [QuotationPublicController::class, 'verifyOtp'])->name('verify-otp');
+    Route::post('/{quotationCode}/{token}/notify-payment', [QuotationPublicController::class, 'notifyPayment'])->name('notify-payment');
 });
 
 // ─── Language Switch ───────────────────────────────────────────────────────

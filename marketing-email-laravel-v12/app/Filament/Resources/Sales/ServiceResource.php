@@ -68,7 +68,6 @@ class ServiceResource extends Resource
                 TextInput::make('name')->label(__('field.name'))->required()->maxLength(255),
                 TextInput::make('slug')->label(__('field.slug'))->unique(ignoreRecord: true)->maxLength(255),
                 Textarea::make('description')->label(__('field.description'))->rows(3),
-                TextInput::make('service_category_id')->label(__('field.service_category_id'))->numeric()->nullable(),
                 Textarea::make('default_scope')->label(__('field.default_scope'))->rows(3),
                 Textarea::make('default_terms')->label(__('field.default_terms'))->rows(3),
                 Select::make('status')

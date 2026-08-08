@@ -43,4 +43,19 @@ class BankAccount extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $account): void {
+            if ($account->is_default) {
+                $query = static::query();
+
+                if ($account->exists) {
+                    $query->where('id', '!=', $account->id);
+                }
+
+                $query->update(['is_default' => false]);
+            }
+        });
+    }
 }

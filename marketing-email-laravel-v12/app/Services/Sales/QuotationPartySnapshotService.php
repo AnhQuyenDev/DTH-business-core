@@ -25,6 +25,7 @@ final class QuotationPartySnapshotService
                 ? ($opportunity->company?->legal_name
                     ?? $contact?->full_name)
                 : $contact?->full_name,
+            'contact_name' => $contact?->full_name,
             'customer_type' => $isBusiness
                 ? 'business'
                 : 'personal',

@@ -136,21 +136,9 @@
     </table>
 
     @php
-        $snapshot = $quotation->payment_snapshot ?? [];
-        $bankAccount = $quotation->bankAccount;
-        $payment = array_merge(
-            $bankAccount ? [
-                'bank_account_id' => $bankAccount->id,
-                'bank_code' => $bankAccount->bank_code,
-                'bank_name' => $bankAccount->bank_name,
-                'account_number' => $bankAccount->account_number,
-                'account_name' => $bankAccount->account_name,
-                'branch_name' => $bankAccount->branch_name,
-                'swift_code' => $bankAccount->swift_code,
-                'qr_template' => $bankAccount->qr_template,
-            ] : [],
-            $snapshot,
-        );
+        // Commercial PDFs must be immutable: use the payment snapshot that
+        // was captured on the quotation, never live BankAccount master data.
+        $payment = $quotation->payment_snapshot ?? [];
 
         $hasScope = false;
         foreach ($quotation->items as $item) {

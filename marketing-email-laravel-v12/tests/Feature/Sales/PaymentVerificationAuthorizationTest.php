@@ -14,15 +14,15 @@ class PaymentVerificationAuthorizationTest extends TestCase
     use PaymentConversionSetup;
     use RefreshDatabase;
 
-    public function test_admin_can_verify_payments(): void
+    public function test_admin_cannot_operationally_verify_payments(): void
     {
         $admin = $this->makeUser('admin');
         $this->actingAs($admin);
 
-        $this->assertTrue(Gate::allows('sales.verify-payments'));
+        $this->assertFalse(Gate::allows('sales.verify-payments'));
     }
 
-    public function test_customer_service_manager_can_verify_payments(): void
+    public function test_customer_service_manager_cannot_verify_payments(): void
     {
         $manager = $this->makeUser('customer_service_manager');
         $this->actingAs($manager);
@@ -59,10 +59,10 @@ class PaymentVerificationAuthorizationTest extends TestCase
         $flow = $this->buildFlow();
         $quotation = $flow['quotation'];
 
-        $admin = $flow['admin'];
-        $this->actingAs($admin);
+        $finance = $this->makeUser('finance_staff');
+        $this->actingAs($finance);
 
-        $canVerify = $admin->can('sales.verify-payments');
+        $canVerify = $finance->can('sales.verify-payments');
         $isAccepted = $quotation->status === QuotationStatus::Accepted;
         $paymentStatus = $quotation->payment_status?->value
             ?? (string) $quotation->payment_status;

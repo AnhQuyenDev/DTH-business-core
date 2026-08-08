@@ -14,6 +14,7 @@ use App\Filament\Resources\Sales\QuotationResource\RelationManagers\ItemsRelatio
 use App\Models\Crm\Customer;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\EmailTemplate;
+use App\Models\Sales\BankAccount;
 use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
 use App\Models\Sales\PriceBookItem;
@@ -315,8 +316,34 @@ class QuotationResource extends Resource
 
                     Select::make('bank_account_id')
                         ->label(__('resource.bank_account.singular'))
-                        ->relationship('bankAccount', 'account_name')
-                        ->searchable(),
+                        ->options(
+                            fn (): array => BankAccount::query()
+                                ->where('status', 'active')
+                                ->orderByDesc('is_default')
+                                ->orderBy('bank_name')
+                                ->get()
+                                ->mapWithKeys(
+                                    fn (BankAccount $account): array => [
+                                        $account->id => sprintf(
+                                            '%s — %s — %s',
+                                            $account->bank_name,
+                                            $account->account_number,
+                                            $account->account_name,
+                                        ),
+                                    ]
+                                )
+                                ->all()
+                        )
+                        ->default(
+                            fn (): ?int => BankAccount::query()
+                                ->where('status', 'active')
+                                ->where('is_default', true)
+                                ->value('id')
+                        )
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->helperText('Tài khoản này sẽ được snapshot vào báo giá và mã VietQR.'),
 
                     TextInput::make('title')
                         ->label(__('field.title'))
@@ -388,9 +415,17 @@ class QuotationResource extends Resource
                                 ->prefix('VND')
                                 ->disabled()
                                 ->dehydrated(),
-                            Select::make('discount_type')->label(__('field.discount_type'))
-                                ->options(['' => __('field.none'), ...DiscountType::options()]),
-                            TextInput::make('discount_value')->label(__('field.discount_value'))->numeric()->default(0),
+                            Select::make('discount_type')
+                                ->label(__('field.discount_type'))
+                                ->options(['' => __('field.none'), ...DiscountType::options()])
+                                ->disabled()
+                                ->dehydrated()
+                                ->helperText('Loại giảm giá do Bảng giá quy định; Sales chỉ nhập giá trị trong giới hạn cho phép.'),
+                            TextInput::make('discount_value')
+                                ->label(__('field.discount_value'))
+                                ->numeric()
+                                ->minValue(0)
+                                ->default(0),
                             TextInput::make('vat_rate')
                                 ->label(__('field.vat_rate'))
                                 ->numeric()

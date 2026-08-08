@@ -20,6 +20,9 @@ Schedule::call(function (): void {
 
 Schedule::command('sales:process-reminders')->everyMinute()->withoutOverlapping();
 
+// Bank directory changes infrequently; refresh from the official VietQR list weekly.
+Schedule::command('sales:sync-vn-banks')->weekly()->withoutOverlapping();
+
 Artisan::command('i18n:audit-hardcoded {--path=* : Relative paths to scan} {--fail : Exit with non-zero code when findings exist}', function () {
     $root = base_path();
     $paths = $this->option('path');

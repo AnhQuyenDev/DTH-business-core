@@ -227,6 +227,48 @@ class Staff extends Model
             ->count();
     }
 
+    public function scopeEligibleForCustomerOwnership(Builder $query): Builder
+    {
+        return $query
+            ->whereHas(
+                'department',
+                fn (Builder $query): Builder => $query->where(
+                    'function_key',
+                    'customer_service'
+                )
+            )
+            ->whereHas(
+                'user',
+                fn (Builder $query): Builder => $query->where('is_active', true)
+            )
+            ->where(
+                'employment_status',
+                StaffEmploymentStatus::Active->value
+            )
+            ->where('can_receive_customers', true)
+            ->whereDoesntHave(
+                'availabilities',
+                fn (Builder $query): Builder => $query
+                    ->active()
+                    ->where('can_receive_new_customers', false)
+            );
+    }
+
+    public function canReceiveNewCustomers(): bool
+    {
+        $this->loadMissing(['department', 'user']);
+
+        return $this->department?->function_key === 'customer_service'
+            && $this->user?->is_active
+            && $this->employment_status === StaffEmploymentStatus::Active
+            && $this->can_receive_customers
+            && $this->hasCapacity()
+            && ! $this->availabilities()
+                ->active()
+                ->where('can_receive_new_customers', false)
+                ->exists();
+    }
+
     public function scopeEligibleForOpportunityOwnership(
         Builder $query
     ): Builder {

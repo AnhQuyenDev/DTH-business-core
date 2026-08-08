@@ -61,7 +61,6 @@ class CustomerCarePage extends Page implements HasTable
 
     public string $callOutcome = '';
 
-    public ?string $callAt = null;
 
     public ?string $callNextFollowUp = null;
 
@@ -218,7 +217,6 @@ class CustomerCarePage extends Page implements HasTable
         $this->callStatus = 'completed';
         $this->callContent = '';
         $this->callOutcome = '';
-        $this->callAt = now()->format('Y-m-d\TH:i');
         $this->callNextFollowUp = null;
         $this->releaseReason = null;
         $this->releaseNote = '';
@@ -351,13 +349,12 @@ class CustomerCarePage extends Page implements HasTable
             'content' => $this->callContent,
             'outcome' => $this->callOutcome,
             'status' => $this->callStatus,
-            'interaction_at' => filled($this->callAt) ? $this->callAt : now(),
+            'interaction_at' => now(),
             'next_follow_up_at' => filled($this->callNextFollowUp) ? $this->callNextFollowUp : null,
         ]);
 
         $this->callContent = '';
         $this->callOutcome = '';
-        $this->callAt = now()->format('Y-m-d\TH:i');
         $this->callNextFollowUp = null;
 
         Notification::make()

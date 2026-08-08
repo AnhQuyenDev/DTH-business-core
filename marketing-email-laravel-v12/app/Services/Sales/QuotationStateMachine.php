@@ -3,11 +3,13 @@
 namespace App\Services\Sales;
 
 use App\Enums\Sales\QuotationStatus;
+use Illuminate\Validation\ValidationException;
 
 class QuotationStateMachine
 {
     private static array $transitions = [
-        'draft' => ['pending_approval', 'approved', 'cancelled'],
+        // Every commercial quotation follows maker-checker approval.
+        'draft' => ['pending_approval', 'cancelled'],
         'pending_approval' => ['approved', 'draft', 'cancelled'],
         'approved' => ['sent', 'cancelled'],
         'sent' => ['viewed', 'accepted', 'rejected', 'revision_requested', 'expired', 'cancelled'],
@@ -25,9 +27,13 @@ class QuotationStateMachine
     public function validateTransition(QuotationStatus $current, QuotationStatus $target): void
     {
         if (! $this->canTransition($current, $target)) {
-            throw new \InvalidArgumentException(
-                "Cannot transition from {$current->value} to {$target->value}"
-            );
+            throw ValidationException::withMessages([
+                'status' => sprintf(
+                    'Không thể chuyển báo giá từ %s sang %s.',
+                    $current->label(),
+                    $target->label(),
+                ),
+            ]);
         }
     }
 }

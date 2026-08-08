@@ -16,12 +16,11 @@
     <div class="max-w-4xl mx-auto px-4 py-6 no-print sticky top-0 z-40 bg-white/95 backdrop-blur shadow">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-wrap items-center gap-2">
-                <button onclick="markViewed()" class="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition">
-                    {{ __('sales.public.mark_viewed') }}
-                </button>
-                <button onclick="openOtpModal()" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition">
-                    {{ __('sales.public.confirm_electronic') }}
-                </button>
+                @if($quotation->status->canConfirm())
+                    <button onclick="openOtpModal('accept')" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition">
+                        {{ __('sales.public.confirm_electronic') }}
+                    </button>
+                @endif
                 <button onclick="window.print()" class="px-3 py-2 bg-gray-700 text-white text-sm rounded hover:bg-gray-800 transition">
                     {{ __('sales.public.print_quotation') }}
                 </button>
@@ -52,7 +51,7 @@
             </div>
         @endif
 
-        @if($quotation->status === 'superseded')
+        @if($quotation->status === \App\Enums\Sales\QuotationStatus::Superseded)
             <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4 no-print">
                 {{ __('sales.public.superseded_notice') }}
             </div>
@@ -202,21 +201,9 @@
                 @endif
 
                 @php
-                    $snapshot = $quotation->payment_snapshot ?? [];
-                    $bankAccount = $quotation->bankAccount;
-                    $payment = array_merge(
-                        $bankAccount ? [
-                            'bank_account_id' => $bankAccount->id,
-                            'bank_code' => $bankAccount->bank_code,
-                            'bank_name' => $bankAccount->bank_name,
-                            'account_number' => $bankAccount->account_number,
-                            'account_name' => $bankAccount->account_name,
-                            'branch_name' => $bankAccount->branch_name,
-                            'swift_code' => $bankAccount->swift_code,
-                            'qr_template' => $bankAccount->qr_template,
-                        ] : [],
-                        $snapshot,
-                    );
+                    // Public/PDF payment data must be immutable after approval/send.
+                    // Never merge live BankAccount master data into a historical quote.
+                    $payment = $quotation->payment_snapshot ?? [];
                 @endphp
                 @if(!empty($payment['bank_code']) && !empty($payment['account_number']))
                 <h3 class="font-semibold text-gray-800 mb-3">{{ __('sales.pdf.payment_information') }}</h3>
@@ -277,7 +264,7 @@
                     <div class="text-center border rounded-lg p-6">
                         <h3 class="font-semibold text-gray-800 mb-2">{{ __('sales.public.customer_confirmation') }}</h3>
                         <p class="text-xs text-gray-500 mb-10">{{ __('sales.public.sign_and_stamp') }}</p>
-                        @if($quotation->status === 'accepted' && $quotation->confirmations->isNotEmpty())
+                        @if($quotation->status === \App\Enums\Sales\QuotationStatus::Accepted && $quotation->confirmations->isNotEmpty())
                             @php $confirm = $quotation->confirmations->first(); @endphp
                             <p class="font-medium text-gray-900 mt-8">{{ $confirm->signer_name }}</p>
                             <p class="text-xs text-gray-500">{{ $confirm->signer_position ?? '' }}</p>
@@ -296,12 +283,61 @@
                 @if($quotation->status->canConfirm())
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 no-print">
                     <h3 class="font-semibold text-blue-800 mb-3">{{ __('sales.public.confirm_quotation') }}</h3>
+                    <p class="text-sm text-blue-700 mb-3">
+                        Xác nhận điện tử được bảo vệ bằng OTP gửi tới
+                        <strong>{{ $quotation->authorized_signer_email }}</strong>.
+                    </p>
                     <div class="flex flex-wrap gap-2">
-                        <button onclick="openOtpModal()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{{ __('sales.public.confirm_electronic') }}</button>
-                        <button onclick="showConfirmForm('reject')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">{{ __('action.reject') }}</button>
-                        <button onclick="showConfirmForm('revision')" class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600">{{ __('sales.public.request_revision') }}</button>
+                        <button onclick="openOtpModal('accept')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{{ __('sales.public.confirm_electronic') }}</button>
+                        <button onclick="openOtpModal('reject')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">{{ __('action.reject') }}</button>
+                        <button onclick="openOtpModal('revision')" class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600">{{ __('sales.public.request_revision') }}</button>
                     </div>
                 </div>
+                @endif
+
+                @if($quotation->status === \App\Enums\Sales\QuotationStatus::Accepted)
+                    @php
+                        $paymentStatus = $quotation->payment_status?->value ?? (string) $quotation->payment_status;
+                        $pendingNotice = $quotation->paymentNotices
+                            ->first(fn ($notice) => ($notice->status?->value ?? (string) $notice->status) === 'pending');
+                    @endphp
+                    <div class="border rounded-lg p-4 mb-6 no-print {{ $paymentStatus === 'paid' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200' }}">
+                        <h3 class="font-semibold mb-2 {{ $paymentStatus === 'paid' ? 'text-green-800' : 'text-amber-800' }}">Trạng thái thanh toán</h3>
+                        @if($paymentStatus === 'paid')
+                            <p class="text-sm text-green-700">Thanh toán đã được bộ phận Tài chính xác minh.</p>
+                        @elseif($pendingNotice)
+                            <p class="text-sm text-amber-700">Khách hàng đã thông báo chuyển khoản. Bộ phận Tài chính đang đối soát.</p>
+                            <p class="text-xs text-amber-700 mt-1">Số tiền khai báo: <strong>{{ format_money($pendingNotice->declared_amount) }} {{ $quotation->currency }}</strong></p>
+                        @else
+                            <p class="text-sm text-amber-700 mb-3">Sau khi chuyển khoản theo QR/thông tin phía trên, hãy gửi thông báo để Tài chính đối soát. Thao tác này không tự động xác nhận đã thanh toán.</p>
+                            <form method="POST" action="{{ route('sales.quotation.public.notify-payment', ['quotationCode' => $quotation->quotation_code, 'token' => $quotation->public_token]) }}" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                @csrf
+                                <div>
+                                    <label class="block text-sm font-medium">Người chuyển khoản</label>
+                                    <input name="payer_name" value="{{ old('payer_name', $quotation->authorized_signer_name) }}" required class="w-full border rounded px-3 py-2 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium">Email</label>
+                                    <input name="payer_email" type="email" value="{{ $quotation->authorized_signer_email }}" readonly required class="w-full border rounded px-3 py-2 text-sm bg-gray-100">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium">Số tiền đã chuyển</label>
+                                    <input name="declared_amount" type="number" value="{{ (float) $quotation->grand_total }}" readonly required class="w-full border rounded px-3 py-2 text-sm bg-gray-100">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium">Mã giao dịch / tham chiếu (nếu có)</label>
+                                    <input name="transfer_reference" value="{{ old('transfer_reference') }}" class="w-full border rounded px-3 py-2 text-sm">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium">Ghi chú</label>
+                                    <textarea name="note" rows="2" class="w-full border rounded px-3 py-2 text-sm">{{ old('note') }}</textarea>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <button type="submit" class="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700">Thông báo đã chuyển khoản</button>
+                                </div>
+                            </form>
+                        @endif
+                    </div>
                 @endif
 
                 <div class="text-xs text-gray-400 border-t pt-4">
@@ -312,37 +348,26 @@
         </div>
     </div>
 
-    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center hidden no-print z-50">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 class="text-lg font-bold mb-4" id="modalTitle">{{ __('sales.public.confirm') }}</h3>
-            <form id="confirmForm" method="POST">
-                @csrf
-                <input type="hidden" name="action" id="confirmAction">
-                <div class="space-y-3">
-                    <div><label class="block text-sm font-medium">{{ __('field.full_name') }}</label><input name="signer_name" required class="w-full border rounded px-3 py-2 text-sm"></div>
-                    <div><label class="block text-sm font-medium">{{ __('field.email') }}</label><input name="signer_email" type="email" required class="w-full border rounded px-3 py-2 text-sm"></div>
-                    <div id="reasonField" class="hidden"><label class="block text-sm font-medium">{{ __('field.reason') }}</label><textarea name="reason" rows="3" class="w-full border rounded px-3 py-2 text-sm"></textarea></div>
-                </div>
-                <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" onclick="hideConfirmForm()" class="px-4 py-2 border rounded text-sm">{{ __('action.cancel') }}</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded text-sm">{{ __('action.send') }}</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <div id="otpModal" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center hidden no-print z-50">
         <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 class="text-lg font-bold mb-1">{{ __('sales.public.confirm_electronic') }}</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ __('sales.public.otp_description') }}</p>
+            <h3 class="text-lg font-bold mb-1" id="otpModalTitle">{{ __('sales.public.confirm_electronic') }}</h3>
+            <p class="text-sm text-gray-500 mb-4">Mã OTP sẽ được gửi tới email đã được Sales chỉ định trước khi gửi báo giá.</p>
             <form id="otpForm" onsubmit="return false">
                 @csrf
                 <div class="space-y-3">
                     <div id="step1" class="space-y-3">
-                        <div><label class="block text-sm font-medium">{{ __('field.full_name') }}</label><input id="otpSignerName" type="text" required class="w-full border rounded px-3 py-2 text-sm"></div>
-                        <div><label class="block text-sm font-medium">{{ __('field.email') }}</label><input id="otpEmail" type="email" required class="w-full border rounded px-3 py-2 text-sm"></div>
-                        <div><label class="block text-sm font-medium">{{ __('field.position') }}</label><input id="otpPosition" class="w-full border rounded px-3 py-2 text-sm"></div>
-                        <div><label class="block text-sm font-medium">{{ __('field.phone') }}</label><input id="otpPhone" class="w-full border rounded px-3 py-2 text-sm"></div>
+                        <div><label class="block text-sm font-medium">{{ __('field.full_name') }}</label><input id="otpSignerName" type="text" value="{{ $quotation->authorized_signer_name }}" required class="w-full border rounded px-3 py-2 text-sm"></div>
+                        <div><label class="block text-sm font-medium">{{ __('field.email') }}</label><input id="otpEmail" type="email" value="{{ $quotation->authorized_signer_email }}" readonly required class="w-full border rounded px-3 py-2 text-sm bg-gray-100"></div>
+                        <div id="otpExtraFields">
+                            <div id="acceptFields" class="space-y-3">
+                                <div><label class="block text-sm font-medium">{{ __('field.position') }}</label><input id="otpPosition" class="w-full border rounded px-3 py-2 text-sm"></div>
+                                <div><label class="block text-sm font-medium">{{ __('field.phone') }}</label><input id="otpPhone" class="w-full border rounded px-3 py-2 text-sm"></div>
+                            </div>
+                            <div id="otpReasonField" class="hidden mt-3">
+                                <label class="block text-sm font-medium">{{ __('field.reason') }}</label>
+                                <textarea id="otpReason" rows="3" class="w-full border rounded px-3 py-2 text-sm"></textarea>
+                            </div>
+                        </div>
                         <button onclick="sendOtp()" id="sendOtpBtn" class="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm">{{ __('sales.public.otp_send') }}</button>
                     </div>
                     <div id="step2" class="hidden space-y-3">
@@ -363,9 +388,8 @@
     <div id="toast" class="fixed bottom-4 right-4 bg-gray-900 text-white text-sm px-4 py-3 rounded shadow-lg hidden z-50"></div>
 
     <script>
-        var quotationCode = '{{ $quotation->quotation_code }}';
-        var publicToken = '{{ $quotation->public_token }}';
         var publicUrl = '{{ route("sales.quotation.public.show", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
+        var otpAction = 'accept';
         var otpVerifiedEmail = null;
 
         function showToast(message) {
@@ -381,25 +405,9 @@
             return meta ? meta.getAttribute('content') : '';
         }
 
-        function markViewed() {
-            fetch('{{ route("sales.quotation.public.mark-viewed", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': getCsrf(), 'Accept': 'application/json' },
-            }).then(function (res) {
-                if (res.ok) {
-                    showToast('{{ __("sales.public.marked_viewed") }}');
-                    location.reload();
-                } else {
-                    showToast('{{ __("sales.public.error_occurred") }}');
-                }
-            });
-        }
-
         function copyText(text) {
             if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(function () {
-                    showToast('{{ __("sales.public.copied") }}');
-                });
+                navigator.clipboard.writeText(text).then(function () { showToast('{{ __("sales.public.copied") }}'); });
             } else {
                 var ta = document.createElement('textarea');
                 ta.value = text;
@@ -411,43 +419,24 @@
             }
         }
 
-        function copyLink() {
-            copyText(publicUrl);
-        }
+        function copyLink() { copyText(publicUrl); }
 
         function shareLink() {
             if (navigator.share) {
-                navigator.share({
-                    title: document.title,
-                    url: publicUrl,
-                }).catch(function () {});
-            } else {
-                copyText(publicUrl);
-            }
+                navigator.share({ title: document.title, url: publicUrl }).catch(function () {});
+            } else { copyText(publicUrl); }
         }
 
-        function showConfirmForm(action) {
-            var form = document.getElementById('confirmForm');
-            var title = document.getElementById('modalTitle');
-            var reasonField = document.getElementById('reasonField');
-
-            form.action = action === 'reject'
-                ? '{{ route("sales.quotation.public.reject", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}'
-                : '{{ route("sales.quotation.public.request-revision", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
-
-            title.textContent = action === 'reject' ? '{{ __("sales.public.reject_quotation") }}' : '{{ __("sales.public.request_revision") }}';
-            reasonField.classList.toggle('hidden', action === 'reject');
-            document.getElementById('confirmModal').classList.add('flex');
-            document.getElementById('confirmModal').classList.remove('hidden');
-        }
-
-        function hideConfirmForm() {
-            document.getElementById('confirmModal').classList.remove('flex');
-            document.getElementById('confirmModal').classList.add('hidden');
-        }
-
-        function openOtpModal() {
+        function openOtpModal(action) {
+            otpAction = action || 'accept';
             resetOtpForm();
+            var title = document.getElementById('otpModalTitle');
+            title.textContent = otpAction === 'accept'
+                ? '{{ __("sales.public.confirm_electronic") }}'
+                : (otpAction === 'reject' ? '{{ __("sales.public.reject_quotation") }}' : '{{ __("sales.public.request_revision") }}');
+            document.getElementById('acceptFields').classList.toggle('hidden', otpAction !== 'accept');
+            document.getElementById('otpReasonField').classList.toggle('hidden', otpAction === 'accept');
+            document.getElementById('otpReason').required = otpAction !== 'accept';
             document.getElementById('otpModal').classList.add('flex');
             document.getElementById('otpModal').classList.remove('hidden');
         }
@@ -462,6 +451,7 @@
             document.getElementById('step1').classList.remove('hidden');
             document.getElementById('step2').classList.add('hidden');
             document.getElementById('otpError').classList.add('hidden');
+            document.getElementById('otpCode').value = '';
             document.getElementById('sendOtpBtn').disabled = false;
             document.getElementById('verifyOtpBtn').disabled = false;
         }
@@ -474,14 +464,15 @@
 
         function sendOtp() {
             var email = document.getElementById('otpEmail').value.trim();
-            if (!email || !document.getElementById('otpSignerName').value.trim()) {
+            var name = document.getElementById('otpSignerName').value.trim();
+            var reason = document.getElementById('otpReason').value.trim();
+            if (!email || !name || (otpAction !== 'accept' && !reason)) {
                 showOtpError('{{ __("sales.public.otp_fill_form") }}');
                 return;
             }
 
             var btn = document.getElementById('sendOtpBtn');
             btn.disabled = true;
-
             fetch('{{ route("sales.quotation.public.send-otp", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': getCsrf(), 'Accept': 'application/json', 'Content-Type': 'application/json' },
@@ -495,7 +486,8 @@
                     document.getElementById('step2').classList.remove('hidden');
                 } else {
                     btn.disabled = false;
-                    showOtpError(result.data.message || '{{ __("sales.public.error_occurred") }}');
+                    var errors = result.data.errors || {};
+                    showOtpError(result.data.message || (errors.otp ? errors.otp[0] : '{{ __("sales.public.error_occurred") }}'));
                 }
             }).catch(function () {
                 btn.disabled = false;
@@ -506,15 +498,10 @@
         function verifyOtp() {
             var email = document.getElementById('otpEmail').value.trim();
             var otp = document.getElementById('otpCode').value.trim();
-
-            if (!/^\d{6}$/.test(otp)) {
-                showOtpError('{{ __("sales.public.otp_invalid_format") }}');
-                return;
-            }
+            if (!/^\d{6}$/.test(otp)) { showOtpError('{{ __("sales.public.otp_invalid_format") }}'); return; }
 
             var btn = document.getElementById('verifyOtpBtn');
             btn.disabled = true;
-
             fetch('{{ route("sales.quotation.public.verify-otp", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': getCsrf(), 'Accept': 'application/json', 'Content-Type': 'application/json' },
@@ -522,38 +509,41 @@
             }).then(function (res) {
                 return res.json().then(function (data) { return { ok: res.ok, data: data }; });
             }).then(function (result) {
-                if (result.ok) {
-                    otpVerifiedEmail = email;
-                    submitElectronicAccept();
-                } else {
+                if (result.ok) { otpVerifiedEmail = email; submitElectronicAction(); }
+                else {
                     btn.disabled = false;
-                    showOtpError(result.data.message || '{{ __("sales.public.otp_invalid") }}');
+                    var errors = result.data.errors || {};
+                    showOtpError(result.data.message || (errors.otp ? errors.otp[0] : '{{ __("sales.public.otp_invalid") }}'));
                 }
-            }).catch(function () {
-                btn.disabled = false;
-                showOtpError('{{ __("sales.public.error_occurred") }}');
-            });
+            }).catch(function () { btn.disabled = false; showOtpError('{{ __("sales.public.error_occurred") }}'); });
         }
 
-        function submitElectronicAccept() {
-            var name = document.getElementById('otpSignerName').value.trim();
-            var email = document.getElementById('otpEmail').value.trim();
-            var position = document.getElementById('otpPosition').value.trim();
-            var phone = document.getElementById('otpPhone').value.trim();
-
+        function submitElectronicAction() {
+            var routeMap = {
+                accept: '{{ route("sales.quotation.public.accept", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}',
+                reject: '{{ route("sales.quotation.public.reject", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}',
+                revision: '{{ route("sales.quotation.public.request-revision", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}'
+            };
             var form = document.createElement('form');
             form.method = 'POST';
-            form.action = '{{ route("sales.quotation.public.accept", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
+            form.action = routeMap[otpAction];
             form.style.display = 'none';
-
-            [['signer_name', name], ['signer_email', email], ['signer_position', position], ['signer_phone', phone], ['otp_email', otpVerifiedEmail], ['_token', getCsrf()]].forEach(function (pair) {
+            var fields = {
+                signer_name: document.getElementById('otpSignerName').value.trim(),
+                signer_email: document.getElementById('otpEmail').value.trim(),
+                otp_email: otpVerifiedEmail,
+                _token: getCsrf()
+            };
+            if (otpAction === 'accept') {
+                fields.signer_position = document.getElementById('otpPosition').value.trim();
+                fields.signer_phone = document.getElementById('otpPhone').value.trim();
+            } else {
+                fields.reason = document.getElementById('otpReason').value.trim();
+            }
+            Object.keys(fields).forEach(function (name) {
                 var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = pair[0];
-                input.value = pair[1] || '';
-                form.appendChild(input);
+                input.type = 'hidden'; input.name = name; input.value = fields[name] || ''; form.appendChild(input);
             });
-
             document.body.appendChild(form);
             form.submit();
         }

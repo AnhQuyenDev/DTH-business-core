@@ -4,6 +4,7 @@ namespace Tests\Unit\Sales;
 
 use App\Enums\Sales\QuotationStatus;
 use App\Services\Sales\QuotationStateMachine;
+use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\TestCase;
 
 class QuotationStateMachineTest extends TestCase
@@ -23,9 +24,9 @@ class QuotationStateMachineTest extends TestCase
         );
     }
 
-    public function test_draft_can_transition_to_approved(): void
+    public function test_draft_cannot_bypass_approval(): void
     {
-        $this->assertTrue(
+        $this->assertFalse(
             $this->stateMachine->canTransition(QuotationStatus::Draft, QuotationStatus::Approved)
         );
     }
@@ -65,6 +66,18 @@ class QuotationStateMachineTest extends TestCase
         );
     }
 
+
+
+    public function test_revision_requested_can_be_superseded_by_new_revision(): void
+    {
+        $this->assertTrue(
+            $this->stateMachine->canTransition(
+                QuotationStatus::RevisionRequested,
+                QuotationStatus::Superseded,
+            )
+        );
+    }
+
     public function test_accepted_is_terminal(): void
     {
         $this->assertTrue(QuotationStatus::Accepted->isTerminal());
@@ -97,7 +110,7 @@ class QuotationStateMachineTest extends TestCase
 
     public function test_invalid_transition_throws(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
         $this->stateMachine->validateTransition(QuotationStatus::Draft, QuotationStatus::Sent);
     }
 

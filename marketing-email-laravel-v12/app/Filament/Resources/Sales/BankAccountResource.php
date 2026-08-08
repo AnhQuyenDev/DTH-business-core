@@ -5,13 +5,17 @@ namespace App\Filament\Resources\Sales;
 use App\Filament\Resources\Sales\BankAccountResource\Pages;
 use App\Models\Sales\BankAccount;
 use App\Models\VnBank;
+use App\Services\Sales\VietQrBankAccountLookupService;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -86,8 +90,46 @@ class BankAccountResource extends Resource
                     }),
                 Hidden::make('bank_name'),
                 Hidden::make('swift_code'),
-                TextInput::make('account_number')->label(__('field.account_number'))->required()->maxLength(50),
-                TextInput::make('account_name')->label(__('field.account_name'))->required()->maxLength(255),
+                TextInput::make('account_number')
+                    ->label(__('field.account_number'))
+                    ->required()
+                    ->regex('/^\d{6,19}$/')
+                    ->maxLength(19)
+                    ->helperText('Nhập 6-19 chữ số. Có thể tra cứu tên chủ tài khoản bằng VietQR.')
+                    ->suffixAction(
+                        Action::make('lookup_account_name')
+                            ->label('Tra cứu')
+                            ->icon('heroicon-o-magnifying-glass')
+                            ->action(function (Get $get, Set $set): void {
+                                $bankCode = (string) $get('bank_code');
+                                $accountNumber = (string) $get('account_number');
+
+                                if (blank($bankCode) || blank($accountNumber)) {
+                                    Notification::make()
+                                        ->warning()
+                                        ->title('Chọn ngân hàng và nhập số tài khoản trước.')
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $name = app(VietQrBankAccountLookupService::class)
+                                    ->lookup($bankCode, $accountNumber);
+
+                                $set('account_name', $name);
+
+                                Notification::make()
+                                    ->success()
+                                    ->title('Đã xác thực tên chủ tài khoản')
+                                    ->body($name)
+                                    ->send();
+                            })
+                    ),
+                TextInput::make('account_name')
+                    ->label(__('field.account_name'))
+                    ->required()
+                    ->maxLength(255)
+                    ->helperText('Nên dùng kết quả tra cứu VietQR để tránh sai tên chủ tài khoản.'),
                 Select::make('status')
                     ->label(__('field.status'))
                     ->options($statusOptions)

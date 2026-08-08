@@ -50,7 +50,6 @@ class SyncVnBanks extends Command
         ['code' => 'VRB', 'short_name' => 'VRB', 'name' => 'Ngân hàng Liên doanh Việt - Nga', 'swift_code' => 'VRTBVNVX'],
         ['code' => 'NVB', 'short_name' => 'NamVietBank', 'name' => 'Ngân hàng TMCP Nam Việt', 'swift_code' => 'NVBVVNVX'],
         ['code' => 'SGB', 'short_name' => 'Saigonbank', 'name' => 'Ngân hàng TMCP Sài Gòn Công Thương', 'swift_code' => 'SGCBVNVX'],
-        ['code' => 'VBA', 'short_name' => 'Agribank', 'name' => 'Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam', 'swift_code' => 'VBAAVNVX'],
     ];
 
     public function handle(): int
@@ -90,15 +89,26 @@ class SyncVnBanks extends Command
             }
 
             return collect($response->json('data', []))
-                ->filter(fn (array $bank) => filled($bank['code'] ?? null) && filled($bank['short_name'] ?? null))
-                ->map(fn (array $bank) => [
-                    'code' => (string) $bank['code'],
-                    'bin' => isset($bank['bin']) ? (string) $bank['bin'] : null,
-                    'short_name' => (string) $bank['short_name'],
-                    'name' => (string) ($bank['name'] ?? $bank['short_name']),
-                    'swift_code' => $bank['swift_code'] ?? null,
-                    'logo' => $bank['logo'] ?? null,
-                ])
+                ->filter(fn (array $bank) =>
+                    filled($bank['code'] ?? null)
+                    && filled($bank['shortName'] ?? $bank['short_name'] ?? null)
+                )
+                ->map(function (array $bank): array {
+                    $shortName = (string) (
+                        $bank['shortName']
+                        ?? $bank['short_name']
+                        ?? $bank['code']
+                    );
+
+                    return [
+                        'code' => (string) $bank['code'],
+                        'bin' => isset($bank['bin']) ? (string) $bank['bin'] : null,
+                        'short_name' => $shortName,
+                        'name' => (string) ($bank['name'] ?? $shortName),
+                        'swift_code' => $bank['swift_code'] ?? null,
+                        'logo' => $bank['logo'] ?? null,
+                    ];
+                })
                 ->values()
                 ->all();
         } catch (\Throwable) {

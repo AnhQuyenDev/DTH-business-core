@@ -10,12 +10,10 @@ class QuotationPolicy
 {
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->isAdmin()) {
-            return true;
-        }
-
+        // Admin/Executive/Viewer may audit quotations, but operational
+        // actions stay with Sales/Finance so maker-checker is preserved.
         if (
-            $user->canReadAcrossBusiness()
+            ($user->isAdmin() || $user->canReadAcrossBusiness())
             && in_array($ability, ['viewAny', 'view'], true)
         ) {
             return true;
@@ -47,7 +45,9 @@ class QuotationPolicy
 
     public function create(User $user): bool
     {
-        return $user->isSalesStaff();
+        // Maker: regular Sales staff. A department manager is the checker.
+        return $user->isSalesStaff()
+            && ! $user->isSalesManager();
     }
 
     public function update(User $user, Quotation $quotation): bool
@@ -70,13 +70,20 @@ class QuotationPolicy
 
     public function approve(User $user, Quotation $quotation): bool
     {
-        return $user->isSalesManager();
+        return $user->isSalesManager()
+            && $quotation->created_by !== $user->id;
     }
 
     public function cancel(User $user, Quotation $quotation): bool
     {
         return $user->isSalesManager()
             && ! $quotation->status->isTerminal();
+    }
+
+    public function revise(User $user, Quotation $quotation): bool
+    {
+        return $quotation->status->value === 'revision_requested'
+            && $this->isSalesHandler($user, $quotation);
     }
 
     public function verifyPayment(
@@ -94,7 +101,7 @@ class QuotationPolicy
             return true;
         }
 
-        if (! $user->hasRole(UserRole::SalesStaff)) {
+        if (! $user->isSalesStaff()) {
             return false;
         }
 

@@ -57,15 +57,12 @@ class QrPaymentService
         );
     }
 
-    public function buildTransferContent(string $quotationCode, string $customerName): string
+    public function buildTransferContent(string $quotationCode, string $customerName = ''): string
     {
-        $cleanName = $this->sanitizeContent($customerName);
-        $maxLen = 50 - strlen($quotationCode) - 1;
-        if (mb_strlen($cleanName) > $maxLen) {
-            $cleanName = mb_substr($cleanName, 0, $maxLen);
-        }
-
-        return "{$quotationCode} {$cleanName}";
+        // The quotation code is the stable reconciliation key. Keep the bank
+        // transfer description short enough for VietQR and do not depend on
+        // mutable customer names.
+        return $this->sanitizeAddInfo($quotationCode);
     }
 
     /**
@@ -74,8 +71,8 @@ class QrPaymentService
      * public image endpoint.
      *
      * REQUIRES the bank's BIN (acqId) to be resolved from the synced bank list.
-     * Credentials (x-client-id / x-api-key) are optional; the API currently
-     * accepts unauthenticated requests.
+     * The authenticated v2 API requires x-client-id and x-api-key. When
+     * credentials are not configured callers fall back to the public QuickLink.
      */
     private function generateDataUri(
         string $bankCode,
@@ -118,6 +115,10 @@ class QrPaymentService
             $clientId = $settings->vietqr_client_id;
             $apiKey = $settings->vietqr_api_key;
 
+            if (blank($clientId) || blank($apiKey)) {
+                return null;
+            }
+
             $payload = array_merge([
                 'accountNo' => $accountNo,
                 'acqId' => $bin,
@@ -128,13 +129,11 @@ class QrPaymentService
                 'accountName' => $accountName ? $this->sanitizeAccountName($accountName) : null,
             ]));
 
-            $headers = ['Content-Type' => 'application/json'];
-            if (filled($clientId)) {
-                $headers['x-client-id'] = $clientId;
-            }
-            if (filled($apiKey)) {
-                $headers['x-api-key'] = $apiKey;
-            }
+            $headers = [
+                'Content-Type' => 'application/json',
+                'x-client-id' => $clientId,
+                'x-api-key' => $apiKey,
+            ];
 
             try {
                 $response = Http::timeout(8)

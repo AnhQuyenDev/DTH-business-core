@@ -272,9 +272,11 @@ class User extends Authenticatable implements FilamentUser
 
     private function matchesLegacyBusinessAlias(UserRole $role): bool
     {
-        // Giữ tương thích hành vi Admin hiện tại của hệ thống.
-        if ($this->isAdmin()) {
-            return true;
+        // System Admin is infrastructure/configuration authority, not an
+        // implicit business-role holder. Business workflow permissions must
+        // come from the employee's Department + Position authority.
+        if ($this->isAdmin() || $this->canReadAcrossBusiness()) {
+            return false;
         }
 
         if (! $this->isSystemUser()) {

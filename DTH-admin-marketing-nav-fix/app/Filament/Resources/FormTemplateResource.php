@@ -12,6 +12,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
@@ -59,17 +60,17 @@ class FormTemplateResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.view-landing-form-templates') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.manage-landing-form-templates') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.manage-landing-form-templates') ?? false;
     }
 
     public static function form(Form $form): Form
@@ -203,11 +204,21 @@ class FormTemplateResource extends Resource
                                     $set('is_required', true);
                                 }),
                             TextInput::make('validation_rules')->label(__('field.validation_rules'))->maxLength(255),
+                            Toggle::make('tag_from_value')->label(__('field.auto_tag'))->default(false),
                             TextInput::make('sort_order')->label(__('field.sort_order'))->numeric()->default(0),
                             TextInput::make('position')->label(__('field.position'))->numeric()->default(0),
                         ])
                         ->columns(2)
                         ->columnSpanFull(),
+                ]),
+            Section::make(__('section.automation'))
+                ->columns(1)
+                ->schema([
+                    TagsInput::make('auto_tag_names')->label(__('field.auto_tags')),
+                    TagsInput::make('auto_list_names')->label(__('field.auto_lists')),
+                    Toggle::make('auto_create_tags')->label(__('field.auto_create_tag'))->default(false),
+                    Toggle::make('auto_create_lists')->label(__('field.auto_create_list'))->default(false),
+                    Toggle::make('auto_create_segment')->label(__('field.auto_create_segment'))->default(false),
                 ]),
             Section::make(__('section.custom_html'))
                 ->collapsible()

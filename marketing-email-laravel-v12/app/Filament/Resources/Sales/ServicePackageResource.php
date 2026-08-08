@@ -78,13 +78,36 @@ class ServicePackageResource extends Resource
                     ->options(AudienceType::options())
                     ->default('both')
                     ->required(),
-                TextInput::make('billing_period')->label(__('field.billing_period'))->numeric()->nullable(),
+                TextInput::make('billing_period')->label(__('field.billing_period'))->numeric()->minValue(1)->nullable(),
                 Select::make('billing_period_unit')
                     ->label(__('field.billing_period_unit'))
                     ->options(BillingPeriodUnit::options())
                     ->nullable(),
-                TextInput::make('unit')->label(__('field.unit'))->maxLength(50)->default('tháng'),
-                TextInput::make('default_quantity')->label(__('field.default_quantity'))->numeric()->default(1),
+                TextInput::make('unit')
+                    ->label(__('field.unit'))
+                    ->required()
+                    ->maxLength(50)
+                    ->default('gói')
+                    ->datalist([
+                        'gói',
+                        'tháng',
+                        'năm',
+                        'lần',
+                        'tài khoản',
+                        'người dùng',
+                        'máy chủ',
+                        'tên miền',
+                        'GB',
+                        'TB',
+                        'license',
+                    ])
+                    ->helperText('Đây là đơn vị số lượng của dịch vụ (ví dụ: gói, tháng, lần), không phải đơn vị tiền tệ như VND/USD.'),
+                TextInput::make('default_quantity')
+                    ->label(__('field.default_quantity'))
+                    ->numeric()
+                    ->minValue(1)
+                    ->default(1)
+                    ->required(),
                 Select::make('status')
                     ->label(__('field.status'))
                     ->options(PackageStatus::options())

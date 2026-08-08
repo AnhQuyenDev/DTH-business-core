@@ -47,9 +47,22 @@ class Department extends Model
 
     public function function(): ?DepartmentFunction
     {
-        return $this->function_key
-            ? DepartmentFunction::tryFrom($this->function_key)
-            : null;
+        if ($this->function_key) {
+            return DepartmentFunction::tryFrom($this->function_key);
+        }
+
+        // Compatibility guard for standard departments created by old code,
+        // tests or imports before function_key became mandatory in the UI.
+        // Custom departments still need an explicit function_key.
+        return match (strtolower((string) $this->code)) {
+            'admin' => DepartmentFunction::Admin,
+            'marketing' => DepartmentFunction::Marketing,
+            'customer_service', 'customer-service', 'cskh' => DepartmentFunction::CustomerService,
+            'sales', 'kinh_doanh' => DepartmentFunction::Sales,
+            'finance', 'financial', 'accounting', 'tai_chinh' => DepartmentFunction::Finance,
+            'technical', 'ky_thuat' => DepartmentFunction::Technical,
+            default => null,
+        };
     }
 
     public static function colorOptions(): array

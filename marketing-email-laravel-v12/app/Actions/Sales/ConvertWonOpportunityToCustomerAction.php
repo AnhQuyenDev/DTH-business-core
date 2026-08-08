@@ -18,6 +18,7 @@ use App\Enums\Sales\PaymentStatus;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\CustomerInteraction;
+use App\Models\Crm\Staff;
 use App\Models\Sales\Opportunity;
 use App\Models\Sales\Quotation;
 use App\Models\User;
@@ -225,7 +226,9 @@ final class ConvertWonOpportunityToCustomerAction
             'normalized_phone' => filled($quotation->party_phone)
                 ? preg_replace('/\D+/', '', $quotation->party_phone)
                 : null,
-            'acquisition_source' => 'paid_opportunity',
+            'acquisition_source' => data_get($opportunity->lead?->metadata, 'attribution.utm_source')
+                ?: $opportunity->lead?->source
+                ?: 'opportunity',
             'consent_status' => CustomerConsentStatus::Pending->value,
             'status' => CustomerStatus::Active->value,
             'lifecycle_stage' => CustomerLifecycleStage::NewCustomer->value,
@@ -259,6 +262,10 @@ final class ConvertWonOpportunityToCustomerAction
                 'quotation_id' => $quotation->id,
                 'opportunity_id' => $opportunity->id,
                 'verified_by_user_id' => $verifiedBy->id,
+                'conversion_source' => 'paid_opportunity',
+                'attribution' => data_get($opportunity->lead?->metadata, 'attribution', []),
+                'landing_page_id' => data_get($opportunity->lead?->metadata, 'landing_page_id'),
+                'marketing_campaign_id' => data_get($opportunity->lead?->metadata, 'marketing_campaign_id'),
             ],
         ]);
     }
@@ -290,6 +297,9 @@ final class ConvertWonOpportunityToCustomerAction
                     'latest_paid_quotation_id' => $quotation->id,
                     'latest_paid_opportunity_id' => $opportunity->id,
                     'latest_verified_by_user_id' => $verifiedBy->id,
+                    'latest_conversion_source' => 'paid_opportunity',
+                    'attribution' => ($customer->metadata['attribution'] ?? null)
+                        ?: data_get($opportunity->lead?->metadata, 'attribution', []),
                 ],
             ),
         ]);
@@ -371,16 +381,49 @@ final class ConvertWonOpportunityToCustomerAction
             return $existing;
         }
 
-        $staffId = $opportunity->company?->account_owner_staff_id
-            ?? $opportunity->assigned_staff_id;
+        $staff = null;
 
-        if ($staffId === null) {
+        if ($opportunity->company?->account_owner_staff_id !== null) {
+            $candidate = Staff::query()->find(
+                $opportunity->company->account_owner_staff_id
+            );
+
+            if ($candidate?->canReceiveNewCustomers()) {
+                $staff = $candidate;
+            }
+        }
+
+        if ($staff === null) {
+            $staff = Staff::query()
+                ->eligibleForCustomerOwnership()
+                ->withCount([
+                    'assignments as active_owner_count' => fn ($query) => $query
+                        ->where('assignment_type', CustomerAssignmentType::Owner->value)
+                        ->where('status', CustomerAssignmentStatus::Active->value),
+                ])
+                ->orderBy('active_owner_count')
+                ->orderBy('id')
+                ->get()
+                ->first(fn (Staff $candidate): bool => $candidate->canReceiveNewCustomers());
+        }
+
+        if ($staff === null) {
+            $this->auditLog->log(
+                'customer.assignment_pending',
+                $customer,
+                [],
+                [
+                    'reason' => 'no_eligible_customer_service_owner',
+                    'opportunity_id' => $opportunity->id,
+                ],
+            );
+
             return null;
         }
 
         return CustomerAssignment::query()->create([
             'customer_id' => $customer->id,
-            'staff_id' => $staffId,
+            'staff_id' => $staff->id,
             'assignment_type' => CustomerAssignmentType::Owner->value,
             'status' => CustomerAssignmentStatus::Active->value,
             'starts_at' => now(),
@@ -403,8 +446,7 @@ final class ConvertWonOpportunityToCustomerAction
                 'subject' => 'Chuyển thành khách hàng từ thanh toán',
             ],
             [
-                'staff_id' => $assignment?->staff_id
-                    ?? $opportunity->assigned_staff_id,
+                'staff_id' => $assignment?->staff_id,
                 'customer_assignment_id' => $assignment?->id,
                 'content' => sprintf(
                     'Thanh toán báo giá %s của cơ hội %s đã được xác nhận.',

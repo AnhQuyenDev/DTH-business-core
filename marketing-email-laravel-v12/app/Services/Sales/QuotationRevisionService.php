@@ -7,6 +7,7 @@ use App\Models\Sales\Quotation;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class QuotationRevisionService
 {
@@ -19,6 +20,12 @@ class QuotationRevisionService
 
     public function createRevision(Quotation $quotation, User $user, array $updatedItems = [], array $updatedParams = []): Quotation
     {
+        if (! $user->can('revise', $quotation)) {
+            throw ValidationException::withMessages([
+                'quotation' => 'Bạn không có quyền tạo phiên bản mới cho báo giá này.',
+            ]);
+        }
+
         $this->validateRevision($quotation);
 
         return DB::transaction(function () use ($quotation, $user, $updatedItems, $updatedParams) {
@@ -53,6 +60,13 @@ class QuotationRevisionService
                 'company_snapshot' => $quotation->company_snapshot,
                 'payment_snapshot' => $updatedParams['payment_snapshot'] ?? $quotation->payment_snapshot,
                 'terms_snapshot' => $updatedParams['terms_snapshot'] ?? $quotation->terms_snapshot,
+                'metadata' => array_merge(
+                    $quotation->metadata ?? [],
+                    [
+                        'revision_of_quotation_id' => $quotation->id,
+                        'revision_of_quotation_code' => $quotation->quotation_code,
+                    ],
+                ),
                 'public_token' => $this->codeGenerator->generatePublicToken(),
                 'created_by' => $user->id,
             ]);
@@ -106,12 +120,16 @@ class QuotationRevisionService
 
     private function validateRevision(Quotation $quotation): void
     {
-        if ($quotation->status === QuotationStatus::Draft) {
-            return;
+        if ($quotation->status !== QuotationStatus::RevisionRequested) {
+            throw ValidationException::withMessages([
+                'quotation' => 'Chỉ tạo phiên bản mới khi khách hàng đã yêu cầu chỉnh sửa.',
+            ]);
         }
-        if (! $this->stateMachine->canTransition($quotation->status, QuotationStatus::Superseded)) {
-            throw new \InvalidArgumentException('This quotation cannot be revised.');
-        }
+
+        $this->stateMachine->validateTransition(
+            $quotation->status,
+            QuotationStatus::Superseded,
+        );
     }
 
     private function buildItemData(array $items): array

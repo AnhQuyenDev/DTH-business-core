@@ -166,6 +166,11 @@ class Quotation extends Model
         return $this->hasMany(QuotationApproval::class);
     }
 
+    public function paymentNotices(): HasMany
+    {
+        return $this->hasMany(QuotationPaymentNotice::class);
+    }
+
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_quotation_id');
@@ -222,6 +227,27 @@ class Quotation extends Model
             data_get($this->customer_snapshot, 'customer_type')
             ?? ($this->company_id ? 'business' : 'personal')
         );
+    }
+
+    public function getPartyContactNameAttribute(): string
+    {
+        return (string) (
+            data_get($this->customer_snapshot, 'contact_name')
+            ?? $this->contact?->full_name
+            ?? $this->party_display_name
+        );
+    }
+
+    public function getAuthorizedSignerEmailAttribute(): ?string
+    {
+        return data_get($this->metadata, 'authorized_signer.email')
+            ?? $this->party_email;
+    }
+
+    public function getAuthorizedSignerNameAttribute(): ?string
+    {
+        return data_get($this->metadata, 'authorized_signer.name')
+            ?? $this->party_contact_name;
     }
 
     public function isOpportunityQuotation(): bool

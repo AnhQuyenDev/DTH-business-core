@@ -18,6 +18,13 @@ class CompanySetting extends Model
         'vietqr_api_key',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'vietqr_api_key' => 'encrypted',
+        ];
+    }
+
     public static function firstOrCreateDefault(): self
     {
         return static::query()->firstOrCreate(['id' => 1], [

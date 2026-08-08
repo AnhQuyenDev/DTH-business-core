@@ -676,12 +676,6 @@
                                     </x-filament::input.wrapper>
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-white">{{ __('field.interaction_at') }}</label>
-                                    <x-filament::input.wrapper>
-                                        <x-filament::input type="datetime-local" wire:model="callAt" />
-                                    </x-filament::input.wrapper>
-                                </div>
-                                <div>
                                     <label class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-white">{{ __('field.next_follow_up') }}</label>
                                     <x-filament::input.wrapper>
                                         <x-filament::input type="datetime-local" wire:model="callNextFollowUp" />

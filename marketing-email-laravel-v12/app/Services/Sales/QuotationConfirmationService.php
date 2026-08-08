@@ -7,6 +7,7 @@ use App\Enums\Sales\QuotationStatus;
 use App\Models\Sales\Quotation;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class QuotationConfirmationService
 {
@@ -17,12 +18,22 @@ class QuotationConfirmationService
         private readonly QuotationOpportunitySyncService $opportunitySync,
     ) {}
 
-    public function accept(Quotation $quotation, array $data, ?string $otpVerifiedEmail = null): Quotation
-    {
+    public function accept(
+        Quotation $quotation,
+        array $data,
+        ?string $otpVerifiedEmail = null,
+    ): Quotation {
         $this->validateConfirmation($quotation);
 
-        return DB::transaction(function () use ($quotation, $data, $otpVerifiedEmail) {
-            $this->stateMachine->validateTransition($quotation->status, QuotationStatus::Accepted);
+        return DB::transaction(function () use (
+            $quotation,
+            $data,
+            $otpVerifiedEmail,
+        ): Quotation {
+            $this->stateMachine->validateTransition(
+                $quotation->status,
+                QuotationStatus::Accepted,
+            );
 
             $quotation->confirmations()->create([
                 'confirmation_type' => ConfirmationType::Accepted,
@@ -35,7 +46,10 @@ class QuotationConfirmationService
                 'confirmed_at' => now(),
                 'ip_address' => request()->ip(),
                 'user_agent' => substr((string) request()->userAgent(), 0, 1000),
-                'confirmation_data' => json_encode($data),
+                'confirmation_data' => $this->confirmationData(
+                    $data,
+                    $otpVerifiedEmail,
+                ),
             ]);
 
             $quotation->update([
@@ -56,22 +70,36 @@ class QuotationConfirmationService
         });
     }
 
-    public function reject(Quotation $quotation, array $data): Quotation
-    {
+    public function reject(
+        Quotation $quotation,
+        array $data,
+        ?string $otpVerifiedEmail = null,
+    ): Quotation {
         $this->validateConfirmation($quotation);
 
-        return DB::transaction(function () use ($quotation, $data) {
-            $this->stateMachine->validateTransition($quotation->status, QuotationStatus::Rejected);
+        return DB::transaction(function () use (
+            $quotation,
+            $data,
+            $otpVerifiedEmail,
+        ): Quotation {
+            $this->stateMachine->validateTransition(
+                $quotation->status,
+                QuotationStatus::Rejected,
+            );
 
             $quotation->confirmations()->create([
                 'confirmation_type' => ConfirmationType::Rejected,
                 'signer_name' => $data['signer_name'],
                 'signer_email' => $data['signer_email'],
                 'confirmation_code' => strtoupper(bin2hex(random_bytes(8))),
+                'otp_verified_at' => $otpVerifiedEmail ? now() : null,
                 'confirmed_at' => now(),
                 'ip_address' => request()->ip(),
                 'user_agent' => substr((string) request()->userAgent(), 0, 1000),
-                'confirmation_data' => json_encode($data),
+                'confirmation_data' => $this->confirmationData(
+                    $data,
+                    $otpVerifiedEmail,
+                ),
             ]);
 
             $quotation->update([
@@ -91,22 +119,36 @@ class QuotationConfirmationService
         });
     }
 
-    public function requestRevision(Quotation $quotation, array $data): Quotation
-    {
+    public function requestRevision(
+        Quotation $quotation,
+        array $data,
+        ?string $otpVerifiedEmail = null,
+    ): Quotation {
         $this->validateConfirmation($quotation);
 
-        return DB::transaction(function () use ($quotation, $data) {
-            $this->stateMachine->validateTransition($quotation->status, QuotationStatus::RevisionRequested);
+        return DB::transaction(function () use (
+            $quotation,
+            $data,
+            $otpVerifiedEmail,
+        ): Quotation {
+            $this->stateMachine->validateTransition(
+                $quotation->status,
+                QuotationStatus::RevisionRequested,
+            );
 
             $quotation->confirmations()->create([
                 'confirmation_type' => ConfirmationType::RevisionRequested,
                 'signer_name' => $data['signer_name'],
                 'signer_email' => $data['signer_email'],
                 'confirmation_code' => strtoupper(bin2hex(random_bytes(8))),
+                'otp_verified_at' => $otpVerifiedEmail ? now() : null,
                 'confirmed_at' => now(),
                 'ip_address' => request()->ip(),
                 'user_agent' => substr((string) request()->userAgent(), 0, 1000),
-                'confirmation_data' => json_encode($data),
+                'confirmation_data' => $this->confirmationData(
+                    $data,
+                    $otpVerifiedEmail,
+                ),
             ]);
 
             $quotation->update([
@@ -129,15 +171,33 @@ class QuotationConfirmationService
     private function validateConfirmation(Quotation $quotation): void
     {
         if (! $quotation->status->canConfirm()) {
-            throw new \InvalidArgumentException('This quotation cannot be confirmed.');
+            throw ValidationException::withMessages([
+                'confirmation' => 'Báo giá hiện không còn ở trạng thái chờ khách xác nhận.',
+            ]);
         }
 
         if ($quotation->valid_until && $quotation->valid_until->isPast()) {
-            throw new \InvalidArgumentException('This quotation has expired.');
+            throw ValidationException::withMessages([
+                'confirmation' => 'Báo giá đã hết hiệu lực.',
+            ]);
         }
 
         if ($quotation->status === QuotationStatus::Superseded) {
-            throw new \InvalidArgumentException('This quotation version has been superseded.');
+            throw ValidationException::withMessages([
+                'confirmation' => 'Phiên bản báo giá này đã được thay thế.',
+            ]);
         }
+    }
+
+    private function confirmationData(
+        array $data,
+        ?string $otpVerifiedEmail,
+    ): array {
+        return array_merge($data, [
+            'otp_verified_email' => $otpVerifiedEmail,
+            'verification_method' => $otpVerifiedEmail !== null
+                ? 'email_otp'
+                : null,
+        ]);
     }
 }

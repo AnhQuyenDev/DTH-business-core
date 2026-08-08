@@ -151,11 +151,20 @@ class PriceBookResource extends Resource
                             ->numeric()
                             ->nullable()
                             ->minValue(fn (Get $get): int => max(1, (int) ($get('minimum_quantity') ?? 1)))
-                            ->columnSpan(2),                        Select::make('default_discount_type')
+                            ->columnSpan(2),
+
+                        Select::make('default_discount_type')
                             ->label(__('field.default_discount_type'))
                             ->options(DiscountType::options())
                             ->nullable()
+                            ->live()
+                            ->required(
+                                fn (Get $get): bool => (float) ($get('default_discount_value') ?? 0) > 0
+                                    || (float) ($get('maximum_discount_value') ?? 0) > 0
+                            )
+                            ->helperText('Nếu cho phép giảm giá, hãy chọn loại giảm. Sales sẽ không được đổi loại giảm trên báo giá.')
                             ->columnSpan(2),
+
                         TextInput::make('default_discount_value')
                             ->label(__('field.default_discount_value'))
                             ->numeric()
@@ -164,7 +173,7 @@ class PriceBookResource extends Resource
                             ->maxValue(
                                 fn (Get $get): ?float => filled($get('maximum_discount_value'))
                                     ? (float) $get('maximum_discount_value')
-                                    : null
+                                    : ($get('default_discount_type') === DiscountType::Percentage->value ? 100 : null)
                             )
                             ->columnSpan(2),
 
@@ -173,7 +182,15 @@ class PriceBookResource extends Resource
                             ->numeric()
                             ->default(0)
                             ->minValue(0)
-                            ->columnSpan(2),                        Textarea::make('scope_override')->label(__('field.scope_override'))->rows(2)->columnSpanFull(),
+                            ->maxValue(
+                                fn (Get $get): ?float => $get('default_discount_type') === DiscountType::Percentage->value
+                                    ? 100
+                                    : null
+                            )
+                            ->live()
+                            ->columnSpan(2),
+
+                        Textarea::make('scope_override')->label(__('field.scope_override'))->rows(2)->columnSpanFull(),
                         Textarea::make('terms_override')->label(__('field.terms_override'))->rows(2)->columnSpanFull(),
                         TextInput::make('sort_order')->label(__('field.sort_order'))->numeric()->default(0),
                     ])

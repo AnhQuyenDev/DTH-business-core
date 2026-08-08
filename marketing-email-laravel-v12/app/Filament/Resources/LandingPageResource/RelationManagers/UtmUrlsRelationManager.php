@@ -85,9 +85,7 @@ class UtmUrlsRelationManager extends RelationManager
                     ->limit(50),
             ])
             ->filters([])
-            ->headerActions([
-                Tables\Actions\CreateAction::make(),
-            ])
+            ->headerActions([])
             ->actions([ActionGroup::make([
                 Tables\Actions\Action::make('copy_url')
                     ->label(__('action.copy_url'))

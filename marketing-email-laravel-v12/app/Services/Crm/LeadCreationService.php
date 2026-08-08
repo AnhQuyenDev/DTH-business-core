@@ -93,6 +93,14 @@ final class LeadCreationService
                 'intake_issues' => $intakeIssues,
                 'form_answers' => array_values($formAnswers),
                 'service_context' => $serviceContext,
+                'attribution' => [
+                    'referrer' => $submission->referrer,
+                    'utm_source' => $submission->utm_source,
+                    'utm_medium' => $submission->utm_medium,
+                    'utm_campaign' => $submission->utm_campaign,
+                    'utm_content' => $submission->utm_content,
+                    'utm_term' => $submission->utm_term,
+                ],
             ],
             'created_by' => $userId,
         ]);

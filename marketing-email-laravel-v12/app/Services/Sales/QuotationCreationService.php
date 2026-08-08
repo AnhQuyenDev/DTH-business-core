@@ -13,6 +13,7 @@ use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
 use App\Models\Sales\PriceBookItem;
 use App\Models\Sales\Quotation;
+use App\Models\Sales\ServicePackage;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
@@ -71,7 +72,9 @@ class QuotationCreationService
                 'email_status' => 'unsent',
                 'customer_snapshot' => $this->buildCustomerSnapshot($customer),
                 'company_snapshot' => $customer->customer_type === 'business' ? $this->buildCompanySnapshot($customer) : null,
-                'payment_snapshot' => $this->buildPaymentSnapshot($params),
+                'payment_snapshot' => $this->buildPaymentSnapshot(array_merge($params, [
+                    'transfer_content' => $params['transfer_content'] ?? $code,
+                ])),
                 'terms_snapshot' => $this->buildTermsSnapshot($priceBook, $params),
                 'public_token' => $this->codeGenerator->generatePublicToken(),
                 'created_by' => $user->id,
@@ -107,6 +110,7 @@ class QuotationCreationService
         );
 
         $itemData = $this->buildItemData($items, $priceBook);
+        $this->validateOpportunityItems($opportunity, $itemData);
         $totals = $this->pricingService->calculateTotals(
             collect($itemData)
         );
@@ -152,7 +156,9 @@ class QuotationCreationService
                 'email_status' => 'unsent',
                 'customer_snapshot' => $this->partySnapshot->customerSnapshot($locked),
                 'company_snapshot' => $this->partySnapshot->companySnapshot($locked),
-                'payment_snapshot' => $this->buildPaymentSnapshot($params),
+                'payment_snapshot' => $this->buildPaymentSnapshot(array_merge($params, [
+                    'transfer_content' => $params['transfer_content'] ?? $code,
+                ])),
                 'terms_snapshot' => $this->buildTermsSnapshot($priceBook, $params),
                 'metadata' => array_merge(
                     $params['metadata'] ?? [],
@@ -186,15 +192,37 @@ class QuotationCreationService
 
     public function update(Quotation $quotation, array $items, array $params = []): Quotation
     {
+        $quotation->loadMissing(['priceBook', 'opportunity']);
         $itemData = $this->buildItemData($items, $quotation->priceBook);
+
+        if ($quotation->opportunity !== null) {
+            $this->validateOpportunityItems($quotation->opportunity, $itemData);
+        }
+
         $totals = $this->pricingService->calculateTotals(collect($itemData));
 
         return DB::transaction(function () use ($quotation, $itemData, $totals, $params) {
             $quotation->items()->delete();
             $this->saveItems($quotation, $itemData);
 
+            $bankAccountId = $params['bank_account_id']
+                ?? $quotation->bank_account_id;
+
+            $paymentParams = array_merge(
+                $params,
+                [
+                    'bank_account_id' => $bankAccountId,
+                    'transfer_content' => $params['transfer_content']
+                        ?? data_get($quotation->payment_snapshot, 'transfer_content')
+                        ?? $quotation->quotation_code,
+                ],
+            );
+
             $quotation->update([
-                'bank_account_id' => $params['bank_account_id'] ?? $quotation->bank_account_id,
+                'bank_account_id' => $bankAccountId,
+                'payment_snapshot' => $this->buildPaymentSnapshot(
+                    $paymentParams
+                ),
                 'title' => $params['title'] ?? $quotation->title,
                 'valid_until' => $params['valid_until'] ?? $quotation->valid_until,
                 'subtotal' => $totals['subtotal'],
@@ -290,8 +318,28 @@ class QuotationCreationService
         $result = [];
         foreach ($items as $item) {
             $pbi = isset($item['price_book_item_id'])
-                ? PriceBookItem::with(['servicePackage.service'])->find($item['price_book_item_id'])
+                ? PriceBookItem::with(['servicePackage.service', 'priceBook'])
+                    ->find($item['price_book_item_id'])
                 : null;
+
+            if ($pbi !== null && (int) $pbi->price_book_id !== (int) $priceBook->id) {
+                throw ValidationException::withMessages([
+                    'items' => 'Gói giá được chọn không thuộc Bảng giá của báo giá.',
+                ]);
+            }
+
+            $quantity = (int) ($item['quantity']
+                ?? ($pbi?->servicePackage?->default_quantity ?? 1));
+
+            if ($quantity < 1) {
+                throw ValidationException::withMessages([
+                    'items' => 'Số lượng dịch vụ phải lớn hơn hoặc bằng 1.',
+                ]);
+            }
+
+            if ($pbi !== null) {
+                $this->validateQuantityLimit($pbi, $quantity);
+            }
 
             $result[] = [
                 'service_id' => $pbi?->servicePackage?->service_id ?? $item['service_id'] ?? null,
@@ -302,14 +350,25 @@ class QuotationCreationService
                 'package_code_snapshot' => $pbi?->servicePackage?->package_code ?? $item['package_code_snapshot'] ?? null,
                 'package_name_snapshot' => $pbi?->servicePackage?->name ?? $item['package_name_snapshot'] ?? '',
                 'description_snapshot' => $item['description_snapshot'] ?? $pbi?->description ?? null,
-                'scope_snapshot' => $item['scope_snapshot'] ?? $pbi?->scope_override ?? null,
-                'terms_snapshot' => $item['terms_snapshot'] ?? $pbi?->terms_override ?? null,
-                'unit' => $item['unit'] ?? $pbi?->servicePackage?->unit ?? 'tháng',
-                'quantity' => $item['quantity'] ?? ($pbi?->servicePackage?->default_quantity ?? 1),
-                'unit_price' => $item['unit_price'] ?? $pbi?->unit_price ?? 0,
-                'discount_type' => $item['discount_type'] ?? $pbi?->default_discount_type?->value ?? null,
-                'discount_value' => $item['discount_value'] ?? $pbi?->default_discount_value ?? 0,
-                'vat_rate' => $item['vat_rate'] ?? $pbi?->vat_rate ?? 10,
+                'scope_snapshot' => $pbi?->scope_override ?? $item['scope_snapshot'] ?? null,
+                'terms_snapshot' => $pbi?->terms_override ?? $item['terms_snapshot'] ?? null,
+                // Price-book-backed commercial fields are server-authoritative.
+                // Disabled UI controls are not a security boundary: crafted
+                // requests must not be able to override price/VAT/unit/type.
+                'unit' => $pbi?->servicePackage?->unit ?? $item['unit'] ?? 'gói',
+                'quantity' => $quantity,
+                'unit_price' => $pbi !== null
+                    ? (float) $pbi->unit_price
+                    : (float) ($item['unit_price'] ?? 0),
+                'discount_type' => $pbi !== null
+                    ? $pbi->default_discount_type?->value
+                    : ($item['discount_type'] ?? null),
+                'discount_value' => $item['discount_value']
+                    ?? $pbi?->default_discount_value
+                    ?? 0,
+                'vat_rate' => $pbi !== null
+                    ? (float) ($pbi->vat_rate ?? 0)
+                    : (float) ($item['vat_rate'] ?? 0),
             ];
 
             $this->validateDiscountLimit($pbi, $result[array_key_last($result)]);
@@ -318,24 +377,75 @@ class QuotationCreationService
         return $result;
     }
 
+    private function validateQuantityLimit(
+        PriceBookItem $pbi,
+        int $quantity,
+    ): void {
+        $minimum = max(1, (int) ($pbi->minimum_quantity ?? 1));
+        $maximum = $pbi->maximum_quantity !== null
+            ? (int) $pbi->maximum_quantity
+            : null;
+
+        if ($quantity < $minimum || ($maximum !== null && $quantity > $maximum)) {
+            $range = $maximum !== null
+                ? "{$minimum}-{$maximum}"
+                : "từ {$minimum} trở lên";
+
+            throw ValidationException::withMessages([
+                'items' => 'Số lượng của gói '
+                    .($pbi->servicePackage?->name ?? 'dịch vụ đã chọn')
+                    ." phải nằm trong phạm vi {$range}.",
+            ]);
+        }
+    }
+
+    /**
+     * Opportunity v2 currently represents one selected service package.
+     * Enforce that invariant in the service layer so a crafted request cannot
+     * bypass the Filament Price Book filter and quote a different package.
+     */
+    private function validateOpportunityItems(
+        Opportunity $opportunity,
+        array $itemData,
+    ): void {
+        $serviceInterest = trim((string) $opportunity->service_interest);
+
+        if ($serviceInterest === '') {
+            return;
+        }
+
+        // Legacy/factory opportunities may contain free-text interests. Only
+        // enforce the package invariant when the interest is a real catalog
+        // package code; CRM v2 creates opportunities with such a code.
+        if (! ServicePackage::query()->where('package_code', $serviceInterest)->exists()) {
+            return;
+        }
+
+        if ($itemData === []) {
+            throw ValidationException::withMessages([
+                'items' => 'Báo giá phải có gói dịch vụ của cơ hội.',
+            ]);
+        }
+
+        foreach ($itemData as $line) {
+            if (($line['package_code_snapshot'] ?? null) !== $serviceInterest) {
+                throw ValidationException::withMessages([
+                    'items' => 'Báo giá chỉ được sử dụng gói '
+                        .$serviceInterest
+                        .' đã được xác nhận trên cơ hội kinh doanh.',
+                ]);
+            }
+        }
+    }
+
     private function validateDiscountLimit(?PriceBookItem $pbi, array $data): void
     {
         if (! $pbi || $pbi->maximum_discount_value === null || (float) $pbi->maximum_discount_value <= 0) {
             return;
         }
 
-        $quantity = (int) ($data['quantity'] ?? 1);
-        $unitPrice = (float) ($data['unit_price'] ?? 0);
-        $lineSubtotal = $quantity * $unitPrice;
-
         $discountType = $data['discount_type'] ?? null;
         $discountValue = (float) ($data['discount_value'] ?? 0);
-
-        $discountAmount = match ($discountType) {
-            DiscountType::Fixed->value => min($discountValue, $lineSubtotal),
-            DiscountType::Percentage->value => $lineSubtotal * min($discountValue, 100) / 100,
-            default => 0,
-        };
 
         $maximumDiscount = (float) (
             $pbi->maximum_discount_value ?? 0
@@ -420,14 +530,9 @@ class QuotationCreationService
         }
 
         if (
-            $user->isAdmin()
-            || $user->isCustomerServiceManager()
-        ) {
-            return;
-        }
-
-        if (
-            $user->staff?->id === null
+            ! $user->isSalesStaff()
+            || $user->isSalesManager()
+            || $user->staff?->id === null
             || $opportunity->assigned_staff_id !== $user->staff->id
         ) {
             throw ValidationException::withMessages([
@@ -502,14 +607,6 @@ class QuotationCreationService
         $bankAccount = null;
         if (isset($params['bank_account_id']) && filled($params['bank_account_id'])) {
             $bankAccount = BankAccount::find($params['bank_account_id']);
-        }
-
-        if (! $bankAccount) {
-            $bankAccount = BankAccount::query()
-                ->where('status', 'active')
-                ->orderByDesc('is_default')
-                ->orderBy('id')
-                ->first();
         }
 
         return [

@@ -5,12 +5,15 @@ namespace App\Services\Sales;
 use App\Actions\Sales\ConvertWonOpportunityToCustomerAction;
 use App\Enums\Crm\CustomerLifecycleStage;
 use App\Enums\Crm\CustomerStatus;
+use App\Enums\Sales\PaymentNoticeStatus;
 use App\Enums\Sales\PaymentStatus;
+use App\Enums\Sales\QuotationStatus;
 use App\Jobs\Sales\SendPaymentConfirmedNotificationJob;
 use App\Models\Sales\Quotation;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 final class QuotationPaymentService
 {
@@ -47,6 +50,21 @@ final class QuotationPaymentService
         User $user,
         ?string $note = null,
     ): Quotation {
+        if (! $user->can('verifyPayment', $quotation)) {
+            throw ValidationException::withMessages([
+                'payment_status' => 'Chỉ bộ phận Tài chính được xác minh trạng thái thanh toán.',
+            ]);
+        }
+
+        if (
+            in_array($newStatus, [PaymentStatus::PendingVerification, PaymentStatus::Paid], true)
+            && $quotation->status !== QuotationStatus::Accepted
+        ) {
+            throw ValidationException::withMessages([
+                'payment_status' => 'Chỉ báo giá đã được khách hàng chấp nhận mới được đối soát thanh toán.',
+            ]);
+        }
+
         $result = DB::transaction(function () use (
             $quotation,
             $newStatus,
@@ -109,6 +127,27 @@ final class QuotationPaymentService
                 ],
             );
 
+            $pendingNotice = $locked->paymentNotices()
+                ->where('status', PaymentNoticeStatus::Pending->value)
+                ->latest('id')
+                ->first();
+
+            if ($pendingNotice !== null && $newStatus === PaymentStatus::Paid) {
+                $pendingNotice->update([
+                    'status' => PaymentNoticeStatus::Verified->value,
+                    'reviewed_at' => now(),
+                    'reviewed_by_user_id' => $user->id,
+                    'review_note' => $note,
+                ]);
+            } elseif ($pendingNotice !== null && $newStatus === PaymentStatus::Unpaid) {
+                $pendingNotice->update([
+                    'status' => PaymentNoticeStatus::Rejected->value,
+                    'reviewed_at' => now(),
+                    'reviewed_by_user_id' => $user->id,
+                    'review_note' => $note,
+                ]);
+            }
+
             if ($newStatus === PaymentStatus::Paid) {
                 $this->handlePaid($locked, $user);
             }
@@ -143,10 +182,9 @@ final class QuotationPaymentService
         $allowed = self::VALID_TRANSITIONS[$currentValue] ?? [];
 
         if (! in_array($target->value, $allowed, true)) {
-            throw new \InvalidArgumentException(
-                "Cannot transition payment from {$currentValue} "
-                ."to {$target->value}"
-            );
+            throw ValidationException::withMessages([
+                'payment_status' => "Không thể chuyển trạng thái thanh toán từ {$currentValue} sang {$target->value}.",
+            ]);
         }
     }
 

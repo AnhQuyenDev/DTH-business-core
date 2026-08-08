@@ -3,11 +3,15 @@
 namespace App\Jobs\Sales;
 
 use App\Enums\Sales\QuotationEmailStatus;
+use App\Enums\Sales\QuotationStatus;
 use App\Mail\Sales\QuotationMail;
 use App\Models\Sales\QuotationDocument;
 use App\Models\Sales\QuotationEmailLog;
 use App\Services\Sales\QuotationEmailCrmSyncer;
+use App\Services\Sales\QuotationInteractionService;
 use App\Services\Sales\QuotationOpportunitySyncService;
+use App\Services\Sales\QuotationSendingAccountService;
+use App\Services\Sales\QuotationStateMachine;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,17 +26,24 @@ class SendQuotationEmailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
-
-    public array $backoff = [60, 300];
+    // Email delivery is not safely idempotent at SMTP level. Do not auto-retry
+    // a commercial quotation because a retry after an uncertain SMTP response
+    // can send duplicate quotations. The user can retry manually while the
+    // quotation remains Approved.
+    public int $tries = 1;
 
     public function __construct(
         public QuotationEmailLog $emailLog,
         public ?QuotationDocument $pdfDoc = null,
     ) {}
 
-    public function handle(): void
-    {
+    public function handle(
+        QuotationSendingAccountService $sendingAccounts,
+        QuotationStateMachine $stateMachine,
+        QuotationInteractionService $interactions,
+    ): void {
+        $this->emailLog->refresh();
+
         if ($this->emailLog->status !== QuotationEmailStatus::Queued) {
             Log::info('SendQuotationEmailJob: skipping already processed email', [
                 'email_log_id' => $this->emailLog->id,
@@ -42,21 +53,50 @@ class SendQuotationEmailJob implements ShouldQueue
             return;
         }
 
+        $quotation = $this->emailLog->quotation()->with([
+            'assignedStaff.department',
+            'opportunity',
+        ])->firstOrFail();
+
+        // A queued email must never escape after somebody cancelled or revised
+        // the commercial document while the queue was waiting.
+        if ($quotation->status !== QuotationStatus::Approved) {
+            $this->emailLog->update([
+                'status' => QuotationEmailStatus::Failed,
+                'error_message' => 'Báo giá không còn ở trạng thái Đã duyệt tại thời điểm gửi.',
+                'failed_at' => now(),
+            ]);
+
+            return;
+        }
+
         $this->emailLog->update(['status' => QuotationEmailStatus::Sending]);
 
         try {
-            $pdfPath = $this->pdfDoc ? Storage::disk('local')->path($this->pdfDoc->file_path) : null;
+            $sendingAccount = $sendingAccounts->resolve($quotation);
+            $mailer = $sendingAccounts->configureMailer($sendingAccount);
+            $pdfPath = $this->pdfDoc
+                ? Storage::disk('local')->path($this->pdfDoc->file_path)
+                : null;
 
-            Mail::to($this->emailLog->recipient_email)
+            Mail::mailer($mailer)
+                ->to($this->emailLog->recipient_email)
                 ->send(new QuotationMail(
                     subjectText: $this->emailLog->subject,
                     body: $this->emailLog->body_snapshot,
                     pdfPath: $pdfPath,
                 ));
 
-            $this->emailLog->quotation->update([
+            $stateMachine->validateTransition(
+                $quotation->status,
+                QuotationStatus::Sent,
+            );
+
+            $quotation->update([
+                'status' => QuotationStatus::Sent->value,
                 'email_status' => QuotationEmailStatus::Sent->value,
-                'sent_at' => now(),
+                'sent_at' => $quotation->sent_at ?? now(),
+                'updated_by' => $this->emailLog->created_by,
             ]);
 
             $this->emailLog->update([
@@ -64,14 +104,15 @@ class SendQuotationEmailJob implements ShouldQueue
                 'sent_at' => now(),
             ]);
 
-            $this->syncToCrm();
+            $fresh = $quotation->fresh('opportunity');
+            $interactions->logSent($fresh, $this->emailLog->recipient_email);
 
-            app(QuotationOpportunitySyncService::class)
-                ->onSent($this->emailLog->quotation->fresh('opportunity'));
+            $this->syncToCrm();
+            app(QuotationOpportunitySyncService::class)->onSent($fresh);
         } catch (Throwable $e) {
             Log::error('SendQuotationEmailJob: failed', [
                 'email_log_id' => $this->emailLog->id,
-                'quotation_code' => $this->emailLog->quotation->quotation_code ?? null,
+                'quotation_code' => $quotation->quotation_code,
                 'error' => $e->getMessage(),
             ]);
 
@@ -82,7 +123,7 @@ class SendQuotationEmailJob implements ShouldQueue
             ]);
 
             if ($this->attempts() >= $this->tries) {
-                $this->emailLog->quotation->update([
+                $quotation->update([
                     'email_status' => QuotationEmailStatus::Failed->value,
                 ]);
             }
@@ -99,10 +140,6 @@ class SendQuotationEmailJob implements ShouldQueue
         ]);
     }
 
-    /**
-     * Push the quotation email into the CRM so it shows up in customer care
-     * timeline / email history and the customer's interaction tab.
-     */
     private function syncToCrm(): void
     {
         $quotation = $this->emailLog->quotation->fresh([

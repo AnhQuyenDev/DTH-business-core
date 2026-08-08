@@ -107,7 +107,7 @@ class QuotationPolicyTest extends TestCase
         $this->assertFalse($user->can('view', $quotation));
     }
 
-    public function test_admin_can_do_anything(): void
+    public function test_admin_is_read_only_for_quotation_workflow(): void
     {
         $user = $this->makeUser('admin');
         $this->actingAs($user);
@@ -115,7 +115,9 @@ class QuotationPolicyTest extends TestCase
         $quotation = Quotation::factory()->create();
 
         $this->assertTrue($user->can('view', $quotation));
-        $this->assertTrue($user->can('update', $quotation));
-        $this->assertTrue($user->can('verifyPayment', $quotation));
+        $this->assertFalse($user->can('update', $quotation));
+        $this->assertFalse($user->can('send', $quotation));
+        $this->assertFalse($user->can('approve', $quotation));
+        $this->assertFalse($user->can('verifyPayment', $quotation));
     }
 }

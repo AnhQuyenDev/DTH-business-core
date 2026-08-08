@@ -7,16 +7,15 @@ use App\Enums\Sales\QuotationStatus;
 use App\Filament\Resources\Sales\PaymentTrackingResource\Pages;
 use App\Models\Sales\Quotation;
 use App\Services\Sales\QuotationPaymentService;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaymentTrackingResource extends Resource
 {
@@ -41,24 +40,92 @@ class PaymentTrackingResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isAdmin() || auth()->user()?->isCustomerServiceManager();
+        $user = auth()->user();
+
+        return $user !== null
+            && (
+                $user->isAdmin()
+                || $user->canReadAcrossBusiness()
+                || $user->isSalesManager()
+                || $user->isFinanceStaff()
+            );
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('quotation_code')->label(__('field.quotation_code'))->searchable()->sortable(),
-                TextColumn::make('customer.display_name')->label(__('field.customer'))->searchable(),
-                TextColumn::make('grand_total')->label(__('field.grand_total'))->money('VND')->sortable(),
-                TextColumn::make('payment_status')->label(__('field.payment_status'))->badge()
-                    ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label') ? $state->label() : ($state ?? ''))
-                    ->color(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'color') ? $state->color() : 'gray'),
-                TextColumn::make('status')->label(__('field.quotation_status'))->badge()
-                    ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label') ? $state->label() : ($state ?? ''))
-                    ->color(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'color') ? $state->color() : 'gray'),
-                TextColumn::make('accepted_at')->label(__('field.accepted_at'))->dateTime()->sortable(),
-                TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable()->toggleable(),
+                TextColumn::make('quotation_code')
+                    ->label(__('field.quotation_code'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('party_display_name')
+                    ->label(__('field.customer'))
+                    ->getStateUsing(fn (Quotation $record): string => $record->party_display_name)
+                    ->description(fn (Quotation $record): ?string => $record->party_email),
+                TextColumn::make('grand_total')
+                    ->label(__('field.grand_total'))
+                    ->money('VND')
+                    ->sortable(),
+                TextColumn::make('payment_status')
+                    ->label(__('field.payment_status'))
+                    ->badge()
+                    ->formatStateUsing(
+                        fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label')
+                            ? $state->label()
+                            : ($state ?? '')
+                    )
+                    ->color(
+                        fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'color')
+                            ? $state->color()
+                            : 'gray'
+                    ),
+                TextColumn::make('latest_payment_notice')
+                    ->label('Khách thông báo')
+                    ->getStateUsing(function (Quotation $record): string {
+                        $notice = $record->paymentNotices()
+                            ->latest('id')
+                            ->first();
+
+                        if ($notice === null) {
+                            return '—';
+                        }
+
+                        return number_format((float) $notice->declared_amount, 0, ',', '.').' VND';
+                    })
+                    ->description(function (Quotation $record): ?string {
+                        $notice = $record->paymentNotices()->latest('id')->first();
+                        if ($notice === null) {
+                            return null;
+                        }
+
+                        return collect([
+                            $notice->payer_name,
+                            $notice->transfer_reference,
+                        ])->filter()->implode(' • ');
+                    }),
+                TextColumn::make('status')
+                    ->label(__('field.quotation_status'))
+                    ->badge()
+                    ->formatStateUsing(
+                        fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label')
+                            ? $state->label()
+                            : ($state ?? '')
+                    )
+                    ->color(
+                        fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'color')
+                            ? $state->color()
+                            : 'gray'
+                    ),
+                TextColumn::make('accepted_at')
+                    ->label(__('field.accepted_at'))
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
+                TextColumn::make('created_at')
+                    ->label(__('field.created_at'))
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('payment_status')
@@ -68,71 +135,92 @@ class PaymentTrackingResource extends Resource
                     ->label(__('field.quotation_status'))
                     ->options([
                         QuotationStatus::Accepted->value => QuotationStatus::Accepted->label(),
-                        QuotationStatus::Sent->value => QuotationStatus::Sent->label(),
-                        QuotationStatus::Viewed->value => QuotationStatus::Viewed->label(),
                     ]),
             ])
-            ->actions([ActionGroup::make([
-                Action::make('mark_paid')
-                    ->label(__('action.mark_paid'))
-                    ->icon('heroicon-o-check-circle')->color('success')
-                    ->action(function (Quotation $q) {
-                        app(QuotationPaymentService::class)->updateStatus(
-                            $q, PaymentStatus::Paid, auth()->user(),
-                            __('note.payment_tracking_update')
-                        );
-                        Notification::make()->title(__('notification.payment_updated'))->success()->send();
-                    })
-                    ->visible(fn (Quotation $q): bool => in_array($q->payment_status?->value, ['unpaid', 'pending_verification', 'partially_paid'])),
-
-                Action::make('mark_pending')
-                    ->label(__('action.mark_pending'))
-                    ->icon('heroicon-o-clock')->color('warning')
-                    ->action(function (Quotation $q) {
-                        app(QuotationPaymentService::class)->updateStatus(
-                            $q, PaymentStatus::PendingVerification, auth()->user(),
-                            __('note.mark_pending_note')
-                        );
-                        Notification::make()->title(__('notification.updated'))->warning()->send();
-                    })
-                    ->visible(fn (Quotation $q): bool => $q->payment_status?->value === 'unpaid'),
-
-                Action::make('mark_unpaid')
-                    ->label(__('action.mark_unpaid'))
-                    ->color('danger')
-                    ->action(function (Quotation $q) {
-                        app(QuotationPaymentService::class)->updateStatus(
-                            $q, PaymentStatus::Unpaid, auth()->user(),
-                            __('note.mark_unpaid_note')
-                        );
-                        Notification::make()->title(__('notification.updated'))->send();
-                    })
-                    ->visible(fn (Quotation $q): bool => $q->payment_status?->value === 'pending_verification'),
-            ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
-            ])
-            ->defaultSort('created_at', 'desc')
-            ->bulkActions([
-                BulkActionGroup::make([
-                    BulkAction::make('bulk_mark_paid')
-                        ->label(__('action.bulk_mark_paid'))
+            ->actions([
+                ActionGroup::make([
+                    Action::make('mark_paid')
+                        ->label(__('action.mark_paid'))
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->modalHeading(__('action.bulk_mark_paid'))
-                        ->deselectRecordsAfterCompletion()
-                        ->action(function (Collection $records): void {
-                            foreach ($records as $record) {
-                                if (in_array($record->payment_status?->value, ['unpaid', 'pending_verification', 'partially_paid'])) {
-                                    app(QuotationPaymentService::class)->updateStatus(
-                                        $record, PaymentStatus::Paid, auth()->user(),
-                                        __('note.payment_tracking_update')
-                                    );
-                                }
-                            }
-                            Notification::make()->title(__('notification.payment_updated'))->success()->send();
-                        }),
-                ]),
-            ]);
+                        ->form([
+                            Textarea::make('note')
+                                ->label('Ghi chú đối soát')
+                                ->required()
+                                ->rows(3)
+                                ->maxLength(2000),
+                        ])
+                        ->action(function (Quotation $q, array $data): void {
+                            app(QuotationPaymentService::class)->updateStatus(
+                                $q,
+                                PaymentStatus::Paid,
+                                auth()->user(),
+                                $data['note'],
+                            );
+
+                            Notification::make()
+                                ->title(__('notification.payment_updated'))
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn (Quotation $q): bool =>
+                            $q->status === QuotationStatus::Accepted
+                            && (auth()->user()?->can('verifyPayment', $q) ?? false)
+                            && in_array(
+                                $q->payment_status,
+                                [
+                                    PaymentStatus::Unpaid,
+                                    PaymentStatus::PendingVerification,
+                                    PaymentStatus::PartiallyPaid,
+                                ],
+                                true,
+                            )
+                        ),
+
+                    Action::make('mark_unpaid')
+                        ->label('Đối soát không khớp')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->form([
+                            Textarea::make('note')
+                                ->label('Lý do không khớp')
+                                ->required()
+                                ->rows(3)
+                                ->maxLength(2000),
+                        ])
+                        ->action(function (Quotation $q, array $data): void {
+                            app(QuotationPaymentService::class)->updateStatus(
+                                $q,
+                                PaymentStatus::Unpaid,
+                                auth()->user(),
+                                $data['note'],
+                            );
+
+                            Notification::make()
+                                ->title(__('notification.updated'))
+                                ->warning()
+                                ->send();
+                        })
+                        ->visible(fn (Quotation $q): bool =>
+                            $q->status === QuotationStatus::Accepted
+                            && $q->payment_status === PaymentStatus::PendingVerification
+                            && (auth()->user()?->can('verifyPayment', $q) ?? false)
+                        ),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        // Payment tracking starts only after the customer has accepted the
+        // quotation. Earlier quotation workflow belongs to Sales, not Finance.
+        return parent::getEloquentQuery()->where(
+            'status',
+            QuotationStatus::Accepted->value,
+        );
     }
 
     public static function getPages(): array

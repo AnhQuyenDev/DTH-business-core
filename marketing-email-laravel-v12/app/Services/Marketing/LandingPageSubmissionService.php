@@ -217,12 +217,6 @@ class LandingPageSubmissionService
                         );
                     }
 
-                    $this->applyTagsAndLists(
-                        $contact,
-                        $landingPage,
-                        $formTemplate,
-                        $validatedData,
-                    );
                     $this->saveCustomFields(
                         $contact,
                         $formTemplate,
@@ -336,10 +330,6 @@ class LandingPageSubmissionService
                             ['contact_id' => $contact->id],
                             ['status' => ContactQualificationStatus::New->value]
                         );
-                    }
-
-                    if ($landingPage->auto_create_segment) {
-                        $this->autoCreateSegmentIfNeeded($landingPage);
                     }
 
                     return $submission;

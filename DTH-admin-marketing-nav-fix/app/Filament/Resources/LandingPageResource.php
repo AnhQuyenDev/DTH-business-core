@@ -21,6 +21,7 @@ use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Tabs;
+use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
@@ -68,17 +69,17 @@ class LandingPageResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.view-landing-pages') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.manage-landing-pages') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isMarketingStaff() ?? false;
+        return auth()->user()?->can('marketing.manage-landing-pages') ?? false;
     }
 
     public static function form(Form $form): Form
@@ -301,6 +302,13 @@ class LandingPageResource extends Resource
                         ->default('12px')
                         ->placeholder('12px'),
                 ]),
+            Section::make(__('section.automation'))->columns(1)->schema([
+                TagsInput::make('auto_tag_names'),
+                TagsInput::make('auto_list_names'),
+                Toggle::make('auto_create_tags')->default(false),
+                Toggle::make('auto_create_lists')->default(false),
+                Toggle::make('auto_create_segment')->default(false),
+            ]),
             Section::make(__('section.custom_html'))
                 ->collapsible()
                 ->collapsed()
@@ -409,17 +417,38 @@ class LandingPageResource extends Resource
                                 return;
                             }
 
-                            $hasActiveForm = $record->forms()
+                            $hasPersonalForm = $record->forms()
+                                ->where('form_type', 'personal')
                                 ->where('status', 'active')
                                 ->whereHas('formTemplate', function ($query): void {
                                     $query->where('status', 'active');
                                 })
                                 ->exists();
 
-                            if (! $hasActiveForm) {
+                            $hasBusinessForm = $record->forms()
+                                ->where('form_type', 'business')
+                                ->where('status', 'active')
+                                ->whereHas('formTemplate', function ($query): void {
+                                    $query->where('status', 'active');
+                                })
+                                ->exists();
+
+                            if (! $hasPersonalForm || ! $hasBusinessForm) {
+                                $missing = [];
+
+                                if (! $hasPersonalForm) {
+                                    $missing[] = 'Form cá nhân';
+                                }
+
+                                if (! $hasBusinessForm) {
+                                    $missing[] = 'Form doanh nghiệp';
+                                }
+
                                 Notification::make()
                                     ->title('Chưa thể xuất bản Landing Page')
-                                    ->body('Landing Page phải có ít nhất một Form cá nhân hoặc Form doanh nghiệp đang hoạt động.')
+                                    ->body(
+                                        'Thiếu: '.implode(', ', $missing).'.'
+                                    )
                                     ->danger()
                                     ->send();
 

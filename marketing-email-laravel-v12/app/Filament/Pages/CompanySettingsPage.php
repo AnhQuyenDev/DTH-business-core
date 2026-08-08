@@ -25,7 +25,10 @@ class CompanySettingsPage extends Page implements HasForms
     public function mount(): void
     {
         $settings = CompanySetting::firstOrCreateDefault();
-        $this->form->fill($settings->toArray());
+        $data = $settings->toArray();
+        // Never hydrate a stored API secret back into the browser.
+        $data['vietqr_api_key'] = null;
+        $this->form->fill($data);
     }
 
     public static function getNavigationGroup(): string
@@ -74,7 +77,8 @@ class CompanySettingsPage extends Page implements HasForms
                         ->label(__('field.vietqr_api_key'))
                         ->password()
                         ->revealable()
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->helperText('Để trống nếu không muốn thay đổi API Key hiện tại.'),
                 ])->columns(2),
             ])
             ->statePath('data');
@@ -83,6 +87,10 @@ class CompanySettingsPage extends Page implements HasForms
     public function save(): void
     {
         $data = $this->form->getState();
+
+        if (blank($data['vietqr_api_key'] ?? null)) {
+            unset($data['vietqr_api_key']);
+        }
 
         CompanySetting::firstOrCreateDefault()->update($data);
 

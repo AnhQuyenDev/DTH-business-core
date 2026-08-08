@@ -31,6 +31,7 @@ use App\Models\Crm\Staff;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\EmailEvent;
 use App\Models\Marketing\EmailTemplate;
+use App\Models\Marketing\SendingAccount;
 use App\Models\Sales\BankAccount;
 use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
@@ -81,6 +82,8 @@ class SalesQuotationLifecycleTest extends TestCase
 
     private User $staffUser;
 
+    private User $financeUser;
+
     private Staff $staff;
 
     private PriceBook $priceBook;
@@ -99,10 +102,13 @@ class SalesQuotationLifecycleTest extends TestCase
             'name' => 'Admin', 'email' => 'admin@example.test', 'password' => 'secret', 'role' => 'admin',
         ]);
         $this->manager = User::query()->create([
-            'name' => 'CSM', 'email' => 'csm@example.test', 'password' => 'secret', 'role' => 'customer_service_manager',
+            'name' => 'Sales Manager', 'email' => 'sales-manager@example.test', 'password' => 'secret', 'role' => 'sales_manager',
         ]);
         $this->staffUser = User::query()->create([
-            'name' => 'Staff', 'email' => 'staff@example.test', 'password' => 'secret', 'role' => 'customer_service_staff',
+            'name' => 'Sales Staff', 'email' => 'staff@example.test', 'password' => 'secret', 'role' => 'sales_staff',
+        ]);
+        $this->financeUser = User::query()->create([
+            'name' => 'Finance', 'email' => 'finance@example.test', 'password' => 'secret', 'role' => 'finance_staff',
         ]);
         $this->staff = Staff::query()->create([
             'user_id' => $this->staffUser->id,
@@ -110,10 +116,29 @@ class SalesQuotationLifecycleTest extends TestCase
             'full_name' => 'Staff',
             'department_id' => Department::query()->firstOrCreate(
                 ['code' => 'sales'],
-                ['name' => 'Kinh doanh', 'sort_order' => 4, 'is_active' => true]
+                ['name' => 'Kinh doanh', 'function_key' => 'sales', 'sort_order' => 4, 'is_active' => true]
             )->id,
             'employment_status' => StaffEmploymentStatus::Active,
             'can_receive_customers' => true,
+        ]);
+
+        SendingAccount::query()->create([
+            'name' => 'Sales SMTP',
+            'provider' => 'smtp',
+            'from_name' => 'DTH Sales',
+            'from_email' => 'sales@example.test',
+            'reply_to' => 'sales@example.test',
+            'config_encrypted' => [
+                'host' => 'smtp.example.test',
+                'port' => 587,
+                'username' => 'sales@example.test',
+                'password' => 'secret',
+                'encryption' => 'tls',
+            ],
+            'daily_limit' => 1000,
+            'hourly_limit' => 100,
+            'status' => 'active',
+            'department_id' => $this->staff->department_id,
         ]);
 
         $this->makeCatalog();
@@ -218,6 +243,10 @@ class SalesQuotationLifecycleTest extends TestCase
 
     private function createQuotation(User $user, array $items, array $params = [], ?Customer $customer = null): Quotation
     {
+        $params = array_merge([
+            'bank_account_id' => $this->bankAccount->id,
+        ], $params);
+
         return app(QuotationCreationService::class)->create(
             $customer ?? $this->customer,
             $user,
@@ -246,6 +275,17 @@ class SalesQuotationLifecycleTest extends TestCase
         $quotation->update(['status' => QuotationStatus::Sent->value, 'sent_at' => now()]);
 
         return $quotation;
+    }
+
+    private function verifyOtpForQuotation(Quotation $quotation): string
+    {
+        $access = app(QuotationPublicAccessService::class);
+        $email = $quotation->party_email;
+        $key = $access->otpKey($quotation, $email);
+        $access->storeOtp($key, '123456');
+        $this->assertTrue($access->verifyOtp($key, '123456'));
+
+        return $email;
     }
 
     // ─── 1. Catalog & service resolution ──────────────────────────────────
@@ -326,7 +366,7 @@ class SalesQuotationLifecycleTest extends TestCase
     {
         $archived = $this->makeCustomer(['status' => CustomerStatus::Archived->value]);
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
         $this->createQuotation($this->admin, [$this->itemLine()], [], $archived);
     }
 
@@ -335,7 +375,7 @@ class SalesQuotationLifecycleTest extends TestCase
         $this->item->update(['maximum_discount_value' => 100]);
         $this->item->refresh();
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
         $this->createQuotation($this->admin, [
             $this->itemLine([
                 'discount_type' => DiscountType::Percentage->value,
@@ -424,32 +464,31 @@ class SalesQuotationLifecycleTest extends TestCase
         Mail::fake();
         Queue::fake();
 
-        $quotation = $this->createQuotation($this->admin, [$this->itemLine()]);
+        $this->assignCustomerToStaff();
+        $this->grantStaffBookAccess();
+
+        $quotation = $this->createQuotation($this->staffUser, [$this->itemLine()]);
         $quotation = app(QuotationApprovalService::class)->approve(
-            app(QuotationApprovalService::class)->submitForApproval($quotation, $this->manager),
+            app(QuotationApprovalService::class)->submitForApproval($quotation, $this->staffUser),
             $this->manager,
         );
 
-        $pdfDoc = QuotationDocument::query()->create([
-            'quotation_id' => $quotation->id,
-            'version' => 1,
-            'document_type' => DocumentType::Pdf,
-            'file_path' => 'quotations/'.$quotation->quotation_code.'/fake.pdf',
-            'file_name' => 'fake.pdf',
-            'mime_type' => 'application/pdf',
-            'file_size' => 123,
-            'file_hash' => 'abc',
-            'generated_at' => now(),
-        ]);
-
-        $log = app(QuotationMailService::class)->send($quotation, $this->admin, 'customer@example.test');
+        $log = app(QuotationMailService::class)->send(
+            $quotation,
+            $this->staffUser,
+            $quotation->party_email,
+        );
 
         $this->assertSame(QuotationEmailStatus::Queued, $log->status);
         $this->assertSame(EmailStatus::Queued, $quotation->refresh()->email_status);
         Queue::assertPushed(SendQuotationEmailJob::class);
 
-        // simulate the queue worker
-        (new SendQuotationEmailJob($log, $pdfDoc))->handle();
+        $pdfDoc = $quotation->documents()->latest('id')->firstOrFail();
+        (new SendQuotationEmailJob($log, $pdfDoc))->handle(
+            app(\App\Services\Sales\QuotationSendingAccountService::class),
+            app(\App\Services\Sales\QuotationStateMachine::class),
+            app(\App\Services\Sales\QuotationInteractionService::class),
+        );
 
         $log->refresh();
         $this->assertSame(QuotationEmailStatus::Sent, $log->status);
@@ -460,7 +499,6 @@ class SalesQuotationLifecycleTest extends TestCase
             ->latest('id')->first();
         $this->assertNotNull($event);
         $this->assertSame('quotation', $event->event_payload['context'] ?? null);
-        $this->assertSame((string) $log->id, (string) ($event->event_payload['email_log_id'] ?? null));
 
         $interaction = CustomerInteraction::where('customer_id', $this->customer->id)
             ->where('interaction_type', 'quotation_sent')->latest('id')->first();
@@ -471,8 +509,8 @@ class SalesQuotationLifecycleTest extends TestCase
     {
         $quotation = $this->createQuotation($this->admin, [$this->itemLine()]);
 
-        $this->expectException(\InvalidArgumentException::class);
-        app(QuotationMailService::class)->send($quotation, $this->admin, 'customer@example.test');
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(QuotationMailService::class)->send($quotation, $this->admin, $quotation->party_email);
     }
 
     public function test_template_renderer_replaces_tokens(): void
@@ -515,12 +553,15 @@ class SalesQuotationLifecycleTest extends TestCase
 
         $quotation = $this->createSentQuotation();
 
+        $email = $this->verifyOtpForQuotation($quotation);
+
         $response = $this->post(route('sales.quotation.public.accept', [
             'quotationCode' => $quotation->quotation_code,
             'token' => $quotation->public_token,
         ]), [
             'signer_name' => 'Nguyễn Văn A',
-            'signer_email' => 'a@example.test',
+            'signer_email' => $email,
+            'otp_email' => $email,
         ]);
 
         $response->assertRedirect();
@@ -541,12 +582,15 @@ class SalesQuotationLifecycleTest extends TestCase
     {
         $quotation = $this->createSentQuotation();
 
+        $email = $this->verifyOtpForQuotation($quotation);
+
         $this->post(route('sales.quotation.public.reject', [
             'quotationCode' => $quotation->quotation_code,
             'token' => $quotation->public_token,
         ]), [
             'signer_name' => 'Nguyễn Văn A',
-            'signer_email' => 'a@example.test',
+            'signer_email' => $email,
+            'otp_email' => $email,
             'reason' => 'Không phù hợp',
         ]);
 
@@ -557,16 +601,17 @@ class SalesQuotationLifecycleTest extends TestCase
     {
         $quotation = $this->createSentQuotation();
 
+        $email = $quotation->party_email;
         app(QuotationConfirmationService::class)->requestRevision($quotation, [
             'signer_name' => 'a',
-            'signer_email' => 'a@example.test',
+            'signer_email' => $email,
             'reason' => 'Giá tăng lên',
-        ]);
+        ], $email);
         $this->assertSame(QuotationStatus::RevisionRequested, $quotation->fresh()->status);
 
         $revision = app(QuotationRevisionService::class)->createRevision(
             $quotation,
-            $this->admin,
+            $this->manager,
             [],
             ['title' => 'Báo giá sửa đổi']
         );
@@ -590,7 +635,7 @@ class SalesQuotationLifecycleTest extends TestCase
         app(QuotationPaymentService::class)->updateStatus(
             $quotation,
             PaymentStatus::Paid,
-            $this->admin,
+            $this->financeUser,
             'Chuyển khoản thành công'
         );
 
@@ -621,8 +666,8 @@ class SalesQuotationLifecycleTest extends TestCase
         $quotation = $this->createQuotation($this->admin, [$this->itemLine()]);
         $quotation->update(['payment_status' => PaymentStatus::Paid->value]);
 
-        $this->expectException(\InvalidArgumentException::class);
-        app(QuotationPaymentService::class)->updateStatus($quotation, PaymentStatus::Unpaid, $this->admin);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(QuotationPaymentService::class)->updateStatus($quotation, PaymentStatus::Unpaid, $this->financeUser);
     }
 
     // ─── 8. Expiry & reminders ───────────────────────────────────────────

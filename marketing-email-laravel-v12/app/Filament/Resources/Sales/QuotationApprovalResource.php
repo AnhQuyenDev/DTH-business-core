@@ -36,7 +36,10 @@ class QuotationApprovalResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isAdmin() || auth()->user()?->isCustomerServiceManager();
+        $user = auth()->user();
+
+        return $user !== null
+            && ($user->isAdmin() || $user->isSalesManager() || $user->canReadAcrossBusiness());
     }
 
     public static function table(Table $table): Table
@@ -59,14 +62,20 @@ class QuotationApprovalResource extends Resource
                     ->action(fn (QuotationApproval $a) => app(QuotationApprovalService::class)->approve(
                         $a->quotation, auth()->user()
                     ))
-                    ->visible(fn (QuotationApproval $a): bool => $a->status === ApprovalStatus::Pending),
+                    ->visible(fn (QuotationApproval $a): bool =>
+                        $a->status === ApprovalStatus::Pending
+                        && (auth()->user()?->can('approve', $a->quotation) ?? false)
+                    ),
                 Action::make('reject')
                     ->label(__('action.reject'))
                     ->color('danger')
                     ->action(fn (QuotationApproval $a) => app(QuotationApprovalService::class)->reject(
                         $a->quotation, auth()->user(), __('note.reject_from_approval_list')
                     ))
-                    ->visible(fn (QuotationApproval $a): bool => $a->status === ApprovalStatus::Pending),
+                    ->visible(fn (QuotationApproval $a): bool =>
+                        $a->status === ApprovalStatus::Pending
+                        && (auth()->user()?->can('approve', $a->quotation) ?? false)
+                    ),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->filters([
