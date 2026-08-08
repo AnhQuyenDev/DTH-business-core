@@ -36,6 +36,8 @@ class ServiceResource extends Resource
         return __('resource.service.plural');
     }
 
+    protected static ?int $navigationSort = 10;
+
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
 
     public static function canViewAny(): bool
@@ -95,7 +97,12 @@ class ServiceResource extends Resource
                     DeleteBulkAction::make()
                         ->label(__('action.bulk_delete'))
                         ->modalHeading(__('action.bulk_delete'))
-                        ->requiresConfirmation(),
+                        ->requiresConfirmation()
+                        ->visible(
+                            fn (): bool => auth()->user()?->can(
+                                'sales.manage-services'
+                            ) ?? false
+                        ),
                 ]),
             ]);
     }

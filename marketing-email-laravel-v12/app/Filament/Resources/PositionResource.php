@@ -38,7 +38,7 @@ class PositionResource extends Resource
 
     public static function getNavigationGroup(): string
     {
-        return __('navigation.group.crm');
+        return __('navigation.group.configuration');
     }
 
     public static function getNavigationLabel(): string
@@ -90,9 +90,10 @@ class PositionResource extends Resource
     {
         return $table->columns([
             TextColumn::make('title')->label(__('field.title'))->searchable()->sortable(),
-            TextColumn::make('department.name')->label(__('field.department'))->badge()->searchable(),
+            TextColumn::make('department.name')->label(__('field.department'))->badge()->searchable()
+                ->color(fn (Position $record): string => $record->department?->color ?? 'gray'),
             IconColumn::make('is_active')->label(__('field.is_active'))->boolean(),
-            TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable(),
+            TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->sortable(),
         ])
             ->actions([ActionGroup::make([
                 ViewAction::make(),

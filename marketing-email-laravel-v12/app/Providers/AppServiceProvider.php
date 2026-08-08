@@ -15,6 +15,9 @@ use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
 use App\Models\Sales\Opportunity;
+use App\Models\Sales\PriceBook;
+use App\Models\Sales\Service;
+use App\Models\Sales\ServicePackage;
 use App\Models\Sales\Quotation;
 use App\Models\User;
 use App\Models\Marketing\LandingPageSubmission;
@@ -26,6 +29,9 @@ use App\Policies\CompanyPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\LeadPolicy;
 use App\Policies\Sales\OpportunityPolicy;
+use App\Policies\Sales\PriceBookPolicy;
+use App\Policies\Sales\ServicePackagePolicy;
+use App\Policies\Sales\ServicePolicy;
 use App\Policies\Sales\QuotationPolicy;
 use App\Services\Crm\FakeTaxVerificationProvider;
 use Illuminate\Auth\Events\Login;
@@ -59,6 +65,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
         Gate::policy(Opportunity::class, OpportunityPolicy::class);
+        Gate::policy(Service::class, ServicePolicy::class);
+        Gate::policy(ServicePackage::class, ServicePackagePolicy::class);
+        Gate::policy(PriceBook::class, PriceBookPolicy::class);
         Gate::policy(Quotation::class, QuotationPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
 
@@ -111,6 +120,68 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('crm.manage-staff', fn (User $user) => $user->isAdmin());
         Gate::define('crm.manage-staff-availability', fn (User $user) => $user->isAdmin());
 
+        // ─── Sales / Catalog & Bank Account Gates ─────────────────
+
+        Gate::define(
+            'sales.view-services',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::MarketingManager,
+                UserRole::MarketingStaff,
+                UserRole::CustomerServiceManager,
+                UserRole::CustomerServiceStaff,
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+            ])
+        );
+
+        Gate::define(
+            'sales.manage-services',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::SalesManager,
+            ])
+        );
+
+        Gate::define(
+            'sales.view-service-packages',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::MarketingManager,
+                UserRole::MarketingStaff,
+                UserRole::CustomerServiceManager,
+                UserRole::CustomerServiceStaff,
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+            ])
+        );
+
+        Gate::define(
+            'sales.manage-service-packages',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::SalesManager,
+            ])
+        );
+
+        Gate::define(
+            'sales.view-bank-accounts',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+                UserRole::FinanceStaff,
+            ])
+        );
+
+        Gate::define(
+            'sales.manage-bank-accounts',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::FinanceStaff,
+            ])
+        );
+
         // ─── Sales / Price Book Gates ───────────────────────────
 
         Gate::define(
@@ -125,16 +196,18 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define(
             'sales.manage-price-books',
-            fn (User $user): bool => $user->hasRole(
-                UserRole::SalesManager
-            )
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::SalesManager,
+            ])
         );
 
         Gate::define(
             'sales.approve-price-books',
-            fn (User $user): bool => $user->hasRole(
-                UserRole::SalesManager
-            )
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::SalesManager,
+            ])
         );
 
         // ─── Sales / Quotation Gates ────────────────────────────

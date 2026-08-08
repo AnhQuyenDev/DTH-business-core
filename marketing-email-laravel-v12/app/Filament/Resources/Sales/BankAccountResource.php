@@ -39,6 +39,8 @@ class BankAccountResource extends Resource
         return __('resource.bank_account.plural');
     }
 
+    protected static ?int $navigationSort = 40;
+
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
 
     public static function canViewAny(): bool
@@ -114,7 +116,12 @@ class BankAccountResource extends Resource
                     DeleteBulkAction::make()
                         ->label(__('action.bulk_delete'))
                         ->modalHeading(__('action.bulk_delete'))
-                        ->requiresConfirmation(),
+                        ->requiresConfirmation()
+                        ->visible(
+                            fn (): bool => auth()->user()?->can(
+                                'sales.manage-bank-accounts'
+                            ) ?? false
+                        ),
                 ]),
             ]);
     }

@@ -29,6 +29,9 @@ class RoleAccessAndCareFlowTest extends TestCase
         'marketing_staff',
         'customer_service_manager',
         'customer_service_staff',
+        'sales_manager',
+        'sales_staff',
+        'finance_staff',
         'viewer',
     ];
 

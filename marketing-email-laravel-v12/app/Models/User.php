@@ -24,6 +24,7 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'role',
+        'is_active',
     ];
 
     protected $hidden = [
@@ -36,6 +37,7 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -189,11 +191,12 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessBusinessPanel(): bool
     {
-        return in_array($this->role, UserRole::values(), true);
+        return $this->is_active
+            && UserRole::tryFrom((string) $this->role) !== null;
     }
 
     /**
-     * @deprecated Dùng helper theo module thay vì helper tổng quát này.
+     * @deprecated Use module-specific helpers instead.
      */
     public function isAnyMarketingUser(): bool
     {

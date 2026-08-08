@@ -15,6 +15,29 @@ use Illuminate\Support\Facades\Log;
 
 class StaffObserver
 {
+    public function saved(Staff $staff): void
+    {
+        if ($staff->user_id === null) {
+            return;
+        }
+
+        $updates = [];
+
+        if ($staff->wasChanged('full_name')) {
+            $updates['name'] = $staff->full_name;
+        }
+
+        if ($staff->wasChanged('employment_status')) {
+            $updates['is_active'] = $staff->employment_status === StaffEmploymentStatus::Active;
+        }
+
+        if ($updates !== []) {
+            User::query()
+                ->whereKey($staff->user_id)
+                ->update($updates);
+        }
+    }
+
     public function saving(Staff $staff): void
     {
         if (! $staff->isDirty('employment_status')) {

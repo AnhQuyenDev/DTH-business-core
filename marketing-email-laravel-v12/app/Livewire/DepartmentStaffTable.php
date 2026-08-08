@@ -4,8 +4,11 @@ namespace App\Livewire;
 
 use App\Enums\Crm\StaffEmploymentStatus;
 use App\Filament\Resources\StaffResource;
+use App\Models\Crm\Department;
 use App\Models\Crm\Position;
 use App\Models\Crm\Staff;
+use App\Models\User;
+use App\Services\Organization\RoleDepartmentService;
 use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -44,15 +47,23 @@ class DepartmentStaffTable extends Component implements HasForms, HasTable
                 TextColumn::make('employee_code')->label(__('field.employee_code'))->searchable()->sortable(),
                 TextColumn::make('full_name')->label(__('field.full_name'))->searchable()->sortable(),
                 TextColumn::make('position.title')->label(__('field.position'))->searchable(),
+                TextColumn::make('user.email')->label(__('field.user_account'))->placeholder(__('common.not_available')),
                 TextColumn::make('employment_status')
                     ->label(__('field.employment_status'))
                     ->badge()
                     ->color(fn (StaffEmploymentStatus $state): string => $state->color()),
                 IconColumn::make('can_receive_customers')->label(__('field.can_receive_customers'))->boolean(),
-                TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable(),
+                TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->sortable(),
             ])
             ->defaultSort('full_name')
             ->actions([ActionGroup::make([
+                Action::make('provision_account')
+                    ->label(__('action.provision_user_account'))
+                    ->icon('heroicon-o-user-plus')
+                    ->url(fn (Staff $record): string => \App\Filament\Resources\UserResource::getUrl('create', [
+                        'staff_id' => $record->id,
+                    ]))
+                    ->visible(fn (Staff $record): bool => $record->user_id === null),
                 Action::make('manage')
                     ->label(__('action.manage_staff'))
                     ->icon('heroicon-o-identification')
@@ -67,6 +78,7 @@ class DepartmentStaffTable extends Component implements HasForms, HasTable
                     ->form($this->staffForm())
                     ->mutateFormDataUsing(fn (array $data): array => [
                         'department_id' => $this->departmentId,
+                        'employee_code' => Staff::nextEmployeeCode(),
                         ...$data,
                     ]),
             ])
@@ -83,13 +95,49 @@ class DepartmentStaffTable extends Component implements HasForms, HasTable
 
         return [
             Select::make('user_id')
-                ->label(__('field.user'))
-                ->relationship('user', 'email')
+                ->label(__('field.user_account'))
+                ->options(
+                    User::query()
+                        ->whereDoesntHave('staff')
+                        ->orderBy('name')
+                        ->get()
+                        ->mapWithKeys(fn (User $user): array => [
+                            $user->id => $user->name.' - '.$user->email,
+                        ])
+                        ->all()
+                )
                 ->searchable()
-                ->required(),
+                ->nullable()
+                ->rules([
+                    fn (): Closure => function (string $attribute, mixed $value, Closure $fail) use ($departmentId): void {
+                        if (! filled($value)) {
+                            return;
+                        }
+
+                        $user = User::query()->find((int) $value);
+                        $department = Department::query()->find($departmentId);
+
+                        if (
+                            $user
+                            && ! app(RoleDepartmentService::class)->isCompatible(
+                                $user->role,
+                                $department,
+                            )
+                        ) {
+                            $fail(__('validation.user_role_department_mismatch'));
+                        }
+                    },
+                ])
+                ->helperText(__('helper.staff_user_optional')),
             Select::make('position_id')
                 ->label(__('field.position'))
-                ->options(Position::query()->where('department_id', $departmentId)->orderBy('title')->pluck('title', 'id'))
+                ->options(
+                    Position::query()
+                        ->where('department_id', $departmentId)
+                        ->where('is_active', true)
+                        ->orderBy('title')
+                        ->pluck('title', 'id')
+                )
                 ->searchable()
                 ->rules([
                     fn (): Closure => function (string $attribute, mixed $value, Closure $fail) use ($departmentId): void {
@@ -104,19 +152,18 @@ class DepartmentStaffTable extends Component implements HasForms, HasTable
                         }
                     },
                 ]),
-            TextInput::make('employee_code')->label(__('field.employee_code'))->required()->maxLength(50)->unique(ignoreRecord: true),
             TextInput::make('full_name')->label(__('field.full_name'))->required()->maxLength(255),
             TextInput::make('phone')->label(__('field.phone'))->maxLength(30),
             Select::make('employment_status')
                 ->label(__('field.employment_status'))
                 ->options(StaffEmploymentStatus::options())
-                ->default(StaffEmploymentStatus::Active)
+                ->default(StaffEmploymentStatus::Active->value)
                 ->required(),
             Toggle::make('can_receive_customers')->label(__('field.can_receive_customers'))->default(true),
-            TextInput::make('customer_capacity')->label(__('field.customer_capacity'))->numeric(),
-            TextInput::make('distribution_weight')->label(__('field.distribution_weight'))->numeric()->default(1),
-            DatePicker::make('started_at')->label(__('field.started_at')),
-            DatePicker::make('ended_at')->label(__('field.ended_at')),
+            TextInput::make('customer_capacity')->label(__('field.customer_capacity'))->numeric()->minValue(0),
+            TextInput::make('distribution_weight')->label(__('field.distribution_weight'))->numeric()->minValue(0)->default(1),
+            DatePicker::make('started_at')->label(__('field.started_at'))->native(false)->displayFormat('d/m/Y'),
+            DatePicker::make('ended_at')->label(__('field.ended_at'))->native(false)->displayFormat('d/m/Y'),
         ];
     }
 

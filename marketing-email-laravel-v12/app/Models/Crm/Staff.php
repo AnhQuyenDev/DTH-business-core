@@ -54,6 +54,13 @@ class Staff extends Model
         return $this->belongsTo(User::class);
     }
 
+    public static function nextEmployeeCode(): string
+    {
+        $nextId = (static::withTrashed()->max('id') ?? 0) + 1;
+
+        return 'EMP-'.str_pad((string) $nextId, 4, '0', STR_PAD_LEFT);
+    }
+
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);

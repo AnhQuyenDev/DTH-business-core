@@ -15,6 +15,8 @@ class DepartmentFactory extends Factory
         return [
             'code' => Str::slug(fake()->unique()->words(2, true), '-'),
             'name' => fake()->words(2, true),
+            'function_key' => 'other',
+            'color' => 'gray',
             'description' => null,
             'sort_order' => 0,
             'is_active' => true,

@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Enums\Crm\DepartmentFunction;
+
 enum UserRole: string
 {
     case Admin = 'admin';
@@ -32,6 +34,26 @@ enum UserRole: string
             self::FinanceStaff => 'success',
             self::Viewer => 'gray',
         };
+    }
+
+    public function requiredDepartmentFunction(): ?DepartmentFunction
+    {
+        return match ($this) {
+            self::MarketingManager,
+            self::MarketingStaff => DepartmentFunction::Marketing,
+            self::CustomerServiceManager,
+            self::CustomerServiceStaff => DepartmentFunction::CustomerService,
+            self::SalesManager,
+            self::SalesStaff => DepartmentFunction::Sales,
+            self::FinanceStaff => DepartmentFunction::Finance,
+            self::Admin,
+            self::Viewer => null,
+        };
+    }
+
+    public function requiresStaff(): bool
+    {
+        return $this->requiredDepartmentFunction() !== null;
     }
 
     /** @return array<string, string> */
