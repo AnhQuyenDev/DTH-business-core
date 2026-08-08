@@ -17,7 +17,6 @@ use App\Models\User;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-
 class QuotationCreationService
 {
     public function __construct(
@@ -338,12 +337,57 @@ class QuotationCreationService
             default => 0,
         };
 
-        if (! $this->pricingService->validateDiscountLimit($discountAmount, (float) $pbi->maximum_discount_value)) {
-            throw new \InvalidArgumentException(sprintf(
-                'Discount exceeds the maximum allowed (%s %s) for the price book item.',
-                $pbi->maximum_discount_value,
-                $pbi->priceBook?->currency ?? ''
-            ));
+        $maximumDiscount = (float) (
+            $pbi->maximum_discount_value ?? 0
+        );
+
+        if ($maximumDiscount > 0) {
+            $exceedsMaximum = match ($discountType) {
+                DiscountType::Percentage->value =>
+                    $discountValue > $maximumDiscount,
+
+                DiscountType::Fixed->value =>
+                    $discountValue > $maximumDiscount,
+
+                default => false,
+            };
+
+            if ($exceedsMaximum) {
+                $limitLabel = match ($discountType) {
+                    DiscountType::Percentage->value =>
+                        number_format(
+                            $maximumDiscount,
+                            2
+                        ).'%',
+
+                    DiscountType::Fixed->value =>
+                        number_format(
+                            $maximumDiscount,
+                            0,
+                            ',',
+                            '.'
+                        ).' '.(
+                            $pbi->priceBook?->currency ?? 'VND'
+                        ),
+
+                    default =>
+                        number_format(
+                            $maximumDiscount,
+                            2
+                        ),
+                };
+
+                throw ValidationException::withMessages([
+                    'items' =>
+                        'Mức giảm giá vượt giới hạn tối đa '
+                        ."cho phép ({$limitLabel}) của gói "
+                        .(
+                            $pbi->servicePackage?->name
+                            ?? 'dịch vụ đã chọn'
+                        )
+                        .'.',
+                ]);
+            }
         }
     }
 

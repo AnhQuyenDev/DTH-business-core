@@ -111,7 +111,7 @@ class QuotationResource extends Resource
                                     'proposal',
                                     'negotiation',
                                 ])
-                                ->with(['company', 'primaryContact'])
+                                ->with(['company', 'primaryContact', 'lead'])
                                 ->orderByDesc('created_at');
 
                             $user = auth()->user();
@@ -129,12 +129,18 @@ class QuotationResource extends Resource
                             return $query->get()->mapWithKeys(
                                 fn (Opportunity $opportunity): array => [
                                     $opportunity->id => sprintf(
-                                        '%s — %s — %s',
+                                        '%s — %s',
                                         $opportunity->opportunity_code,
-                                        $opportunity->title,
-                                        $opportunity->company?->legal_name
-                                            ?? $opportunity->primaryContact?->full_name
-                                            ?? __('common.not_available'),
+                                        data_get(
+                                            $opportunity->lead?->metadata,
+                                            'service_context.display_label'
+                                        )
+                                            ?? data_get(
+                                                $opportunity->lead?->metadata,
+                                                'service_interest_label'
+                                            )
+                                            ?? $opportunity->service_interest
+                                            ?? $opportunity->title,
                                     ),
                                 ]
                             )->all();
@@ -166,7 +172,7 @@ class QuotationResource extends Resource
                             }
 
                             $opportunity = Opportunity::query()
-                                ->with(['company', 'primaryContact'])
+                                ->with(['company', 'primaryContact', 'lead'])
                                 ->find($state);
 
                             $set(
@@ -197,7 +203,7 @@ class QuotationResource extends Resource
                             }
 
                             $opportunity = Opportunity::query()
-                                ->with(['company', 'primaryContact'])
+                                ->with(['company', 'primaryContact', 'lead'])
                                 ->find($state);
 
                             $set(
@@ -216,6 +222,20 @@ class QuotationResource extends Resource
 
                     TextInput::make('party_preview')
                         ->label(__('field.quotation_recipient'))
+                        ->default(function (): ?string {
+                            $opportunityId = request()->integer('opportunity_id');
+
+                            if ($opportunityId <= 0) {
+                                return null;
+                            }
+
+                            $opportunity = Opportunity::query()
+                                ->with(['company', 'primaryContact', 'lead'])
+                                ->find($opportunityId);
+
+                            return $opportunity?->company?->legal_name
+                                ?? $opportunity?->primaryContact?->full_name;
+                        })
                         ->disabled()
                         ->dehydrated(false)
                         ->visible(
@@ -300,6 +320,19 @@ class QuotationResource extends Resource
 
                     TextInput::make('title')
                         ->label(__('field.title'))
+                        ->default(function (): ?string {
+                            $opportunityId = request()->integer('opportunity_id');
+
+                            if ($opportunityId <= 0) {
+                                return null;
+                            }
+
+                            $opportunity = Opportunity::query()->find($opportunityId);
+
+                            return $opportunity
+                                ? 'Báo giá '.$opportunity->title
+                                : null;
+                        })
                         ->required()
                         ->maxLength(255),
 
@@ -331,26 +364,59 @@ class QuotationResource extends Resource
                     ->schema([
                         Hidden::make('price_book_item_id'),
                         Grid::make(4)->schema([
-                            TextInput::make('service_name_snapshot')->label(__('field.service_name'))->required(),
-                            TextInput::make('package_name_snapshot')->label(__('field.package_name')),
-                            TextInput::make('unit')->label(__('field.unit'))->default('tháng'),
+                            TextInput::make('service_name_snapshot')
+                                ->label(__('field.service_name'))
+                                ->required()
+                                ->disabled()
+                                ->dehydrated(),
+                            TextInput::make('package_name_snapshot')
+                                ->label(__('field.package_name'))
+                                ->disabled()
+                                ->dehydrated(),
+                            TextInput::make('unit')
+                                ->label(__('field.unit'))
+                                ->default('tháng')
+                                ->disabled()
+                                ->dehydrated(),
                             TextInput::make('quantity')->label(__('field.quantity'))->numeric()->default(1)->required(),
                         ]),
                         Grid::make(4)->schema([
-                            TextInput::make('unit_price')->label(__('field.unit_price'))->numeric()->required()->prefix('VND'),
+                            TextInput::make('unit_price')
+                                ->label(__('field.unit_price'))
+                                ->numeric()
+                                ->required()
+                                ->prefix('VND')
+                                ->disabled()
+                                ->dehydrated(),
                             Select::make('discount_type')->label(__('field.discount_type'))
                                 ->options(['' => __('field.none'), ...DiscountType::options()]),
                             TextInput::make('discount_value')->label(__('field.discount_value'))->numeric()->default(0),
-                            TextInput::make('vat_rate')->label(__('field.vat_rate'))->numeric()->default(10)->suffix('%'),
+                            TextInput::make('vat_rate')
+                                ->label(__('field.vat_rate'))
+                                ->numeric()
+                                ->default(10)
+                                ->suffix('%')
+                                ->disabled()
+                                ->dehydrated(),
                         ]),
                         Textarea::make('description_snapshot')->label(__('field.description'))->rows(2)->columnSpanFull(),
                     ])
                     ->columns(1)
-                    ->defaultItems(1)
+                    ->defaultItems(
+                        fn (): int => config(
+                            'business_flow.opportunity_quotation_enabled'
+                        ) ? 0 : 1
+                    )
                     ->addActionLabel(__('action.add_item'))
                     ->deleteAction(fn (\Filament\Forms\Components\Actions\Action $action) => $action->label(__('action.delete_item')))
-                    ->addable()
-                    ->deletable(),
+                    ->addable(
+                        fn (): bool =>
+                            ! config('business_flow.opportunity_quotation_enabled')
+                    )
+                    ->deletable(
+                        fn (): bool =>
+                            ! config('business_flow.opportunity_quotation_enabled')
+                    )
             ]),
         ]);
     }
