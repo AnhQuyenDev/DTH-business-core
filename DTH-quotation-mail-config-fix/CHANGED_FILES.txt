@@ -1,0 +1,11 @@
+NEW     app/Services/Marketing/SendingAccountMailerService.php
+MODIFY  app/Services/Marketing/SendingAccountService.php
+NEW     app/Services/Sales/QuotationSendingAccountResolver.php
+MODIFY  app/Services/Sales/QuotationMailService.php
+MODIFY  app/Jobs/Sales/SendQuotationEmailJob.php
+MODIFY  app/Models/Sales/QuotationEmailLog.php
+MODIFY  app/Filament/Resources/Sales/QuotationResource/RelationManagers/EmailLogsRelationManager.php
+MODIFY  app/Http/Controllers/Sales/QuotationPublicController.php
+MODIFY  config/business_flow.php
+NEW     database/migrations/2026_08_09_004500_harden_quotation_email_sending.php
+MANUAL  ViewQuotation.php send action only (see VIEW_QUOTATION_SEND_ACTION.md)

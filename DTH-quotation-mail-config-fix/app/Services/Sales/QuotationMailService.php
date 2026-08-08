@@ -1,0 +1,186 @@
+<?php
+
+namespace App\Services\Sales;
+
+use App\Enums\Sales\EmailStatus;
+use App\Enums\Sales\QuotationEmailStatus;
+use App\Jobs\Sales\SendQuotationEmailJob;
+use App\Models\Sales\Quotation;
+use App\Models\Sales\QuotationDocument;
+use App\Models\Sales\QuotationEmailLog;
+use App\Models\User;
+use App\Services\Marketing\AuditLogService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Throwable;
+
+class QuotationMailService
+{
+    public function __construct(
+        private readonly QuotationPdfService $pdfService,
+        private readonly AuditLogService $auditLog,
+        private readonly QuotationSendingAccountResolver $sendingAccountResolver,
+    ) {}
+
+    public function send(
+        Quotation $quotation,
+        User $user,
+        string $recipientEmail,
+        array $options = [],
+    ): QuotationEmailLog {
+        $this->validateSend($quotation, $recipientEmail);
+
+        $sendingAccount = $this->sendingAccountResolver->resolve(
+            quotation: $quotation,
+            actor: $user,
+            preferredSendingAccountId: filled($options['sending_account_id'] ?? null)
+                ? (int) $options['sending_account_id']
+                : null,
+        );
+
+        $pdfDoc = $this->ensurePdfExists($quotation);
+
+        $log = DB::transaction(function () use (
+            $quotation,
+            $user,
+            $recipientEmail,
+            $options,
+            $sendingAccount,
+        ): QuotationEmailLog {
+            $log = QuotationEmailLog::query()->create([
+                'quotation_id' => $quotation->id,
+                'sending_account_id' => $sendingAccount->id,
+                'sender_email' => $sendingAccount->from_email,
+                'sender_name' => $sendingAccount->from_name,
+                'recipient_email' => $recipientEmail,
+                'cc' => $options['cc'] ?? null,
+                'bcc' => $options['bcc'] ?? null,
+                'subject' => $options['subject']
+                    ?? sprintf('[%s] %s', $quotation->quotation_code, $quotation->title),
+                'body_snapshot' => $options['body'] ?? $this->buildEmailBody($quotation),
+                'status' => QuotationEmailStatus::Queued,
+                'queued_at' => now(),
+                'created_by' => $user->id,
+            ]);
+
+            $quotation->update([
+                'email_status' => EmailStatus::Queued->value,
+            ]);
+
+            return $log;
+        });
+
+        $this->auditLog->log('quotation.email_queued', $quotation, [], [
+            'recipient' => $recipientEmail,
+            'sender' => $sendingAccount->from_email,
+            'sending_account_id' => $sendingAccount->id,
+            'email_log_id' => $log->id,
+        ]);
+
+        if (config('business_flow.quotation_email_queue_enabled', false)) {
+            SendQuotationEmailJob::dispatch($log, $pdfDoc)
+                ->onQueue((string) config(
+                    'business_flow.quotation_email_queue',
+                    'quotations'
+                ));
+
+            return $log->fresh();
+        }
+
+        try {
+            SendQuotationEmailJob::dispatchSync(
+                $log,
+                $pdfDoc,
+                true,
+            );
+        } catch (Throwable) {
+            // The job already snapshots the error into quotation_email_logs.
+            // Returning the log keeps Filament on the same page and lets the
+            // user inspect the real failure instead of getting a 500 page.
+        }
+
+        return $log->fresh();
+    }
+
+    public function resend(
+        Quotation $quotation,
+        User $user,
+        string $recipientEmail,
+        array $options = [],
+    ): QuotationEmailLog {
+        $options['subject'] ??= sprintf(
+            '[%s] %s (gửi lại)',
+            $quotation->quotation_code,
+            $quotation->title
+        );
+        $options['body'] ??= $this->buildResentEmailBody($quotation);
+
+        return $this->send($quotation, $user, $recipientEmail, $options);
+    }
+
+    private function validateSend(
+        Quotation $quotation,
+        string $recipientEmail,
+    ): void {
+        if (! $quotation->status->canSend()) {
+            throw ValidationException::withMessages([
+                'recipient_email' => 'Báo giá chưa ở trạng thái cho phép gửi.',
+            ]);
+        }
+
+        if (! filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+            throw ValidationException::withMessages([
+                'recipient_email' => 'Email người nhận không hợp lệ.',
+            ]);
+        }
+
+        if (
+            $quotation->bank_account_id === null
+            && blank(data_get($quotation->payment_snapshot, 'bank_account_id'))
+        ) {
+            throw ValidationException::withMessages([
+                'bank_account_id' => 'Báo giá phải có tài khoản ngân hàng trước khi gửi cho khách.',
+            ]);
+        }
+    }
+
+    private function ensurePdfExists(
+        Quotation $quotation,
+    ): ?QuotationDocument {
+        $doc = $this->pdfService->getLatestPdf($quotation);
+
+        if (! $doc) {
+            return $this->pdfService->generate($quotation);
+        }
+
+        return $doc;
+    }
+
+    private function buildResentEmailBody(
+        Quotation $quotation,
+    ): string {
+        $url = route('sales.quotation.public.show', [
+            'quotationCode' => $quotation->quotation_code,
+            'token' => $quotation->public_token,
+        ]);
+
+        return view('sales.emails.quotation-resent', [
+            'quotation' => $quotation,
+            'publicUrl' => $url,
+        ])->render();
+    }
+
+    private function buildEmailBody(
+        Quotation $quotation,
+    ): string {
+        $url = route('sales.quotation.public.show', [
+            'quotationCode' => $quotation->quotation_code,
+            'token' => $quotation->public_token,
+        ]);
+
+        return view('sales.emails.quotation-sent', [
+            'quotation' => $quotation,
+            'publicUrl' => $url,
+        ])->render();
+    }
+}
