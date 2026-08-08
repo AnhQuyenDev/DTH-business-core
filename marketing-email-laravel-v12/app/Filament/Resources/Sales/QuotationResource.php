@@ -157,6 +157,31 @@ class QuotationResource extends Resource
                                 'business_flow.opportunity_quotation_enabled'
                             )
                         )
+                        ->afterStateHydrated(function (
+                            Set $set,
+                            ?string $state,
+                        ): void {
+                            if (! $state) {
+                                return;
+                            }
+
+                            $opportunity = Opportunity::query()
+                                ->with(['company', 'primaryContact'])
+                                ->find($state);
+
+                            $set(
+                                'title',
+                                $opportunity
+                                    ? 'Báo giá '.$opportunity->title
+                                    : null
+                            );
+
+                            $set(
+                                'party_preview',
+                                $opportunity?->company?->legal_name
+                                    ?? $opportunity?->primaryContact?->full_name
+                            );
+                        })
                         ->afterStateUpdated(function (
                             Set $set,
                             ?string $state,
@@ -165,6 +190,7 @@ class QuotationResource extends Resource
                             $set('items', []);
 
                             if (! $state) {
+                                $set('title', null);
                                 $set('party_preview', null);
 
                                 return;
@@ -246,12 +272,22 @@ class QuotationResource extends Resource
                         ->live()
                         ->afterStateUpdated(function (
                             Set $set,
+                            Get $get,
                             ?string $state,
                         ): void {
+                            if (! $state) {
+                                $set('items', []);
+
+                                return;
+                            }
+
                             $set(
                                 'items',
                                 static::loadItemsFromPriceBook(
-                                    (int) $state
+                                    priceBookId: (int) $state,
+                                    opportunityId: filled($get('opportunity_id'))
+                                        ? (int) $get('opportunity_id')
+                                        : null,
                                 )
                             );
                         })
@@ -270,12 +306,22 @@ class QuotationResource extends Resource
                     DatePicker::make('quotation_date')
                         ->label(__('field.quotation_date'))
                         ->required()
-                        ->default(now()),
+                        ->default(now())
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->live(),
 
                     DatePicker::make('valid_until')
                         ->label(__('field.valid_until'))
                         ->required()
-                        ->default(now()->addDays(30)),
+                        ->default(now()->addDays(30))
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->minDate(
+                            fn (Get $get): string => $get('quotation_date')
+                                ?: now()->toDateString()
+                        )
+                        ->rule('after_or_equal:quotation_date'),
                 ]),
             ]),
 
@@ -524,8 +570,10 @@ class QuotationResource extends Resource
         ];
     }
 
-    public static function loadItemsFromPriceBook(int $priceBookId): array
-    {
+    public static function loadItemsFromPriceBook(
+        int $priceBookId,
+        ?int $opportunityId = null,
+    ): array {
         if ($priceBookId <= 0) {
             return [];
         }
@@ -535,7 +583,8 @@ class QuotationResource extends Resource
             return [];
         }
 
-        $items = app(PriceBookResolverService::class)->getItemsForPriceBook($priceBook);
+        $items = app(PriceBookResolverService::class)
+            ->getItemsForPriceBook($priceBook);
 
         if ($items->isEmpty()) {
             Notification::make()
@@ -544,6 +593,40 @@ class QuotationResource extends Resource
                 ->send();
 
             return [];
+        }
+
+        if ($opportunityId !== null) {
+            $opportunity = Opportunity::query()->find($opportunityId);
+
+            if (
+                $opportunity !== null
+                && filled($opportunity->service_interest)
+            ) {
+                $serviceInterest = (string) $opportunity->service_interest;
+
+                $items = $items
+                    ->filter(
+                        fn (PriceBookItem $pbi): bool =>
+                            $pbi->servicePackage?->package_code
+                                === $serviceInterest
+                    )
+                    ->values();
+
+                if ($items->isEmpty()) {
+                    Notification::make()
+                        ->danger()
+                        ->title(
+                            'Bảng giá không có gói dịch vụ phù hợp với cơ hội này.'
+                        )
+                        ->body(
+                            'Cơ hội đang quan tâm gói '.$serviceInterest
+                            .'. Hãy chọn bảng giá có đúng gói dịch vụ.'
+                        )
+                        ->send();
+
+                    return [];
+                }
+            }
         }
 
         return $items->map(fn (PriceBookItem $pbi): array => [

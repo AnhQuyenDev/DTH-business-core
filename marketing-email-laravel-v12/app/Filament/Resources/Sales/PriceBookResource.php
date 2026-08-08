@@ -19,6 +19,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -88,8 +89,17 @@ class PriceBookResource extends Resource
                     ->options(TaxMode::options())
                     ->default('exclusive')
                     ->required(),
-                DatePicker::make('valid_from')->label(__('field.valid_from'))->required(),
-                DatePicker::make('valid_until')->label(__('field.valid_until')),
+                DatePicker::make('valid_from')
+                    ->label(__('field.valid_from'))
+                    ->required()
+                    ->native(false)
+                    ->displayFormat('d/m/Y'),
+
+                DatePicker::make('valid_until')
+                    ->label(__('field.valid_until'))
+                    ->native(false)
+                    ->displayFormat('d/m/Y')
+                    ->minDate(fn (Get $get) => $get('valid_from')),
                 Select::make('status')
                     ->label(__('field.status'))
                     ->options(PriceBookStatus::options())
@@ -109,19 +119,61 @@ class PriceBookResource extends Resource
                             ->searchable()
                             ->preload()
                             ->required()
+                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                             ->columnSpan(4),
-                        TextInput::make('unit_price')->label(__('field.unit_price'))->numeric()->required()->prefix('VND')->columnSpan(2),
-                        TextInput::make('vat_rate')->label(__('field.vat_rate'))->numeric()->default(10)->suffix('%')->columnSpan(2),
-                        TextInput::make('minimum_quantity')->label(__('field.minimum_quantity'))->numeric()->default(1)->columnSpan(2),
-                        TextInput::make('maximum_quantity')->label(__('field.maximum_quantity'))->numeric()->nullable()->columnSpan(2),
-                        Select::make('default_discount_type')
+                        TextInput::make('unit_price')
+                            ->label(__('field.unit_price'))
+                            ->numeric()
+                            ->required()
+                            ->minValue(0.01)
+                            ->prefix('VND')
+                            ->columnSpan(2),
+
+                        TextInput::make('vat_rate')
+                            ->label(__('field.vat_rate'))
+                            ->numeric()
+                            ->default(10)
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->suffix('%')
+                            ->columnSpan(2),
+
+                        TextInput::make('minimum_quantity')
+                            ->label(__('field.minimum_quantity'))
+                            ->numeric()
+                            ->default(1)
+                            ->minValue(1)
+                            ->required()
+                            ->columnSpan(2),
+
+                        TextInput::make('maximum_quantity')
+                            ->label(__('field.maximum_quantity'))
+                            ->numeric()
+                            ->nullable()
+                            ->minValue(fn (Get $get): int => max(1, (int) ($get('minimum_quantity') ?? 1)))
+                            ->columnSpan(2),                        Select::make('default_discount_type')
                             ->label(__('field.default_discount_type'))
                             ->options(DiscountType::options())
                             ->nullable()
                             ->columnSpan(2),
-                        TextInput::make('default_discount_value')->label(__('field.default_discount_value'))->numeric()->default(0)->columnSpan(2),
-                        TextInput::make('maximum_discount_value')->label(__('field.maximum_discount_value'))->numeric()->default(0)->columnSpan(2),
-                        Textarea::make('scope_override')->label(__('field.scope_override'))->rows(2)->columnSpanFull(),
+                        TextInput::make('default_discount_value')
+                            ->label(__('field.default_discount_value'))
+                            ->numeric()
+                            ->default(0)
+                            ->minValue(0)
+                            ->maxValue(
+                                fn (Get $get): ?float => filled($get('maximum_discount_value'))
+                                    ? (float) $get('maximum_discount_value')
+                                    : null
+                            )
+                            ->columnSpan(2),
+
+                        TextInput::make('maximum_discount_value')
+                            ->label(__('field.maximum_discount_value'))
+                            ->numeric()
+                            ->default(0)
+                            ->minValue(0)
+                            ->columnSpan(2),                        Textarea::make('scope_override')->label(__('field.scope_override'))->rows(2)->columnSpanFull(),
                         Textarea::make('terms_override')->label(__('field.terms_override'))->rows(2)->columnSpanFull(),
                         TextInput::make('sort_order')->label(__('field.sort_order'))->numeric()->default(0),
                     ])
@@ -149,16 +201,30 @@ class PriceBookResource extends Resource
                 ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label') ? $state->label() : ($state ?? ''))
                 ->color(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'color') ? $state->color() : 'gray'),
             IconColumn::make('is_default')->label(__('field.is_default'))->boolean(),
-            TextColumn::make('valid_from')->label(__('field.valid_from'))->date()->sortable(),
-            TextColumn::make('valid_until')->label(__('field.valid_until'))->date()->sortable(),
-            TextColumn::make('created_at')->label(__('field.created_at'))->dateTime()->sortable()->toggleable(),
-        ])
+            TextColumn::make('valid_from')
+                ->label(__('field.valid_from'))
+                ->date('d/m/Y')
+                ->sortable(),
+            TextColumn::make('valid_until')
+                ->label(__('field.valid_until'))
+                ->date('d/m/Y')
+                ->sortable(),
+            TextColumn::make('created_at')
+                ->label(__('field.created_at'))
+                ->dateTime('d/m/Y H:i')
+                ->sortable()
+                ->toggleable(),        ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->label(__('action.bulk_delete'))
                         ->modalHeading(__('action.bulk_delete'))
-                        ->requiresConfirmation(),
+                        ->requiresConfirmation()
+                        ->visible(
+                            fn (): bool => auth()->user()?->can(
+                                'sales.manage-price-books'
+                            ) ?? false
+                        ),
                 ]),
             ]);
     }
