@@ -111,7 +111,95 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('crm.manage-staff', fn (User $user) => $user->isAdmin());
         Gate::define('crm.manage-staff-availability', fn (User $user) => $user->isAdmin());
 
-        // ─── Sales Gates ────────────────────────────────────────────────
+        // ─── Sales / Price Book Gates ───────────────────────────
+
+        Gate::define(
+            'sales.view-price-books',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+                UserRole::FinanceStaff,
+            ])
+        );
+
+        Gate::define(
+            'sales.manage-price-books',
+            fn (User $user): bool => $user->hasRole(
+                UserRole::SalesManager
+            )
+        );
+
+        Gate::define(
+            'sales.approve-price-books',
+            fn (User $user): bool => $user->hasRole(
+                UserRole::SalesManager
+            )
+        );
+
+        // ─── Sales / Quotation Gates ────────────────────────────
+
+        Gate::define(
+            'sales.view-quotations',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+                UserRole::FinanceStaff,
+                UserRole::CustomerServiceManager,
+            ])
+        );
+
+        Gate::define(
+            'sales.create-quotations',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+            ])
+        );
+
+        Gate::define(
+            'sales.send-quotations',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+            ])
+        );
+
+        Gate::define(
+            'sales.approve-quotations',
+            fn (User $user): bool => $user->hasRole(
+                UserRole::SalesManager
+            )
+        );
+
+        Gate::define(
+            'sales.revise-quotations',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+            ])
+        );
+
+        Gate::define(
+            'sales.cancel-quotations',
+            fn (User $user): bool => $user->hasRole(
+                UserRole::SalesManager
+            )
+        );
+
+        Gate::define(
+            'sales.export-quotations',
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::Admin,
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+                UserRole::FinanceStaff,
+            ])
+        );
+
+        // ─── Sales / Opportunity Gates ──────────────────────────
+
         Gate::define(
             'sales.view-opportunities',
             fn (User $user): bool => $user->hasAnyRole([
@@ -121,52 +209,28 @@ class AppServiceProvider extends ServiceProvider
                 UserRole::SalesStaff,
             ])
         );
+
         Gate::define(
             'sales.create-opportunities',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::CustomerServiceManager,
-                UserRole::SalesManager,
-            ])
+            fn (User $user): bool => $user->hasRole(
+                UserRole::CustomerServiceManager
+            )
         );
+
         Gate::define(
             'sales.process-opportunities',
-            fn (User $user): bool => $user->isSalesStaff()
+            fn (User $user): bool => $user->hasAnyRole([
+                UserRole::SalesManager,
+                UserRole::SalesStaff,
+            ])
         );
-
-        Gate::define('sales.view-services', fn (User $user) => $user->isSalesStaff());
-        Gate::define('sales.manage-services', fn (User $user) => $user->isSalesManager());
-
-        Gate::define('sales.view-service-packages', fn (User $user) => $user->isSalesStaff());
-        Gate::define('sales.manage-service-packages', fn (User $user) => $user->isSalesManager());
-
-        Gate::define('sales.view-price-books', fn (User $user) => $user->isSalesStaff());
-        Gate::define('sales.manage-price-books', fn (User $user) => $user->isSalesManager());
-        Gate::define('sales.approve-price-books', fn (User $user) => $user->isSalesManager());
 
         Gate::define(
-            'sales.view-bank-accounts',
-            fn (User $user): bool => $user->isSalesManager()
-                || $user->isFinanceStaff()
+            'sales.verify-payments',
+            fn (User $user): bool => $user->hasRole(
+                UserRole::FinanceStaff
+            )
         );
-        Gate::define('sales.manage-bank-accounts', fn (User $user) => $user->isFinanceStaff());
-
-        Gate::define(
-            'sales.view-quotations',
-            fn (User $user): bool => $user->isSalesStaff()
-                || $user->isFinanceStaff()
-        );
-        Gate::define('sales.create-quotations', fn (User $user) => $user->isSalesStaff());
-        Gate::define('sales.send-quotations', fn (User $user) => $user->isSalesStaff());
-        Gate::define('sales.approve-quotations', fn (User $user) => $user->isSalesManager());
-        Gate::define('sales.revise-quotations', fn (User $user) => $user->isSalesManager());
-        Gate::define('sales.cancel-quotations', fn (User $user) => $user->isSalesManager());
-        Gate::define(
-            'sales.export-quotations',
-            fn (User $user): bool => $user->isSalesStaff()
-                || $user->isFinanceStaff()
-        );
-        Gate::define('sales.verify-payments', fn (User $user) => $user->isFinanceStaff());
 
         // ─── Customer Care Gates ────────────────────────────────────────
         Gate::define('customer-care.view', fn (User $user) => $user->canViewCustomerCareModule());
