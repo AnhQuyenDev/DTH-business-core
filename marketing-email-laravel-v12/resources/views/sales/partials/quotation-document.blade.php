@@ -124,12 +124,11 @@
                     white-space: nowrap;
                 }
             }
+            @media print {
+                .qdoc-copy-button, .qdoc-interactive { display: none !important; }
+            }
         </style>
     @endif
-
-    @media print {
-        .qdoc-copy-button, .qdoc-interactive { display: none !important; }
-    }
 </style>
 
 <div class="qdoc">
