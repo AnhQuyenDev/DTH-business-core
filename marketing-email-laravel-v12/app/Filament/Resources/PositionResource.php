@@ -136,7 +136,7 @@ class PositionResource extends Resource
                 ->dateTime('d/m/Y H:i')
                 ->sortable(),
         ])
-            ->defaultSort('name')
+            ->defaultSort('title')
             ->actions([ActionGroup::make([
                 ViewAction::make(),
                 EditAction::make(),

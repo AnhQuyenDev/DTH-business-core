@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CampaignResource\Pages;
 use App\Models\Marketing\Campaign;
+use App\Models\Marketing\SendingAccount;
 use App\Services\Marketing\CampaignAudienceService;
 use App\Support\Ui\BadgePalette;
 use Filament\Forms\Components\DateTimePicker;
@@ -21,7 +22,6 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class CampaignResource extends Resource
@@ -85,8 +85,11 @@ class CampaignResource extends Resource
                     Select::make('email_template_id')->label(__('field.email_template'))->relationship('template', 'name')->searchable()->preload(),
                     Select::make('sending_account_id')
                         ->label(__('field.sending_account'))
-                        ->relationship('sendingAccount', 'name')
-                        ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('department_id'))
+                        ->options(fn (): array => SendingAccount::query()
+                            ->whereNull('department_id')
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all())
                         ->helperText(__('field.sending_account_campaign_helper'))
                         ->searchable()
                         ->preload(),

@@ -82,7 +82,7 @@ class UiBadgeStyleResource extends Resource
                     ->searchable()
                     ->required()
                     ->rules([
-                        fn (Get $get, ?UiBadgeStyle $record): Rule => Rule::unique('ui_badge_styles', 'key')
+                        fn (Get $get, ?UiBadgeStyle $record) => Rule::unique('ui_badge_styles', 'key')
                             ->where('category', (string) $get('category'))
                             ->ignore($record?->id),
                     ]),
