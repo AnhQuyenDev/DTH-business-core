@@ -6,6 +6,7 @@ use App\Enums\Crm\StaffEmploymentStatus;
 use App\Enums\Sales\OpportunityStage;
 use App\Enums\Sales\PackageStatus;
 use App\Enums\Sales\PriceBookStatus;
+use App\Enums\Sales\QuotationEmailStatus;
 use App\Enums\Sales\QuotationStatus;
 use App\Enums\Sales\ServiceStatus;
 use App\Models\Crm\Department;
@@ -16,6 +17,7 @@ use App\Models\Sales\PriceBook;
 use App\Models\Sales\PriceBookAccessRule;
 use App\Models\Sales\PriceBookItem;
 use App\Models\Sales\Quotation;
+use App\Models\Sales\QuotationEmailLog;
 use App\Models\Sales\Service;
 use App\Models\Sales\ServicePackage;
 use App\Models\User;
@@ -181,6 +183,49 @@ class QuotationPublicWithoutCustomerTest extends TestCase
         $response->assertOk();
         $this->assertSame(QuotationStatus::Viewed, $quotation->fresh()->status);
         $this->assertNotNull($quotation->fresh()->first_viewed_at);
+    }
+
+    public function test_public_document_is_consistent_and_shows_sender_contact(): void
+    {
+        app()->setLocale('vi');
+
+        $quotation = $this->makeSentQuotation();
+        $quotation->update([
+            'valid_until' => '2026-09-07',
+            'terms_snapshot' => array_merge(
+                $quotation->terms_snapshot ?? [],
+                ['valid_until' => '2026-09-07'],
+            ),
+        ]);
+
+        QuotationEmailLog::query()->create([
+            'quotation_id' => $quotation->id,
+            'sender_email' => 'trang.sales@example.test',
+            'sender_name' => 'Ngô Thị Thu Trang',
+            'recipient_email' => $quotation->party_email,
+            'subject' => 'Quotation test',
+            'body_snapshot' => 'Quotation body',
+            'status' => QuotationEmailStatus::Sent,
+            'sent_at' => now(),
+        ]);
+
+        $response = $this->get(route('sales.quotation.public.show', [
+            'quotationCode' => $quotation->quotation_code,
+            'token' => $quotation->public_token,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('07/09/2026');
+        $response->assertDontSee('2026-09-07');
+        $response->assertSee('Sao chép');
+        $response->assertSee('Email phản hồi');
+        $response->assertSee('trang.sales@example.test');
+
+        $this->assertSame(
+            1,
+            substr_count($response->getContent(), 'Đã xem'),
+            'The public quotation should render the current status only once.',
+        );
     }
 
     public function test_first_view_moves_opportunity_to_proposal(): void

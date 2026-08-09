@@ -49,8 +49,9 @@ class QrPaymentService
         $src ??= $this->generateUrl($bankCode, $accountNumber, $amount, $content, $accountName);
 
         return sprintf(
-            '<img src="%s" alt="QR thanh toán" width="%d" style="width:%dpx;height:%dpx">',
+            '<img src="%s" alt="QR thanh toán" width="%d" height="%d" style="display:block;margin:0 auto;width:%dpx;height:%dpx;max-width:100%%;">',
             htmlspecialchars($src),
+            $width,
             $width,
             $width,
             $width,

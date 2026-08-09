@@ -21,6 +21,9 @@ class QuotationPdfService
             'contact.businessProfile',
             'assignedStaff.user',
             'bankAccount',
+            'priceBook',
+            'confirmations',
+            'emailLogs',
         ]);
 
         $html = view('sales.quotation-pdf', [
@@ -32,6 +35,7 @@ class QuotationPdfService
         $pdf->setOptions([
             'defaultFont' => 'DejaVu Sans',
             'isRemoteEnabled' => true,
+            'defaultMediaType' => 'print',
         ]);
 
         $fileName = sprintf('%s-V%d.pdf', $quotation->quotation_code, $quotation->version);

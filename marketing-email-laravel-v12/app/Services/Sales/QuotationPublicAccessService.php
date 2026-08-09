@@ -42,6 +42,7 @@ class QuotationPublicAccessService
                 'confirmations',
                 'documents',
                 'paymentNotices',
+                'emailLogs',
             ])
             ->first();
 
