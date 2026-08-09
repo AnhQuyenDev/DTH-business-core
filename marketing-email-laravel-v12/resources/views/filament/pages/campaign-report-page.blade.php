@@ -1,5 +1,8 @@
 <x-filament-panels::page>
-    @php($stats=$this->stats; $money=static fn($v)=>number_format((float)$v,0,',','.').' ₫')
+    @php
+        $stats = $this->stats;
+        $money = static fn ($v) => number_format((float) $v, 0, ',', '.').' ₫';
+    @endphp
     <div class="dth-analytics-shell" wire:loading.class="opacity-70">
         <div class="dth-analytics-toolbar">
             <div><div class="dth-analytics-toolbar__title">{{ __('page.campaign_report.title') }}</div><div class="dth-analytics-toolbar__subtitle">{{ __('analytics.email_report_subtitle') }}</div></div>

@@ -1,5 +1,9 @@
 <x-filament-panels::page>
-    @php($a=$analytics; $s=$a['summary']; $money=static fn($v)=>number_format((float)$v,0,',','.').' ₫')
+    @php
+        $a = $analytics;
+        $s = $a['summary'];
+        $money = static fn ($v) => number_format((float) $v, 0, ',', '.').' ₫';
+    @endphp
     <div class="dth-analytics-shell" wire:loading.class="opacity-70">
         <div class="dth-dashboard-hero dth-tone-sales"><div><p class="dth-eyebrow">{{ $isManager ? __('uiux.dashboard.common.manager_scope') : __('uiux.dashboard.common.personal_scope') }}</p><h2>{{ $isManager ? __('analytics.sales_performance_dashboard') : __('analytics.my_sales_performance') }}</h2><p>{{ __('analytics.sales_dashboard_subtitle') }}</p></div><div class="flex flex-wrap items-center gap-2"><x-analytics.period-filter />@if($isManager)<x-filament::button wire:click="exportCsv" color="gray" icon="heroicon-o-arrow-down-tray">{{ __('uiux.dashboard.common.export_csv') }}</x-filament::button>@endif</div></div>
 

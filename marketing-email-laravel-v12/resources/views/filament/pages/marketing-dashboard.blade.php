@@ -1,5 +1,9 @@
 <x-filament-panels::page>
-    @php($a = $analytics; $s = $a['summary']; $money = static fn ($v) => number_format((float)$v,0,',','.').' ₫')
+    @php
+        $a = $analytics;
+        $s = $a['summary'];
+        $money = static fn ($v) => number_format((float) $v, 0, ',', '.').' ₫';
+    @endphp
     <div class="dth-analytics-shell" wire:loading.class="opacity-70">
         <div class="dth-dashboard-hero dth-tone-marketing">
             <div><p class="dth-eyebrow">{{ $isManager ? __('uiux.dashboard.common.manager_scope') : __('uiux.dashboard.common.personal_scope') }}</p><h2>{{ $isManager ? __('uiux.dashboard.marketing.title') : __('uiux.dashboard.marketing.my_work') }}</h2><p>{{ __('analytics.marketing_dashboard_subtitle') }}</p></div>
