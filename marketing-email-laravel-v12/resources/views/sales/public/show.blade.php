@@ -108,6 +108,7 @@
 
     <script>
         var publicUrl = '{{ route("sales.quotation.public.show", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
+        var csrfUrl = '{{ route("sales.quotation.public.csrf-token", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
         var otpAction = 'accept';
         var otpVerifiedEmail = null;
 
@@ -122,6 +123,51 @@
         function getCsrf() {
             var meta = document.querySelector('meta[name="csrf-token"]');
             return meta ? meta.getAttribute('content') : '';
+        }
+
+        async function refreshCsrfToken() {
+            var response = await fetch(csrfUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+
+            if (!response.ok) {
+                throw new Error('Unable to refresh CSRF token');
+            }
+
+            var data = await response.json();
+            var meta = document.querySelector('meta[name="csrf-token"]');
+
+            if (!data.csrf_token || !meta) {
+                throw new Error('Missing CSRF token');
+            }
+
+            meta.setAttribute('content', data.csrf_token);
+            return data.csrf_token;
+        }
+
+        async function submitWithFreshCsrf(event, form) {
+            event.preventDefault();
+
+            if (form.dataset.submitting === '1') {
+                return false;
+            }
+
+            form.dataset.submitting = '1';
+
+            try {
+                var token = await refreshCsrfToken();
+                var tokenInput = form.querySelector('input[name="_token"]');
+                if (tokenInput) { tokenInput.value = token; }
+                form.submit();
+            } catch (error) {
+                form.dataset.submitting = '0';
+                showToast('{{ __("sales.public.error_occurred") }}');
+            }
+
+            return false;
         }
 
         function copyText(text) {
@@ -181,7 +227,7 @@
             el.classList.remove('hidden');
         }
 
-        function sendOtp() {
+        async function sendOtp() {
             var email = document.getElementById('otpEmail').value.trim();
             var name = document.getElementById('otpSignerName').value.trim();
             var reason = document.getElementById('otpReason').value.trim();
@@ -192,79 +238,102 @@
 
             var btn = document.getElementById('sendOtpBtn');
             btn.disabled = true;
-            fetch('{{ route("sales.quotation.public.send-otp", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': getCsrf(), 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email }),
-            }).then(function (res) {
-                return res.json().then(function (data) { return { ok: res.ok, data: data }; });
-            }).then(function (result) {
-                if (result.ok) {
+
+            try {
+                var csrf = await refreshCsrfToken();
+                var res = await fetch('{{ route("sales.quotation.public.send-otp", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ email: email }),
+                });
+                var data = await res.json();
+
+                if (res.ok) {
                     document.getElementById('otpEmailShown').textContent = email;
                     document.getElementById('step1').classList.add('hidden');
                     document.getElementById('step2').classList.remove('hidden');
-                } else {
-                    btn.disabled = false;
-                    var errors = result.data.errors || {};
-                    showOtpError(result.data.message || (errors.otp ? errors.otp[0] : '{{ __("sales.public.error_occurred") }}'));
+                    document.getElementById('otpError').classList.add('hidden');
+                    return;
                 }
-            }).catch(function () {
+
+                btn.disabled = false;
+                var errors = data.errors || {};
+                showOtpError(data.message || (errors.otp ? errors.otp[0] : '{{ __("sales.public.error_occurred") }}'));
+            } catch (error) {
                 btn.disabled = false;
                 showOtpError('{{ __("sales.public.error_occurred") }}');
-            });
+            }
         }
 
-        function verifyOtp() {
+        async function verifyOtp() {
             var email = document.getElementById('otpEmail').value.trim();
             var otp = document.getElementById('otpCode').value.trim();
             if (!/^\d{6}$/.test(otp)) { showOtpError('{{ __("sales.public.otp_invalid_format") }}'); return; }
 
             var btn = document.getElementById('verifyOtpBtn');
             btn.disabled = true;
-            fetch('{{ route("sales.quotation.public.verify-otp", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': getCsrf(), 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email, otp: otp }),
-            }).then(function (res) {
-                return res.json().then(function (data) { return { ok: res.ok, data: data }; });
-            }).then(function (result) {
-                if (result.ok) { otpVerifiedEmail = email; submitElectronicAction(); }
-                else {
-                    btn.disabled = false;
-                    var errors = result.data.errors || {};
-                    showOtpError(result.data.message || (errors.otp ? errors.otp[0] : '{{ __("sales.public.otp_invalid") }}'));
+
+            try {
+                var csrf = await refreshCsrfToken();
+                var res = await fetch('{{ route("sales.quotation.public.verify-otp", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ email: email, otp: otp }),
+                });
+                var data = await res.json();
+
+                if (res.ok) {
+                    otpVerifiedEmail = email;
+                    await submitElectronicAction();
+                    return;
                 }
-            }).catch(function () { btn.disabled = false; showOtpError('{{ __("sales.public.error_occurred") }}'); });
+
+                btn.disabled = false;
+                var errors = data.errors || {};
+                showOtpError(data.message || (errors.otp ? errors.otp[0] : '{{ __("sales.public.otp_invalid") }}'));
+            } catch (error) {
+                btn.disabled = false;
+                showOtpError('{{ __("sales.public.error_occurred") }}');
+            }
         }
 
-        function submitElectronicAction() {
+        async function submitElectronicAction() {
             var routeMap = {
                 accept: '{{ route("sales.quotation.public.accept", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}',
                 reject: '{{ route("sales.quotation.public.reject", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}',
                 revision: '{{ route("sales.quotation.public.request-revision", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}'
             };
-            var form = document.createElement('form');
-            form.method = 'POST';
-            form.action = routeMap[otpAction];
-            form.style.display = 'none';
-            var fields = {
-                signer_name: document.getElementById('otpSignerName').value.trim(),
-                signer_email: document.getElementById('otpEmail').value.trim(),
-                otp_email: otpVerifiedEmail,
-                _token: getCsrf()
-            };
-            if (otpAction === 'accept') {
-                fields.signer_position = document.getElementById('otpPosition').value.trim();
-                fields.signer_phone = document.getElementById('otpPhone').value.trim();
-            } else {
-                fields.reason = document.getElementById('otpReason').value.trim();
+
+            try {
+                var csrf = await refreshCsrfToken();
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = routeMap[otpAction];
+                form.style.display = 'none';
+                var fields = {
+                    signer_name: document.getElementById('otpSignerName').value.trim(),
+                    signer_email: document.getElementById('otpEmail').value.trim(),
+                    otp_email: otpVerifiedEmail,
+                    _token: csrf
+                };
+                if (otpAction === 'accept') {
+                    fields.signer_position = document.getElementById('otpPosition').value.trim();
+                    fields.signer_phone = document.getElementById('otpPhone').value.trim();
+                } else {
+                    fields.reason = document.getElementById('otpReason').value.trim();
+                }
+                Object.keys(fields).forEach(function (name) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden'; input.name = name; input.value = fields[name] || ''; form.appendChild(input);
+                });
+                document.body.appendChild(form);
+                form.submit();
+            } catch (error) {
+                document.getElementById('verifyOtpBtn').disabled = false;
+                showOtpError('{{ __("sales.public.error_occurred") }}');
             }
-            Object.keys(fields).forEach(function (name) {
-                var input = document.createElement('input');
-                input.type = 'hidden'; input.name = name; input.value = fields[name] || ''; form.appendChild(input);
-            });
-            document.body.appendChild(form);
-            form.submit();
         }
     </script>
 </body>

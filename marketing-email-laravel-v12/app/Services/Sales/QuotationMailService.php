@@ -32,6 +32,19 @@ class QuotationMailService
     ): QuotationEmailLog {
         $this->validateSend($quotation, $recipientEmail);
 
+        $authorizedSigner = $this->resolveAuthorizedSigner(
+            $quotation,
+            $options['authorized_signer_email'] ?? null,
+        );
+
+        $quotation->update([
+            'metadata' => array_replace_recursive(
+                $quotation->metadata ?? [],
+                ['authorized_signer' => $authorizedSigner],
+            ),
+        ]);
+        $quotation->refresh();
+
         $sendingAccount = $this->sendingAccountResolver->resolve(
             quotation: $quotation,
             actor: $user,
@@ -151,6 +164,51 @@ class QuotationMailService
             )
             ->unique('id')
             ->values();
+    }
+
+    private function resolveAuthorizedSigner(
+        Quotation $quotation,
+        mixed $preferredEmail,
+    ): array {
+        $email = mb_strtolower(trim((string) (
+            $preferredEmail
+            ?: $quotation->authorized_signer_email
+            ?: $quotation->party_email
+        )));
+
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw ValidationException::withMessages([
+                'authorized_signer_email' => 'Phải chọn email người được phép xác nhận báo giá.',
+            ]);
+        }
+
+        $contacts = $this->authorizedSignerContacts($quotation);
+        $contact = $contacts->first(
+            fn (Contact $candidate): bool => mb_strtolower(
+                trim((string) $candidate->email)
+            ) === $email
+        );
+
+        // If the Opportunity has known contacts, a newly selected signer must
+        // come from that CRM contact set. This prevents free-form impersonation.
+        if (
+            filled($preferredEmail)
+            && $contacts->isNotEmpty()
+            && $contact === null
+        ) {
+            throw ValidationException::withMessages([
+                'authorized_signer_email' => 'Người xác nhận phải là một liên hệ đã có trong Cơ hội kinh doanh.',
+            ]);
+        }
+
+        return [
+            'contact_id' => $contact?->id ?? $quotation->contact_id,
+            'name' => $contact?->full_name
+                ?? $quotation->authorized_signer_name
+                ?? $quotation->party_contact_name,
+            'email' => $email,
+            'phone' => $contact?->phone ?? $quotation->party_phone,
+        ];
     }
 
     private function validateSend(

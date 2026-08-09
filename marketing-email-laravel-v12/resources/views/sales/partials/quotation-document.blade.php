@@ -395,7 +395,7 @@
                 <p class="text-xs text-amber-700 mt-1">{{ __('sales.public.declared_amount') }}: <strong>{{ format_money($pendingNotice->declared_amount) }} {{ $quotation->currency }}</strong></p>
             @else
                 <p class="text-sm text-amber-700 mb-3">{{ __('sales.public.payment_notice_instruction') }}</p>
-                <form method="POST" action="{{ route('sales.quotation.public.notify-payment', ['quotationCode' => $quotation->quotation_code, 'token' => $quotation->public_token]) }}" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <form method="POST" action="{{ route('sales.quotation.public.notify-payment', ['quotationCode' => $quotation->quotation_code, 'token' => $quotation->public_token]) }}" onsubmit="return submitWithFreshCsrf(event, this)" class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     @csrf
                     <div>
                         <label class="block text-sm font-medium">{{ __('sales.public.payer_name') }}</label>

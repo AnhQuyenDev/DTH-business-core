@@ -5,6 +5,7 @@ namespace App\Services\Sales;
 use App\Enums\Sales\ConfirmationType;
 use App\Enums\Sales\QuotationStatus;
 use App\Models\Sales\Quotation;
+use App\Models\User;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -90,7 +91,9 @@ class QuotationConfirmationService
             $quotation->confirmations()->create([
                 'confirmation_type' => ConfirmationType::Rejected,
                 'signer_name' => $data['signer_name'],
+                'signer_position' => $data['signer_position'] ?? null,
                 'signer_email' => $data['signer_email'],
+                'signer_phone' => $data['signer_phone'] ?? null,
                 'confirmation_code' => strtoupper(bin2hex(random_bytes(8))),
                 'otp_verified_at' => $otpVerifiedEmail ? now() : null,
                 'confirmed_at' => now(),
@@ -139,7 +142,9 @@ class QuotationConfirmationService
             $quotation->confirmations()->create([
                 'confirmation_type' => ConfirmationType::RevisionRequested,
                 'signer_name' => $data['signer_name'],
+                'signer_position' => $data['signer_position'] ?? null,
                 'signer_email' => $data['signer_email'],
+                'signer_phone' => $data['signer_phone'] ?? null,
                 'confirmation_code' => strtoupper(bin2hex(random_bytes(8))),
                 'otp_verified_at' => $otpVerifiedEmail ? now() : null,
                 'confirmed_at' => now(),
@@ -168,6 +173,124 @@ class QuotationConfirmationService
         });
     }
 
+    /**
+     * Record a customer's response that was received directly by Sales over
+     * the phone (or another assisted conversation channel).
+     *
+     * This is deliberately not marked as OTP verification: Sales is recording
+     * what the customer told them, not impersonating the customer.
+     */
+    public function recordPhoneResponse(
+        Quotation $quotation,
+        User $actor,
+        array $data,
+    ): Quotation {
+        if (! $actor->can('recordCustomerResponse', $quotation)) {
+            throw ValidationException::withMessages([
+                'confirmation' => 'Bạn không có quyền ghi nhận phản hồi cho báo giá này.',
+            ]);
+        }
+
+        if (! filter_var(
+            $data['confirmed_direct_contact'] ?? false,
+            FILTER_VALIDATE_BOOLEAN,
+        )) {
+            throw ValidationException::withMessages([
+                'confirmed_direct_contact' => 'Bạn phải xác nhận đã trao đổi trực tiếp với khách hàng.',
+            ]);
+        }
+
+        $responseType = (string) ($data['response_type'] ?? '');
+
+        if (! in_array($responseType, [
+            ConfirmationType::Accepted->value,
+            ConfirmationType::Rejected->value,
+            ConfirmationType::RevisionRequested->value,
+        ], true)) {
+            throw ValidationException::withMessages([
+                'response_type' => 'Phản hồi khách hàng không hợp lệ.',
+            ]);
+        }
+
+        $signerName = trim((string) ($data['signer_name'] ?? ''));
+        $signerEmail = mb_strtolower(trim((string) ($data['signer_email'] ?? '')));
+        $conversationNote = trim((string) ($data['conversation_note'] ?? ''));
+        $reason = trim((string) ($data['reason'] ?? ''));
+
+        if ($signerName === '' || ! filter_var($signerEmail, FILTER_VALIDATE_EMAIL)) {
+            throw ValidationException::withMessages([
+                'signer_email' => 'Phải chọn một người liên hệ hợp lệ đã có trong CRM.',
+            ]);
+        }
+
+        $quotation->loadMissing([
+            'opportunity.primaryContact',
+            'opportunity.contacts',
+        ]);
+
+        if ($quotation->opportunity !== null) {
+            $knownEmails = collect([
+                $quotation->opportunity->primaryContact,
+            ])->merge($quotation->opportunity->contacts ?? collect())
+                ->filter()
+                ->map(fn ($contact): string => mb_strtolower(
+                    trim((string) $contact->email)
+                ))
+                ->filter()
+                ->unique();
+
+            if ($knownEmails->isNotEmpty() && ! $knownEmails->contains($signerEmail)) {
+                throw ValidationException::withMessages([
+                    'signer_email' => 'Người phản hồi phải là một liên hệ đã có trong Cơ hội kinh doanh.',
+                ]);
+            }
+        }
+
+        if ($conversationNote === '') {
+            throw ValidationException::withMessages([
+                'conversation_note' => 'Cần ghi lại nội dung trao đổi với khách hàng.',
+            ]);
+        }
+
+        if (
+            in_array($responseType, [
+                ConfirmationType::Rejected->value,
+                ConfirmationType::RevisionRequested->value,
+            ], true)
+            && $reason === ''
+        ) {
+            throw ValidationException::withMessages([
+                'reason' => 'Vui lòng nhập lý do hoặc nội dung khách hàng yêu cầu.',
+            ]);
+        }
+
+        $confirmationData = array_merge($data, [
+            'signer_name' => $signerName,
+            'signer_email' => $signerEmail,
+            'reason' => $reason !== '' ? $reason : null,
+            'verification_method' => 'phone_recorded_by_sales',
+            'response_channel' => 'phone',
+            'recorded_by_user_id' => $actor->id,
+            'recorded_by_name' => $actor->name,
+            'recorded_at' => now()->toIso8601String(),
+        ]);
+
+        return match ($responseType) {
+            ConfirmationType::Accepted->value => $this->accept(
+                $quotation,
+                $confirmationData,
+            ),
+            ConfirmationType::Rejected->value => $this->reject(
+                $quotation,
+                $confirmationData,
+            ),
+            ConfirmationType::RevisionRequested->value => $this->requestRevision(
+                $quotation,
+                $confirmationData,
+            ),
+        };
+    }
+
     private function validateConfirmation(Quotation $quotation): void
     {
         if (! $quotation->status->canConfirm()) {
@@ -193,11 +316,15 @@ class QuotationConfirmationService
         array $data,
         ?string $otpVerifiedEmail,
     ): array {
+        $verificationMethod = $data['verification_method'] ?? null;
+
+        if ($otpVerifiedEmail !== null) {
+            $verificationMethod = 'email_otp';
+        }
+
         return array_merge($data, [
             'otp_verified_email' => $otpVerifiedEmail,
-            'verification_method' => $otpVerifiedEmail !== null
-                ? 'email_otp'
-                : null,
+            'verification_method' => $verificationMethod,
         ]);
     }
 }

@@ -3,7 +3,9 @@
 namespace Tests\Feature\Sales;
 
 use App\Enums\Crm\StaffEmploymentStatus;
+use App\Enums\Sales\ConfirmationType;
 use App\Enums\Sales\OpportunityStage;
+use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\PackageStatus;
 use App\Enums\Sales\PriceBookStatus;
 use App\Enums\Sales\QuotationEmailStatus;
@@ -21,6 +23,7 @@ use App\Models\Sales\QuotationEmailLog;
 use App\Models\Sales\Service;
 use App\Models\Sales\ServicePackage;
 use App\Models\User;
+use App\Services\Sales\QuotationConfirmationService;
 use App\Services\Sales\QuotationCreationService;
 use App\Services\Sales\QuotationPublicAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -288,4 +291,112 @@ class QuotationPublicWithoutCustomerTest extends TestCase
             'interaction_type' => 'quotation_accepted',
         ]);
     }
+    public function test_public_reject_requires_verified_authorized_signer_otp(): void
+    {
+        $quotation = $this->makeSentQuotation();
+
+        $response = $this->post(route('sales.quotation.public.reject', [
+            'quotationCode' => $quotation->quotation_code,
+            'token' => $quotation->public_token,
+        ]), [
+            'signer_name' => 'Nguyễn Văn A',
+            'signer_email' => $quotation->party_email,
+            'otp_email' => $quotation->party_email,
+            'reason' => 'Không phù hợp ngân sách',
+        ]);
+
+        $response->assertSessionHasErrors('otp');
+        $this->assertSame(QuotationStatus::Sent, $quotation->fresh()->status);
+        $this->assertDatabaseCount('quotation_confirmations', 0);
+    }
+
+    public function test_sales_can_record_phone_acceptance_without_faking_otp(): void
+    {
+        $quotation = $this->makeSentQuotation();
+
+        $result = app(QuotationConfirmationService::class)->recordPhoneResponse(
+            $quotation,
+            $this->staffUser,
+            [
+                'response_type' => ConfirmationType::Accepted->value,
+                'signer_name' => 'Nguyễn Văn A',
+                'signer_email' => $quotation->party_email,
+                'signer_phone' => '0900000000',
+                'call_at' => now()->toDateTimeString(),
+                'conversation_note' => 'Khách xác nhận đồng ý báo giá qua điện thoại.',
+                'confirmed_direct_contact' => true,
+            ],
+        );
+
+        $this->assertSame(QuotationStatus::Accepted, $result->status);
+        $this->assertSame(PaymentStatus::Unpaid, $result->payment_status);
+
+        $confirmation = $result->confirmations()->latest('id')->firstOrFail();
+        $this->assertSame(ConfirmationType::Accepted, $confirmation->confirmation_type);
+        $this->assertNull($confirmation->otp_verified_at);
+        $this->assertSame(
+            'phone_recorded_by_sales',
+            data_get($confirmation->confirmation_data, 'verification_method'),
+        );
+        $this->assertSame(
+            $this->staffUser->id,
+            data_get($confirmation->confirmation_data, 'recorded_by_user_id'),
+        );
+    }
+
+    public function test_public_payment_notice_moves_accepted_quotation_to_pending_verification(): void
+    {
+        $quotation = $this->makeSentQuotation();
+
+        app(QuotationConfirmationService::class)->recordPhoneResponse(
+            $quotation,
+            $this->staffUser,
+            [
+                'response_type' => ConfirmationType::Accepted->value,
+                'signer_name' => 'Nguyễn Văn A',
+                'signer_email' => $quotation->party_email,
+                'call_at' => now()->toDateTimeString(),
+                'conversation_note' => 'Khách đồng ý và sẽ chuyển khoản.',
+                'confirmed_direct_contact' => true,
+            ],
+        );
+
+        $quotation->refresh();
+
+        $response = $this->post(route('sales.quotation.public.notify-payment', [
+            'quotationCode' => $quotation->quotation_code,
+            'token' => $quotation->public_token,
+        ]), [
+            'payer_name' => 'Nguyễn Văn A',
+            'payer_email' => $quotation->party_email,
+            'declared_amount' => (float) $quotation->grand_total,
+            'transfer_reference' => 'VCB-TEST-001',
+            'note' => 'Đã chuyển đủ tiền.',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame(
+            PaymentStatus::PendingVerification,
+            $quotation->fresh()->payment_status,
+        );
+        $this->assertDatabaseHas('quotation_payment_notices', [
+            'quotation_id' => $quotation->id,
+            'payer_email' => mb_strtolower($quotation->party_email),
+            'transfer_reference' => 'VCB-TEST-001',
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_public_csrf_endpoint_returns_fresh_token(): void
+    {
+        $quotation = $this->makeSentQuotation();
+
+        $response = $this->getJson(route('sales.quotation.public.csrf-token', [
+            'quotationCode' => $quotation->quotation_code,
+            'token' => $quotation->public_token,
+        ]));
+
+        $response->assertOk()->assertJsonStructure(['csrf_token']);
+    }
+
 }

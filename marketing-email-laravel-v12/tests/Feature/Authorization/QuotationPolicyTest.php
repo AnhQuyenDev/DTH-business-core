@@ -47,7 +47,22 @@ class QuotationPolicyTest extends TestCase
         $this->assertTrue($user->can('view', $quotation));
         $this->assertFalse($user->can('update', $quotation));
         $this->assertTrue($user->can('send', $quotation));
+        $this->assertFalse($user->can('recordCustomerResponse', $quotation));
         $this->assertFalse($user->can('verifyPayment', $quotation));
+    }
+
+    public function test_assigned_sales_can_record_customer_response_after_send(): void
+    {
+        $user = $this->salesStaff('sales_staff');
+        $this->actingAs($user);
+
+        $quotation = Quotation::factory()->create([
+            'status' => QuotationStatus::Viewed,
+            'assigned_staff_id' => $user->staff->id,
+            'created_by' => $user->id,
+        ]);
+
+        $this->assertTrue($user->can('recordCustomerResponse', $quotation));
     }
 
     public function test_sales_staff_cannot_see_others_quotation(): void
@@ -118,6 +133,7 @@ class QuotationPolicyTest extends TestCase
         $this->assertFalse($user->can('update', $quotation));
         $this->assertFalse($user->can('send', $quotation));
         $this->assertFalse($user->can('approve', $quotation));
+        $this->assertFalse($user->can('recordCustomerResponse', $quotation));
         $this->assertFalse($user->can('verifyPayment', $quotation));
     }
 }

@@ -42,6 +42,7 @@ Route::get('/lp/{slug}/thank-you', [LandingPageController::class, 'thankYou'])->
 Route::prefix('q')->name('sales.quotation.public.')->group(function (): void {
     Route::get('/{quotationCode}/{token}', [QuotationPublicController::class, 'show'])->name('show');
     Route::get('/{quotationCode}/{token}/pdf', [QuotationPublicController::class, 'pdf'])->name('pdf');
+    Route::get('/{quotationCode}/{token}/csrf-token', [QuotationPublicController::class, 'csrfToken'])->name('csrf-token');
     Route::post('/{quotationCode}/{token}/accept', [QuotationPublicController::class, 'accept'])->name('accept');
     Route::post('/{quotationCode}/{token}/reject', [QuotationPublicController::class, 'reject'])->name('reject');
     Route::post('/{quotationCode}/{token}/request-revision', [QuotationPublicController::class, 'requestRevision'])->name('request-revision');

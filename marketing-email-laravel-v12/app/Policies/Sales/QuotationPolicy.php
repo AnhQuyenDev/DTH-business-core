@@ -86,6 +86,14 @@ class QuotationPolicy
             && $this->isSalesHandler($user, $quotation);
     }
 
+    public function recordCustomerResponse(
+        User $user,
+        Quotation $quotation,
+    ): bool {
+        return $quotation->status->canConfirm()
+            && $this->isSalesHandler($user, $quotation);
+    }
+
     public function verifyPayment(
         User $user,
         Quotation $quotation,

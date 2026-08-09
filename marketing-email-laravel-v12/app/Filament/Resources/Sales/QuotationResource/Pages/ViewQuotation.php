@@ -4,15 +4,21 @@ namespace App\Filament\Resources\Sales\QuotationResource\Pages;
 
 use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
+use App\Jobs\Sales\SendQuotationAcceptedNotificationJob;
+use App\Jobs\Sales\SendQuotationRejectedNotificationJob;
+use App\Jobs\Sales\SendQuotationRevisionRequestedNotificationJob;
 use App\Filament\Resources\Sales\QuotationResource;
 use App\Models\Marketing\EmailTemplate;
 use App\Services\Sales\QuotationApprovalService;
+use App\Services\Sales\QuotationConfirmationService;
 use App\Services\Sales\QuotationMailService;
 use App\Services\Sales\QuotationPaymentService;
 use App\Services\Sales\QuotationPdfService;
 use App\Services\Sales\QuotationRevisionService;
 use App\Services\Sales\QuotationTemplateRenderer;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -23,6 +29,8 @@ use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use App\Enums\Sales\QuotationEmailStatus;
 
 class ViewQuotation extends ViewRecord
@@ -223,6 +231,7 @@ class ViewQuotation extends ViewRecord
                             'subject' => $data['subject'] ?? null,
                             'body' => $data['body'] ?? null,
                             'sending_account_id' => $data['sending_account_id'] ?? null,
+                            'authorized_signer_email' => $data['authorized_signer_email'] ?? null,
                         ],
                     );
 
@@ -251,6 +260,119 @@ class ViewQuotation extends ViewRecord
                 })
                 ->visible(fn () => filled($q->party_email)
                     && (auth()->user()?->can('send', $q) ?? false)),
+
+            Action::make('record_customer_response')
+                ->label(__('action.record_customer_response'))
+                ->icon('heroicon-o-phone')
+                ->color('info')
+                ->modalHeading(__('sales.confirmation.record_customer_response_heading'))
+                ->modalDescription(__('sales.confirmation.record_customer_response_description'))
+                ->form([
+                    Select::make('response_type')
+                        ->label(__('sales.confirmation.response_type'))
+                        ->options([
+                            'accepted' => __('enum.sales.confirmation_type.accepted'),
+                            'rejected' => __('enum.sales.confirmation_type.rejected'),
+                            'revision_requested' => __('enum.sales.confirmation_type.revision_requested'),
+                        ])
+                        ->live()
+                        ->required(),
+
+                    Select::make('signer_email')
+                        ->label(__('sales.confirmation.customer_responder'))
+                        ->options(fn (): array => $this->customerResponderOptions($q))
+                        ->default(fn (): ?string => filled($q->authorized_signer_email)
+                            ? Str::lower(trim((string) $q->authorized_signer_email))
+                            : null)
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->helperText(__('sales.confirmation.customer_responder_helper')),
+
+                    DateTimePicker::make('call_at')
+                        ->label(__('sales.confirmation.call_at'))
+                        ->seconds(false)
+                        ->default(now())
+                        ->required(),
+
+                    Textarea::make('reason')
+                        ->label(__('field.reason'))
+                        ->rows(3)
+                        ->maxLength(1000)
+                        ->visible(fn (Get $get): bool => in_array(
+                            $get('response_type'),
+                            ['rejected', 'revision_requested'],
+                            true,
+                        ))
+                        ->required(fn (Get $get): bool => in_array(
+                            $get('response_type'),
+                            ['rejected', 'revision_requested'],
+                            true,
+                        )),
+
+                    Textarea::make('conversation_note')
+                        ->label(__('sales.confirmation.conversation_note'))
+                        ->rows(4)
+                        ->maxLength(2000)
+                        ->required()
+                        ->helperText(__('sales.confirmation.conversation_note_helper')),
+
+                    Checkbox::make('confirmed_direct_contact')
+                        ->label(__('sales.confirmation.direct_contact_confirmation'))
+                        ->rules(['accepted'])
+                        ->required(),
+                ])
+                ->action(function (array $data) use ($q): void {
+                    $actor = auth()->user();
+
+                    if (! $actor || ! $actor->can('recordCustomerResponse', $q)) {
+                        abort(403);
+                    }
+
+                    $responder = $this->resolveCustomerResponder(
+                        $q,
+                        (string) $data['signer_email'],
+                    );
+
+                    $result = app(QuotationConfirmationService::class)
+                        ->recordPhoneResponse(
+                            $q,
+                            $actor,
+                            array_merge($data, $responder),
+                        );
+
+                    match ((string) $data['response_type']) {
+                        'accepted' => SendQuotationAcceptedNotificationJob::dispatch($result),
+                        'rejected' => SendQuotationRejectedNotificationJob::dispatch(
+                            $result,
+                            (string) ($data['reason'] ?? ''),
+                        ),
+                        'revision_requested' => SendQuotationRevisionRequestedNotificationJob::dispatch(
+                            $result,
+                            (string) ($data['reason'] ?? ''),
+                        ),
+                        default => null,
+                    };
+
+                    Notification::make()
+                        ->success()
+                        ->title(__('sales.confirmation.recorded_successfully'))
+                        ->body(__('sales.confirmation.recorded_successfully_description'))
+                        ->send();
+
+                    $this->record->refresh();
+                    $this->redirect(
+                        static::getResource()::getUrl('view', [
+                            'record' => $this->record,
+                        ])
+                    );
+                })
+                ->visible(
+                    fn (): bool => auth()->user()?->can(
+                        'recordCustomerResponse',
+                        $q,
+                    ) ?? false
+                ),
 
             Action::make('create_revision')
                 ->label('Tạo phiên bản chỉnh sửa')
@@ -365,4 +487,77 @@ class ViewQuotation extends ViewRecord
                 }),
         ]);
     }
+    private function customerResponderOptions($quotation): array
+    {
+        $contacts = app(QuotationMailService::class)
+            ->authorizedSignerContacts($quotation);
+
+        $options = $contacts->mapWithKeys(function ($contact): array {
+            $email = Str::lower(trim((string) $contact->email));
+
+            return [
+                $email => collect([
+                    $contact->full_name ?: ('Contact #'.$contact->id),
+                    $contact->email,
+                ])->filter()->implode(' — '),
+            ];
+        })->all();
+
+        $authorizedEmail = Str::lower(trim((string) $quotation->authorized_signer_email));
+
+        if (
+            $authorizedEmail !== ''
+            && $options === []
+            && ! array_key_exists($authorizedEmail, $options)
+        ) {
+            $options[$authorizedEmail] = collect([
+                $quotation->authorized_signer_name ?: $quotation->party_contact_name,
+                $quotation->authorized_signer_email,
+            ])->filter()->implode(' — ');
+        }
+
+        return $options;
+    }
+
+    private function resolveCustomerResponder(
+        $quotation,
+        string $email,
+    ): array {
+        $email = Str::lower(trim($email));
+        $options = $this->customerResponderOptions($quotation);
+
+        if ($email === '' || ! array_key_exists($email, $options)) {
+            throw ValidationException::withMessages([
+                'signer_email' => __('sales.confirmation.customer_responder_invalid'),
+            ]);
+        }
+
+        $contacts = app(QuotationMailService::class)
+            ->authorizedSignerContacts($quotation);
+        $contact = $contacts->first(
+            fn ($candidate): bool => Str::lower(
+                trim((string) $candidate->email)
+            ) === $email
+        );
+
+        $position = null;
+
+        if ($contact && $quotation->company_id) {
+            $company = $contact->companies()
+                ->where('companies.id', $quotation->company_id)
+                ->first();
+            $position = $company?->pivot?->job_title;
+        }
+
+        return [
+            'contact_id' => $contact?->id,
+            'signer_name' => $contact?->full_name
+                ?: $quotation->authorized_signer_name
+                ?: $quotation->party_contact_name,
+            'signer_email' => $email,
+            'signer_phone' => $contact?->phone ?: $quotation->party_phone,
+            'signer_position' => $position,
+        ];
+    }
+
 }
