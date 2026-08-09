@@ -28,19 +28,7 @@ class InteractionsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('interaction_type')
                     ->label(__('field.interaction_type'))
-                    ->badge()
-                    ->formatStateUsing(function (?string $state): string {
-                        if (blank($state)) {
-                            return '—';
-                        }
-
-                        $key = 'activity.type.'.$state;
-                        $translated = __($key);
-
-                        return $translated !== $key
-                            ? $translated
-                            : str($state)->headline()->toString();
-                    }),
+                    ->badge(),
                 TextColumn::make('subject')
                     ->label(__('field.subject'))
                     ->limit(40),

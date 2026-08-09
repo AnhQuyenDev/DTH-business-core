@@ -5,10 +5,8 @@ namespace App\Filament\Resources\Finance;
 use App\Filament\Resources\Finance\PaymentResource\Pages;
 use App\Models\Finance\Payment;
 use App\Support\Ui\BadgePalette;
-use App\Support\UtmOptions;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -67,41 +65,16 @@ class PaymentResource extends Resource
                 TextColumn::make('customer.display_name')->label(__('resource.customer.singular'))->searchable()->placeholder('—'),
                 TextColumn::make('quotation.quotation_code')->label(__('field.quotation'))->searchable(),
                 TextColumn::make('amount')->label(__('field.gross_collected'))->money('VND')->sortable(),
-                TextColumn::make('net_amount')->label(__('field.net_revenue'))->money('VND')->sortable()->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('tax_amount')->label(__('field.vat'))->money('VND')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('net_amount')->label(__('field.net_revenue'))->money('VND')->sortable()->toggleable(),
+                TextColumn::make('tax_amount')->label(__('field.vat'))->money('VND')->toggleable(),
                 TextColumn::make('attribution.utm_source')
                     ->label(__('field.utm_source_short'))
-                    ->formatStateUsing(function (?string $state, Payment $record): string {
-                        $source = $state ?: $record->attribution?->acquisition_source;
-
-                        return $source
-                            ? (UtmOptions::source()[$source] ?? str($source)->headline()->toString())
-                            : '—';
-                    })
+                    ->formatStateUsing(fn (?string $state, Payment $record): string => $state ?: ($record->attribution?->acquisition_source ?: '—'))
                     ->badge(),
-                TextColumn::make('attribution.marketingCampaign.name')
-                    ->label(__('field.marketing_campaign_short'))
-                    ->limit(36)
-                    ->tooltip(fn (Payment $record): ?string => $record->attribution?->marketingCampaign?->name)
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('salesStaff.full_name')
-                    ->label(__('field.sales_owner'))
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('verifiedBy.name')
-                    ->label(__('field.finance_verified_by'))
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('status')
-                    ->label(__('field.status'))
-                    ->badge()
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        Payment::STATUS_VERIFIED => __('field.payment_status_verified'),
-                        Payment::STATUS_REFUNDED => __('field.payment_status_refunded'),
-                        default => str($state)->headline()->toString(),
-                    })
-                    ->color(fn (string $state): string => BadgePalette::status($state)),
+                TextColumn::make('attribution.marketingCampaign.name')->label(__('field.marketing_campaign_short'))->placeholder('—')->toggleable(),
+                TextColumn::make('salesStaff.full_name')->label(__('field.sales_owner'))->placeholder('—')->toggleable(),
+                TextColumn::make('verifiedBy.name')->label(__('field.finance_verified_by'))->placeholder('—')->toggleable(),
+                TextColumn::make('status')->label(__('field.status'))->badge()->color(fn (string $state): string => BadgePalette::status($state)),
             ])
             ->filters([
                 SelectFilter::make('status')->options([
@@ -110,25 +83,20 @@ class PaymentResource extends Resource
                 ]),
             ])
             ->actions([
-                ActionGroup::make([
-                    Action::make('receipt')
-                        ->label(__('action.view_receipt'))
-                        ->icon('heroicon-o-document-check')
-                        ->url(fn (Payment $record): ?string => $record->receipt
-                            ? route('finance.payment-receipts', ['receipt' => $record->receipt])
-                            : null)
-                        ->openUrlInNewTab()
-                        ->visible(fn (Payment $record): bool => $record->receipt !== null),
-                    Action::make('quotation')
-                        ->label(__('action.open_quotation'))
-                        ->icon('heroicon-o-document-text')
-                        ->url(fn (Payment $record): ?string => $record->quotation
-                            ? \App\Filament\Resources\Sales\QuotationResource::getUrl('view', ['record' => $record->quotation])
-                            : null),
-                ])
-                    ->label(__('action.actions'))
-                    ->icon('heroicon-o-ellipsis-vertical')
-                    ->iconButton(),
+                Action::make('receipt')
+                    ->label(__('action.view_receipt'))
+                    ->icon('heroicon-o-document-check')
+                    ->url(fn (Payment $record): ?string => $record->receipt
+                        ? route('finance.payment-receipts', ['receipt' => $record->receipt])
+                        : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn (Payment $record): bool => $record->receipt !== null),
+                Action::make('quotation')
+                    ->label(__('action.open_quotation'))
+                    ->icon('heroicon-o-document-text')
+                    ->url(fn (Payment $record): ?string => $record->quotation
+                        ? \App\Filament\Resources\Sales\QuotationResource::getUrl('view', ['record' => $record->quotation])
+                        : null),
             ])
             ->defaultSort('paid_at', 'desc');
     }

@@ -102,16 +102,27 @@ class PriceBookAccessRuleRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('access_type')->label(__('field.access_type')),
-                TextColumn::make('role')->label(__('field.role')),
-                TextColumn::make('department')->label(__('field.department')),
+                TextColumn::make('access_type')
+                    ->label(__('field.access_type'))
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => PriceBookAccessType::tryFrom((string) $state)?->label() ?? '—'),
+                TextColumn::make('role')
+                    ->label(__('field.role'))
+                    ->formatStateUsing(fn (?string $state): string => filled($state)
+                        ? (UserRole::tryFrom($state)?->label() ?? $state)
+                        : '—'),
+                TextColumn::make('department')
+                    ->label(__('field.department'))
+                    ->formatStateUsing(fn (?string $state): string => filled($state)
+                        ? (Department::codeOptions()[$state] ?? $state)
+                        : '—'),
                 TextColumn::make('staff.full_name')->label(__('field.staff')),
                 IconColumn::make('can_view')->label(__('field.view'))->boolean(),
                 IconColumn::make('can_create_quotation')->label(__('field.can_create_quotation'))->boolean(),
                 TextColumn::make('discount_limit_value')->label(__('field.discount_limit_value')),
             ])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()->label(__('action.add_access_rule')),
             ])
             ->actions([ActionGroup::make([
                 EditAction::make(),

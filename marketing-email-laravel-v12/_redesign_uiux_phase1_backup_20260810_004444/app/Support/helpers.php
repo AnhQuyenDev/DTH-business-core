@@ -72,15 +72,7 @@ if (! function_exists('company_logo_url')) {
             return null;
         }
 
-        try {
-            $version = Storage::disk('public')->lastModified($path);
-        } catch (Throwable) {
-            $version = null;
-        }
-
-        return route('company.logo', array_filter([
-            'v' => $version,
-        ]));
+        return Storage::disk('public')->url($path);
     }
 }
 

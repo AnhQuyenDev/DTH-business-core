@@ -11,7 +11,6 @@ use App\Services\Crm\ContactQualificationWorkflowService;
 use App\Services\Crm\LeadActivityService;
 use App\Services\Crm\LeadAssignmentService;
 use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -521,8 +520,7 @@ class ViewLead extends ViewRecord
                         ->send();
                 }),
 
-            ActionGroup::make([
-                Action::make('mark_unqualified')
+            Action::make('mark_unqualified')
                 ->label(__('action.mark_unqualified'))
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
@@ -705,11 +703,6 @@ class ViewLead extends ViewRecord
                         ->success()
                         ->send();
                 }),
-            ])
-                ->label(__('action.more_actions'))
-                ->icon('heroicon-o-ellipsis-horizontal')
-                ->button()
-                ->color('gray'),
         ];
     }
 }

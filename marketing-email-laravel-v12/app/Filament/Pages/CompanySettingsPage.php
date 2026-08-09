@@ -43,6 +43,11 @@ class CompanySettingsPage extends Page implements HasForms
         return __('navigation.company_settings');
     }
 
+    public function getTitle(): string
+    {
+        return __('page.title.company_settings');
+    }
+
     public static function getNavigationSort(): ?int
     {
         return 90;
@@ -67,8 +72,12 @@ class CompanySettingsPage extends Page implements HasForms
                     FileUpload::make('logo_path')
                         ->label(__('field.logo'))
                         ->image()
+                        ->disk('public')
+                        ->visibility('public')
                         ->directory('company')
-                        ->maxSize(2048),
+                        ->imagePreviewHeight('96')
+                        ->maxSize(2048)
+                        ->helperText(__('helper.company_logo')),
                 ])->columns(['default' => 1, 'md' => 2]),
                 Section::make(__('section.vietqr'))->schema([
                     TextInput::make('vietqr_client_id')

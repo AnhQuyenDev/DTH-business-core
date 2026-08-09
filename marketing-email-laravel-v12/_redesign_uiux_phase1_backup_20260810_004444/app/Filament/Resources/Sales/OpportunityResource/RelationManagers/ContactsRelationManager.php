@@ -9,7 +9,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -36,19 +35,7 @@ class ContactsRelationManager extends RelationManager
 
                 TextColumn::make('pivot.role')
                     ->label(__('field.role'))
-                    ->badge()
-                    ->formatStateUsing(function (?string $state): string {
-                        if (blank($state)) {
-                            return '—';
-                        }
-
-                        $key = 'field.role.'.$state;
-                        $translated = __($key);
-
-                        return $translated !== $key
-                            ? $translated
-                            : str($state)->headline()->toString();
-                    }),
+                    ->badge(),
 
                 IconColumn::make('pivot.is_primary')
                     ->label(__('field.is_primary'))
@@ -111,8 +98,7 @@ class ContactsRelationManager extends RelationManager
                     ),
             ])
             ->actions([
-                ActionGroup::make([
-                    Action::make('edit_membership')
+                Action::make('edit_membership')
                     ->label(__('action.edit'))
                     ->icon('heroicon-o-pencil-square')
                     ->fillForm(
@@ -187,10 +173,6 @@ class ContactsRelationManager extends RelationManager
                         fn (): bool => auth()->user()?->isAdmin()
                             || auth()->user()?->isCustomerServiceManager()
                     ),
-                ])
-                    ->label(__('action.actions'))
-                    ->icon('heroicon-o-ellipsis-vertical')
-                    ->iconButton(),
             ]);
     }
 }

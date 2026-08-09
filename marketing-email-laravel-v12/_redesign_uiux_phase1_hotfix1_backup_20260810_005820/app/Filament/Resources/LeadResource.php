@@ -18,7 +18,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
-use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
@@ -31,6 +30,7 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\HtmlString;
 
 class LeadResource extends Resource
 {
@@ -294,18 +294,29 @@ class LeadResource extends Resource
                 Section::make(__('field.submitted_demand'))
                     ->description(__('helper.lead_submission_snapshot'))
                     ->schema([
-                        RepeatableEntry::make('metadata.form_answers')
+                        TextEntry::make('metadata.form_answers')
                             ->label('')
-                            ->schema([
-                                TextEntry::make('label')
-                                    ->label(__('field.form_field'))
-                                    ->weight('semibold')
-                                    ->placeholder('—'),
-                                TextEntry::make('display_value')
-                                    ->label(__('field.value'))
-                                    ->placeholder('—'),
-                            ])
-                            ->columns(['default' => 1, 'md' => 2]),
+                            ->formatStateUsing(function ($state): HtmlString {
+                                $rows = collect($state ?? [])->map(function ($answer): string {
+                                    $label = e((string) data_get($answer, 'label', '—'));
+                                    $value = e((string) data_get($answer, 'display_value', '—'));
+
+                                    return '<tr>'
+                                        .'<td style="width:34%;padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.22);vertical-align:top;font-weight:600;">'.$label.'</td>'
+                                        .'<td style="padding:12px 14px;border-bottom:1px solid rgba(148,163,184,.22);vertical-align:top;">'.$value.'</td>'
+                                        .'</tr>';
+                                })->implode('');
+
+                                return new HtmlString(
+                                    '<div style="overflow-x:auto;border:1px solid rgba(148,163,184,.22);border-radius:12px;">'
+                                    .'<table style="width:100%;border-collapse:collapse;min-width:520px;">'
+                                    .'<thead><tr>'
+                                    .'<th style="padding:11px 14px;text-align:left;border-bottom:1px solid rgba(148,163,184,.28);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">'.e(__('field.form_field')).'</th>'
+                                    .'<th style="padding:11px 14px;text-align:left;border-bottom:1px solid rgba(148,163,184,.28);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">'.e(__('field.value')).'</th>'
+                                    .'</tr></thead><tbody>'.$rows.'</tbody></table></div>'
+                                );
+                            })
+                            ->html(),
                     ])
                     ->visible(fn (Lead $record): bool => ! empty(data_get($record->metadata, 'form_answers', []))),
             ]);

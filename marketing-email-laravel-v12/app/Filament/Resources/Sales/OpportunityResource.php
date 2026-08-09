@@ -192,245 +192,159 @@ class OpportunityResource extends Resource
     {
         return $infolist
             ->schema([
-                /*
-                * 1. THÔNG TIN CƠ HỘI
-                */
-                Section::make(__('section.opportunity_info'))
-                    ->columns(['default' => 1, 'md' => 2])
+                Section::make(__('section.opportunity_summary'))
+                    ->description(__('helper.opportunity_summary'))
+                    ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
                     ->schema([
                         TextEntry::make('opportunity_code')
-                            ->label(__('field.opportunity_code')),
-
-                        TextEntry::make('title')
-                            ->label(__('field.title')),
-
-                        TextEntry::make('lead.lead_code')
-                            ->label(__('field.lead_code')),
-
-                        TextEntry::make('company.legal_name')
-                            ->label(__('field.company'))
-                            ->placeholder('—'),
-
-                        TextEntry::make('assignedStaff.full_name')
-                            ->label(__('field.sales_owner'))
-                            ->placeholder('—'),
-
+                            ->label(__('field.opportunity_code'))
+                            ->weight('semibold'),
                         TextEntry::make('stage')
                             ->label(__('field.stage'))
                             ->badge()
-                            ->formatStateUsing(
-                                fn (OpportunityStage $state): string => $state->label()
-                            )
-                            ->color(
-                                fn (OpportunityStage $state): string => $state->color()
-                            ),
-
-                        /*
-                        * DB tiếp tục lưu mã kỹ thuật PPH02.
-                        * Sales nhìn thấy tên gói.
-                        */
+                            ->formatStateUsing(fn (OpportunityStage $state): string => $state->label())
+                            ->color(fn (OpportunityStage $state): string => $state->color()),
+                        TextEntry::make('assignedStaff.full_name')
+                            ->label(__('field.sales_owner'))
+                            ->placeholder('—'),
+                        TextEntry::make('title')
+                            ->label(__('field.title'))
+                            ->columnSpanFull(),
+                        TextEntry::make('company.legal_name')
+                            ->label(__('field.company'))
+                            ->placeholder(__('common.personal_customer')),
+                        TextEntry::make('lead.lead_code')
+                            ->label(__('field.lead_code'))
+                            ->placeholder('—'),
                         TextEntry::make('service_interest')
                             ->label(__('field.service_interest'))
-                            ->formatStateUsing(
-                                function ($state, Opportunity $record): string {
-                                    return data_get(
-                                        $record->lead?->metadata,
-                                        'service_context.display_label'
-                                    )
-                                        ?? data_get(
-                                            $record->lead?->metadata,
-                                            'service_interest_label'
-                                        )
-                                        ?? $state
-                                        ?? '—';
-                                }
-                            ),
-
+                            ->formatStateUsing(function ($state, Opportunity $record): string {
+                                return data_get($record->lead?->metadata, 'service_context.display_label')
+                                    ?? data_get($record->lead?->metadata, 'service_interest_label')
+                                    ?? $state
+                                    ?? '—';
+                            }),
                         TextEntry::make('estimated_value')
                             ->label(__('field.estimated_value'))
-                            ->money('VND'),
-
+                            ->money('VND')
+                            ->placeholder('—'),
                         TextEntry::make('probability')
                             ->label(__('field.probability'))
-                            ->suffix('%'),
-
+                            ->suffix('%')
+                            ->placeholder('—'),
                         TextEntry::make('expected_close_date')
                             ->label(__('field.expected_close_date'))
-                            ->date('d/m/Y'),
-
-                        TextEntry::make('won_at')
-                            ->label(__('field.won_at'))
-                            ->dateTime('d/m/Y H:i')
+                            ->date('d/m/Y')
                             ->placeholder('—'),
-
-                        TextEntry::make('lost_at')
-                            ->label(__('field.lost_at'))
-                            ->dateTime('d/m/Y H:i')
-                            ->placeholder('—'),
-
-                        TextEntry::make('lost_reason')
-                            ->label(__('field.lost_reason'))
-                            ->placeholder('—'),
-
                         TextEntry::make('created_at')
                             ->label(__('field.created_at'))
                             ->dateTime('d/m/Y H:i'),
+                        TextEntry::make('won_at')
+                            ->label(__('field.won_at'))
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—')
+                            ->visible(fn (Opportunity $record): bool => $record->stage === OpportunityStage::Won),
+                        TextEntry::make('lost_at')
+                            ->label(__('field.lost_at'))
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—')
+                            ->visible(fn (Opportunity $record): bool => $record->stage === OpportunityStage::Lost),
+                        TextEntry::make('lost_reason')
+                            ->label(__('field.lost_reason'))
+                            ->placeholder('—')
+                            ->columnSpanFull()
+                            ->visible(fn (Opportunity $record): bool => $record->stage === OpportunityStage::Lost),
                     ]),
 
-                /*
-                * 2. NGƯỜI SALES PHẢI LIÊN HỆ
-                */
-                Section::make(__('field.primary_contact'))
+                Section::make(__('section.primary_contact'))
                     ->description(__('helper.sales_contact_info'))
-                    ->columns(['default' => 1, 'md' => 2])
+                    ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
                     ->schema([
                         TextEntry::make('primaryContact.full_name')
                             ->label(__('field.full_name'))
+                            ->weight('semibold')
                             ->placeholder('—'),
-
-                        TextEntry::make(
-                            'primaryContact.businessProfile.contact_position'
-                        )
+                        TextEntry::make('primaryContact.businessProfile.contact_position')
                             ->label(__('field.job_title'))
                             ->placeholder('—'),
-
                         TextEntry::make('primaryContact.phone')
                             ->label(__('field.phone'))
                             ->copyable()
                             ->placeholder('—'),
-
                         TextEntry::make('primaryContact.email')
                             ->label(__('field.email'))
                             ->copyable()
                             ->placeholder('—'),
-
                         TextEntry::make('company.legal_name')
                             ->label(__('field.company'))
                             ->placeholder('—'),
-
-                        TextEntry::make(
-                            'primaryContact.businessProfile.tax_code'
-                        )
+                        TextEntry::make('primaryContact.businessProfile.tax_code')
                             ->label(__('field.tax_code'))
                             ->placeholder('—'),
                     ]),
 
-                /*
-                * 3. THÔNG TIN CSKH ĐÃ XÁC MINH
-                */
-                Section::make(__('field.handoff_information'))
+                Section::make(__('section.handoff_from_customer_service'))
                     ->description(__('helper.lead_handoff_snapshot'))
-                    ->columns(['default' => 1, 'md' => 2])
+                    ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
                     ->schema([
-                        TextEntry::make(
-                            'lead.qualification.budget_status'
-                        )
+                        TextEntry::make('lead.qualification.budget_status')
                             ->label(__('field.budget_status'))
                             ->badge()
-                            ->formatStateUsing(
-                                fn (?string $state): string => match ($state) {
-                                    'confirmed_fit' => __('field.budget_fit_confirmed'),
-
-                                    'confirmed_unfit' => __('field.budget_unfit_confirmed'),
-
-                                    'unknown' => __('common.unknown'),
-
-                                    default => '—',
-                                }
-                            ),
-
-                        TextEntry::make(
-                            'lead.qualification.budget_amount'
-                        )
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'confirmed_fit' => __('field.budget_fit_confirmed'),
+                                'confirmed_unfit' => __('field.budget_unfit_confirmed'),
+                                'unknown' => __('common.unknown'),
+                                default => '—',
+                            }),
+                        TextEntry::make('lead.qualification.budget_amount')
                             ->label(__('field.expected_budget'))
                             ->money('VND')
                             ->placeholder('—'),
-
-                        TextEntry::make(
-                            'lead.qualification.purchase_timeline'
-                        )
+                        TextEntry::make('lead.qualification.purchase_timeline')
                             ->label(__('field.expected_purchase_time'))
-                            ->formatStateUsing(
-                                fn (?string $state): string => match ($state) {
-                                    'within_7_days' => __('field.timeline_within_7_days'),
-
-                                    'within_30_days' => __('field.timeline_within_30_days'),
-
-                                    'within_3_months' => __('field.timeline_within_3_months'),
-
-                                    'over_3_months' => __('field.timeline_over_3_months'),
-
-                                    'unknown' => __('common.unknown'),
-
-                                    default => '—',
-                                }
-                            ),
-
-                        TextEntry::make(
-                            'lead.qualification.decision_role'
-                        )
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'within_7_days' => __('field.timeline_within_7_days'),
+                                'within_30_days' => __('field.timeline_within_30_days'),
+                                'within_3_months' => __('field.timeline_within_3_months'),
+                                'over_3_months' => __('field.timeline_over_3_months'),
+                                'unknown' => __('common.unknown'),
+                                default => '—',
+                            }),
+                        TextEntry::make('lead.qualification.decision_role')
                             ->label(__('field.contact_decision_role'))
-                            ->formatStateUsing(
-                                fn (?string $state): string => match ($state) {
-                                    'decision_maker' => __('field.decision_maker'),
-
-                                    'influencer' => __('field.influencer'),
-
-                                    'information_gatherer' => __('field.information_gatherer'),
-
-                                    'unknown' => __('common.unknown'),
-
-                                    default => '—',
-                                }
-                            ),
-
-                        TextEntry::make('lead.qualification.score')
-                            ->label(__('field.lead_score'))
-                            ->placeholder('—'),
-
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'decision_maker' => __('field.decision_maker'),
+                                'influencer' => __('field.influencer'),
+                                'information_gatherer' => __('field.information_gatherer'),
+                                'unknown' => __('common.unknown'),
+                                default => '—',
+                            }),
                         TextEntry::make('lead.qualification.priority')
                             ->label(__('field.priority'))
                             ->badge()
-                            ->formatStateUsing(
-                                function ($state): string {
-                                    $value = $state instanceof \BackedEnum
-                                        ? $state->value
-                                        : $state;
+                            ->formatStateUsing(function ($state): string {
+                                $value = $state instanceof \BackedEnum ? $state->value : $state;
 
-                                    return match ($value) {
-                                        'low' => __('field.priority.low'),
-                                        'normal' => __('field.priority.normal'),
-                                        'high' => __('field.priority.high'),
-                                        'vip' => __('field.priority.vip'),
-                                        default => '—',
-                                    };
-                                }
-                            ),
-
-                        TextEntry::make(
-                            'lead.qualification.qualifiedBy.full_name'
-                        )
+                                return match ($value) {
+                                    'low' => __('field.priority.low'),
+                                    'normal' => __('field.priority.normal'),
+                                    'high' => __('field.priority.high'),
+                                    'vip' => __('field.priority.vip'),
+                                    default => '—',
+                                };
+                            }),
+                        TextEntry::make('lead.qualification.score')
+                            ->label(__('field.lead_score'))
+                            ->placeholder('—'),
+                        TextEntry::make('lead.qualification.qualifiedBy.full_name')
                             ->label(__('field.customer_care_assessment'))
                             ->placeholder('—'),
-
-                        TextEntry::make(
-                            'lead.qualification.qualified_at'
-                        )
+                        TextEntry::make('lead.qualification.qualified_at')
                             ->label(__('field.qualified_at'))
-                            ->formatStateUsing(
-                                fn ($state): string => $state
-                                    ? $state
-                                        ->copy()
-                                        ->timezone(
-                                            config('business_flow.timezone')
-                                        )
-                                        ->format('d/m/Y H:i')
-                                    : '—'
-                            ),
-
-                        TextEntry::make(
-                            'lead.qualification.qualification_note'
-                        )
+                            ->formatStateUsing(fn ($state): string => $state
+                                ? $state->copy()->timezone(config('business_flow.timezone'))->format('d/m/Y H:i')
+                                : '—'),
+                        TextEntry::make('lead.qualification.qualification_note')
                             ->label(__('field.qualification_note'))
                             ->columnSpanFull()
                             ->placeholder('—'),

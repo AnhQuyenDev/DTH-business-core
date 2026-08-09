@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\CompanyAssetController;
 use App\Http\Controllers\Finance\PaymentDocumentController;
 use App\Http\Controllers\Marketing\Admin\EmailTemplatePreviewController;
 use App\Http\Controllers\Marketing\Admin\FormTemplatePreviewController;
@@ -14,7 +13,6 @@ use App\Http\Controllers\Sales\QuotationPublicController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PageController::class, 'welcome']);
-Route::get('/company/logo', [CompanyAssetController::class, 'logo'])->name('company.logo');
 
 // ─── Admin Marketing Routes ────────────────────────────────────────────────
 Route::middleware(['web', 'auth'])->prefix('admin/marketing')->name('marketing.')->group(function (): void {

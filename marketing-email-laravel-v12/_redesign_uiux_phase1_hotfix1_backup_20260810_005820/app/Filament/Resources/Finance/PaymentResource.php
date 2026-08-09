@@ -75,7 +75,7 @@ class PaymentResource extends Resource
                         $source = $state ?: $record->attribution?->acquisition_source;
 
                         return $source
-                            ? (UtmOptions::source()[$source] ?? str($source)->headline()->toString())
+                            ? (UtmOptions::sources()[$source] ?? str($source)->headline()->toString())
                             : '—';
                     })
                     ->badge(),

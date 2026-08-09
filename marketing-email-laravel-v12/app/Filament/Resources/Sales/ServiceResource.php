@@ -64,19 +64,41 @@ class ServiceResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make(__('section.service_details'))->columns(['default' => 1, 'md' => 2])->schema([
-                TextInput::make('service_code')->label(__('field.service_code'))->required()->maxLength(30)->unique(ignoreRecord: true),
-                TextInput::make('name')->label(__('field.name'))->required()->maxLength(255),
-                Hidden::make('slug'),
-                Textarea::make('description')->label(__('field.description'))->rows(3)->columnSpanFull(),
-                Textarea::make('default_scope')->label(__('field.default_scope'))->rows(3)->columnSpanFull(),
-                Textarea::make('default_terms')->label(__('field.default_terms'))->rows(3)->columnSpanFull(),
-                Select::make('status')
-                    ->label(__('field.status'))
-                    ->options(ServiceStatus::options())
-                    ->default('active')
-                    ->required(),
-            ]),
+            Section::make(__('section.service_details'))
+                ->columns(12)
+                ->schema([
+                    TextInput::make('service_code')
+                        ->label(__('field.service_code'))
+                        ->required()
+                        ->maxLength(30)
+                        ->unique(ignoreRecord: true)
+                        ->columnSpan(['default' => 12, 'md' => 4]),
+                    TextInput::make('name')
+                        ->label(__('field.name'))
+                        ->required()
+                        ->maxLength(255)
+                        ->columnSpan(['default' => 12, 'md' => 5]),
+                    Select::make('status')
+                        ->label(__('field.status'))
+                        ->options(ServiceStatus::options())
+                        ->native(false)
+                        ->default('active')
+                        ->required()
+                        ->columnSpan(['default' => 12, 'md' => 3]),
+                    Hidden::make('slug'),
+                    Textarea::make('description')
+                        ->label(__('field.description'))
+                        ->rows(3)
+                        ->columnSpanFull(),
+                    Textarea::make('default_scope')
+                        ->label(__('field.default_scope'))
+                        ->rows(3)
+                        ->columnSpan(['default' => 12, 'xl' => 6]),
+                    Textarea::make('default_terms')
+                        ->label(__('field.default_terms'))
+                        ->rows(3)
+                        ->columnSpan(['default' => 12, 'xl' => 6]),
+                ]),
         ]);
     }
 

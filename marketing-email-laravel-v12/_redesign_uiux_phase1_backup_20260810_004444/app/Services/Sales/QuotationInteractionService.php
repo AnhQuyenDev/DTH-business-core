@@ -15,7 +15,7 @@ class QuotationInteractionService
         return $this->create(
             $quotation,
             'quotation_created',
-            __('activity.message.quotation_created'),
+            'Báo giá được tạo',
         );
     }
 
@@ -26,7 +26,7 @@ class QuotationInteractionService
         return $this->create(
             $quotation,
             'quotation_sent',
-            __('activity.message.quotation_sent', ['email' => $recipientEmail]),
+            "Gửi báo giá đến {$recipientEmail}",
         );
     }
 
@@ -35,7 +35,7 @@ class QuotationInteractionService
         return $this->create(
             $quotation,
             'quotation_viewed',
-            __('activity.message.quotation_viewed'),
+            'Người nhận đã xem báo giá',
         );
     }
 
@@ -46,7 +46,7 @@ class QuotationInteractionService
         return $this->create(
             $quotation,
             'quotation_accepted',
-            __('activity.message.quotation_accepted', ['name' => $signerName]),
+            "{$signerName} đã chấp nhận báo giá",
         );
     }
 
@@ -57,7 +57,7 @@ class QuotationInteractionService
         return $this->create(
             $quotation,
             'accepted_notification_sent',
-            __('activity.message.accepted_notification_sent', ['email' => $recipientEmail]),
+            "Đã gửi thông báo chấp nhận đến {$recipientEmail}",
         );
     }
 
@@ -68,7 +68,7 @@ class QuotationInteractionService
         return $this->create(
             $quotation,
             'quotation_rejected',
-            $reason ?: __('activity.message.quotation_rejected'),
+            $reason ?: 'Người nhận đã từ chối báo giá',
         );
     }
 
@@ -79,7 +79,7 @@ class QuotationInteractionService
         return $this->create(
             $quotation,
             'quotation_revision_requested',
-            $reason ?: __('activity.message.quotation_revision_requested'),
+            $reason ?: 'Người nhận yêu cầu chỉnh sửa báo giá',
         );
     }
 
@@ -90,7 +90,7 @@ class QuotationInteractionService
         return $this->create(
             $quotation,
             'payment_updated',
-            $note ?: __('activity.message.payment_updated'),
+            $note ?: 'Cập nhật trạng thái thanh toán',
         );
     }
 
