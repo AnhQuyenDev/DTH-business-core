@@ -12,6 +12,7 @@ use App\Listeners\LogSuccessfulLogin;
 use App\Models\Crm\Company;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
+use App\Models\Crm\CustomerInteraction;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
 use App\Models\Sales\Opportunity;
@@ -27,6 +28,8 @@ use App\Observers\Crm\LeadObserver;
 use App\Observers\Marketing\LandingPageSubmissionObserver;
 use App\Policies\CompanyPolicy;
 use App\Policies\CustomerPolicy;
+use App\Policies\CustomerAssignmentPolicy;
+use App\Policies\CustomerInteractionPolicy;
 use App\Policies\LeadPolicy;
 use App\Policies\Sales\OpportunityPolicy;
 use App\Policies\Sales\PriceBookPolicy;
@@ -70,6 +73,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PriceBook::class, PriceBookPolicy::class);
         Gate::policy(Quotation::class, QuotationPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
+        Gate::policy(CustomerAssignment::class, CustomerAssignmentPolicy::class);
+        Gate::policy(CustomerInteraction::class, CustomerInteractionPolicy::class);
 
         // ─── Marketing View Gates ─────────────────────────────────────────
         Gate::define('marketing.view-contacts', fn (User $user) => $user->canViewMarketingModule());

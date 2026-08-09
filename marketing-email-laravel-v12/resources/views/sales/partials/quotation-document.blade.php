@@ -389,12 +389,15 @@
             <h3 class="font-semibold mb-2 {{ $paymentStatus === 'paid' ? 'text-green-800' : 'text-amber-800' }}">{{ __('sales.public.payment_status') }}</h3>
             @if($paymentStatus === 'paid')
                 <p class="text-sm text-green-700">{{ __('sales.public.payment_verified') }}</p>
+                @if($quotation->payment?->receipt)
+                    <a href="{{ route('sales.quotation.public.receipt', ['quotationCode' => $quotation->quotation_code, 'token' => $quotation->public_token]) }}" target="_blank" class="inline-flex mt-3 px-3 py-2 bg-green-700 text-white text-sm rounded hover:bg-green-800">Tải biên lai thanh toán</a>
+                @endif
             @elseif($pendingNotice)
                 <p class="text-sm text-amber-700">{{ __('sales.public.payment_pending_reconciliation') }}</p>
                 <p class="text-xs text-amber-700 mt-1">{{ __('sales.public.declared_amount') }}: <strong>{{ format_money($pendingNotice->declared_amount) }} {{ $quotation->currency }}</strong></p>
             @else
                 <p class="text-sm text-amber-700 mb-3">{{ __('sales.public.payment_notice_instruction') }}</p>
-                <form method="POST" action="{{ route('sales.quotation.public.notify-payment', ['quotationCode' => $quotation->quotation_code, 'token' => $quotation->public_token]) }}" onsubmit="return submitWithFreshCsrf(event, this)" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <form method="POST" enctype="multipart/form-data" action="{{ route('sales.quotation.public.notify-payment', ['quotationCode' => $quotation->quotation_code, 'token' => $quotation->public_token]) }}" onsubmit="return submitWithFreshCsrf(event, this)" class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     @csrf
                     <div>
                         <label class="block text-sm font-medium">{{ __('sales.public.payer_name') }}</label>
@@ -411,6 +414,11 @@
                     <div>
                         <label class="block text-sm font-medium">{{ __('sales.public.transfer_reference') }}</label>
                         <input name="transfer_reference" value="{{ old('transfer_reference') }}" class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium">Chứng từ chuyển khoản <span class="text-red-600">*</span></label>
+                        <input name="proof_files[]" type="file" multiple required accept="image/jpeg,image/png,image/webp,application/pdf" class="w-full border rounded px-3 py-2 text-sm bg-white">
+                        <p class="text-xs text-amber-700 mt-1">Bắt buộc 1-3 file JPG, PNG, WEBP hoặc PDF; tối đa 10 MB/file. Chứng từ được lưu riêng tư và chỉ người có quyền đối soát mới xem được.</p>
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium">{{ __('field.notes') }}</label>

@@ -4,6 +4,7 @@ namespace App\Jobs\Sales;
 
 use App\Mail\Sales\PaymentConfirmedMail;
 use App\Models\Sales\Quotation;
+use App\Services\Finance\PaymentReceiptService;
 use App\Services\Sales\QuotationEmailCrmSyncer;
 use App\Services\Sales\QuotationInteractionService;
 use App\Services\Sales\QuotationNotificationMailerService;
@@ -28,6 +29,7 @@ class SendPaymentConfirmedNotificationJob implements ShouldQueue
         QuotationInteractionService $interaction,
         QuotationEmailCrmSyncer $syncer,
         QuotationNotificationMailerService $notificationMailer,
+        PaymentReceiptService $receiptService,
     ): void {
         $quotation = Quotation::query()
             ->with([
@@ -36,12 +38,29 @@ class SendPaymentConfirmedNotificationJob implements ShouldQueue
                 'company',
                 'contact.personalProfile',
                 'contact.businessProfile',
+                'payment.receipt',
             ])
             ->find($this->quotationId);
 
         if ($quotation === null) {
             return;
         }
+
+        $payment = $quotation->payment;
+
+        if ($payment === null) {
+            Log::warning('SendPaymentConfirmedNotificationJob: payment ledger missing', [
+                'quotation_id' => $quotation->id,
+            ]);
+
+            return;
+        }
+
+        // A payment-confirmation email is only useful as an accounting record
+        // when the immutable receipt exists. Repair/generate it idempotently
+        // before composing the email so the attachment is never silently lost.
+        $receiptService->ensureGenerated($payment);
+        $payment->load('receipt');
 
         $recipientEmail = $quotation->customer?->email
             ?? $quotation->party_email;
@@ -59,7 +78,7 @@ class SendPaymentConfirmedNotificationJob implements ShouldQueue
             $notificationMailer->send(
                 $quotation,
                 $recipientEmail,
-                new PaymentConfirmedMail($quotation),
+                new PaymentConfirmedMail($quotation, $payment),
             );
 
             $interaction->logPaymentUpdated($quotation, 'Đã gửi xác nhận thanh toán đến khách hàng');

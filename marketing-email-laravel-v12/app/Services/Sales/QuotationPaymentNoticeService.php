@@ -9,8 +9,11 @@ use App\Models\Sales\Quotation;
 use App\Models\Sales\QuotationPaymentNotice;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 final class QuotationPaymentNoticeService
 {
@@ -36,6 +39,16 @@ final class QuotationPaymentNoticeService
             ]);
         }
 
+        $files = collect($data['proof_files'] ?? [])
+            ->filter(fn (mixed $file): bool => $file instanceof UploadedFile)
+            ->values();
+
+        if ($files->isEmpty()) {
+            throw ValidationException::withMessages([
+                'proof_files' => 'Vui lòng tải lên ít nhất một ảnh hoặc PDF chứng từ chuyển khoản.',
+            ]);
+        }
+
         $payerEmail = $this->publicAccess->assertAuthorizedSignerEmail(
             $quotation,
             (string) ($data['payer_email'] ?? ''),
@@ -44,9 +57,7 @@ final class QuotationPaymentNoticeService
         $declaredAmount = (float) ($data['declared_amount'] ?? 0);
         $grandTotal = (float) $quotation->grand_total;
 
-        // Round 2 deliberately supports full-payment confirmation only.
-        // Partial payments need a real installment/payment ledger, not just a
-        // status flag, otherwise Finance can accidentally close an underpaid quote.
+        // V1 hỗ trợ thanh toán đủ 100%. Partial payment cần ledger trả góp riêng.
         if ($declaredAmount <= 0 || abs($declaredAmount - $grandTotal) > 0.5) {
             throw ValidationException::withMessages([
                 'declared_amount' => 'Số tiền thông báo phải đúng bằng tổng giá trị cần thanh toán của báo giá.',
@@ -64,47 +75,88 @@ final class QuotationPaymentNoticeService
             ]);
         }
 
-        return DB::transaction(function () use (
-            $quotation,
-            $data,
-            $request,
-            $payerEmail,
-            $declaredAmount,
-        ): QuotationPaymentNotice {
-            $notice = $quotation->paymentNotices()->create([
-                'status' => PaymentNoticeStatus::Pending->value,
-                'payer_name' => trim((string) $data['payer_name']),
-                'payer_email' => $payerEmail,
-                'declared_amount' => $declaredAmount,
-                'transfer_reference' => filled($data['transfer_reference'] ?? null)
-                    ? trim((string) $data['transfer_reference'])
-                    : null,
-                'note' => filled($data['note'] ?? null)
-                    ? trim((string) $data['note'])
-                    : null,
-                'submitted_at' => now(),
-                'ip_address' => $request->ip(),
-                'user_agent' => substr((string) $request->userAgent(), 0, 1000),
-            ]);
+        $storedFiles = [];
+        $evidenceDisk = (string) config('finance.evidence_disk', 'local');
 
-            if ($quotation->payment_status !== PaymentStatus::PendingVerification) {
-                $quotation->update([
-                    'payment_status' => PaymentStatus::PendingVerification->value,
+        try {
+            return DB::transaction(function () use (
+                $quotation,
+                $data,
+                $request,
+                $payerEmail,
+                $declaredAmount,
+                $files,
+                $evidenceDisk,
+                &$storedFiles,
+            ): QuotationPaymentNotice {
+                $notice = $quotation->paymentNotices()->create([
+                    'status' => PaymentNoticeStatus::Pending->value,
+                    'payer_name' => trim((string) $data['payer_name']),
+                    'payer_email' => $payerEmail,
+                    'declared_amount' => $declaredAmount,
+                    'transfer_reference' => filled($data['transfer_reference'] ?? null)
+                        ? trim((string) $data['transfer_reference'])
+                        : null,
+                    'note' => filled($data['note'] ?? null)
+                        ? trim((string) $data['note'])
+                        : null,
+                    'submitted_at' => now(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => substr((string) $request->userAgent(), 0, 1000),
                 ]);
+
+                /** @var UploadedFile $file */
+                foreach ($files as $file) {
+                    $sha256 = hash_file('sha256', $file->getRealPath());
+                    $path = $file->store(
+                        'payments/notices/'.$notice->id,
+                        $evidenceDisk,
+                    );
+
+                    if (! is_string($path) || $path === '') {
+                        throw new \RuntimeException('Không thể lưu chứng từ thanh toán.');
+                    }
+
+                    $storedFiles[] = $path;
+
+                    $notice->files()->create([
+                        'disk' => $evidenceDisk,
+                        'file_path' => $path,
+                        'original_name' => substr($file->getClientOriginalName(), 0, 255),
+                        'mime_type' => (string) ($file->getMimeType() ?: 'application/octet-stream'),
+                        'file_size' => (int) $file->getSize(),
+                        'sha256' => $sha256,
+                        'uploaded_at' => now(),
+                    ]);
+                }
+
+                if ($quotation->payment_status !== PaymentStatus::PendingVerification) {
+                    $quotation->update([
+                        'payment_status' => PaymentStatus::PendingVerification->value,
+                    ]);
+                }
+
+                $this->auditLog->log(
+                    'quotation.payment_notice_submitted',
+                    $quotation,
+                    [],
+                    [
+                        'payment_notice_id' => $notice->id,
+                        'declared_amount' => $declaredAmount,
+                        'payer_email' => $payerEmail,
+                        'evidence_count' => $notice->files()->count(),
+                        'evidence_sha256' => $notice->files()->pluck('sha256')->all(),
+                    ],
+                );
+
+                return $notice->fresh('files');
+            });
+        } catch (Throwable $e) {
+            foreach ($storedFiles as $path) {
+                Storage::disk($evidenceDisk)->delete($path);
             }
 
-            $this->auditLog->log(
-                'quotation.payment_notice_submitted',
-                $quotation,
-                [],
-                [
-                    'payment_notice_id' => $notice->id,
-                    'declared_amount' => $declaredAmount,
-                    'payer_email' => $payerEmail,
-                ],
-            );
-
-            return $notice;
-        });
+            throw $e;
+        }
     }
 }

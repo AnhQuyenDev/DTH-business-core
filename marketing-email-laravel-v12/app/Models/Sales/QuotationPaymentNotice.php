@@ -6,6 +6,7 @@ use App\Enums\Sales\PaymentNoticeStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class QuotationPaymentNotice extends Model
 {
@@ -43,5 +44,10 @@ class QuotationPaymentNotice extends Model
     public function reviewedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by_user_id');
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(QuotationPaymentNoticeFile::class, 'payment_notice_id');
     }
 }

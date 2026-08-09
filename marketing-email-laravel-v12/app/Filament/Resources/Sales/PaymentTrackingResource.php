@@ -23,7 +23,7 @@ class PaymentTrackingResource extends Resource
 
     public static function getNavigationGroup(): string
     {
-        return __('navigation.group.sales');
+        return __('finance.navigation_group');
     }
 
     public static function getModelLabel(): string
@@ -83,8 +83,8 @@ class PaymentTrackingResource extends Resource
                 TextColumn::make('latest_payment_notice')
                     ->label('Khách thông báo')
                     ->getStateUsing(function (Quotation $record): string {
-                        $notice = $record->paymentNotices()
-                            ->latest('id')
+                        $notice = $record->paymentNotices
+                            ->sortByDesc('id')
                             ->first();
 
                         if ($notice === null) {
@@ -94,7 +94,9 @@ class PaymentTrackingResource extends Resource
                         return number_format((float) $notice->declared_amount, 0, ',', '.').' VND';
                     })
                     ->description(function (Quotation $record): ?string {
-                        $notice = $record->paymentNotices()->latest('id')->first();
+                        $notice = $record->paymentNotices
+                            ->sortByDesc('id')
+                            ->first();
                         if ($notice === null) {
                             return null;
                         }
@@ -104,6 +106,17 @@ class PaymentTrackingResource extends Resource
                             $notice->transfer_reference,
                         ])->filter()->implode(' • ');
                     }),
+                TextColumn::make('payment_proofs')
+                    ->label('Chứng từ')
+                    ->getStateUsing(function (Quotation $record): string {
+                        $notice = $record->paymentNotices
+                            ->sortByDesc('id')
+                            ->first();
+
+                        return $notice === null ? '—' : $notice->files->count().' file';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => $state === '—' || $state === '0 file' ? 'danger' : 'info'),
                 TextColumn::make('status')
                     ->label(__('field.quotation_status'))
                     ->badge()
@@ -139,6 +152,23 @@ class PaymentTrackingResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
+                    Action::make('view_evidence')
+                        ->label('Xem chứng từ')
+                        ->icon('heroicon-o-paper-clip')
+                        ->color('info')
+                        ->modalHeading('Thông báo & chứng từ thanh toán')
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Đóng')
+                        ->modalContent(function (Quotation $q) {
+                            $notice = $q->paymentNotices()
+                                ->with('files')
+                                ->latest('id')
+                                ->first();
+
+                            return view('filament.sales.payment-evidence-modal', compact('notice'));
+                        })
+                        ->visible(fn (Quotation $q): bool => $q->paymentNotices()->exists()),
+
                     Action::make('mark_paid')
                         ->label(__('action.mark_paid'))
                         ->icon('heroicon-o-check-circle')
@@ -167,14 +197,20 @@ class PaymentTrackingResource extends Resource
                         ->visible(fn (Quotation $q): bool =>
                             $q->status === QuotationStatus::Accepted
                             && (auth()->user()?->can('verifyPayment', $q) ?? false)
-                            && in_array(
-                                $q->payment_status,
-                                [
-                                    PaymentStatus::Unpaid,
-                                    PaymentStatus::PendingVerification,
-                                    PaymentStatus::PartiallyPaid,
-                                ],
-                                true,
+                            && (
+                                config('business_flow.v2_enabled')
+                                    ? (
+                                        $q->payment_status === PaymentStatus::PendingVerification
+                                        && $q->paymentNotices()
+                                            ->where('status', \App\Enums\Sales\PaymentNoticeStatus::Pending->value)
+                                            ->whereHas('files')
+                                            ->exists()
+                                    )
+                                    : in_array(
+                                        $q->payment_status,
+                                        [PaymentStatus::Unpaid, PaymentStatus::PendingVerification, PaymentStatus::PartiallyPaid],
+                                        true,
+                                    )
                             )
                         ),
 
@@ -217,10 +253,12 @@ class PaymentTrackingResource extends Resource
     {
         // Payment tracking starts only after the customer has accepted the
         // quotation. Earlier quotation workflow belongs to Sales, not Finance.
-        return parent::getEloquentQuery()->where(
-            'status',
-            QuotationStatus::Accepted->value,
-        );
+        return parent::getEloquentQuery()
+            ->with(['paymentNotices.files'])
+            ->where(
+                'status',
+                QuotationStatus::Accepted->value,
+            );
     }
 
     public static function getPages(): array

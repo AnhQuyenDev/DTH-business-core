@@ -10,12 +10,10 @@ class CustomerPolicy
 {
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->isAdmin()) {
-            return true;
-        }
-
+        // Admin/Executive/Viewer may inspect Customer Care for audit, but they
+        // must not impersonate operational CSKH users.
         if (
-            $user->canReadAcrossBusiness()
+            ($user->isAdmin() || $user->canReadAcrossBusiness())
             && in_array($ability, ['viewAny', 'view'], true)
         ) {
             return true;

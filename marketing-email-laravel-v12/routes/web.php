@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Finance\PaymentDocumentController;
 use App\Http\Controllers\Marketing\Admin\EmailTemplatePreviewController;
 use App\Http\Controllers\Marketing\Admin\FormTemplatePreviewController;
 use App\Http\Controllers\Marketing\Admin\LandingPagePreviewController;
@@ -25,6 +26,12 @@ Route::middleware(['web', 'auth'])->prefix('admin/marketing')->name('marketing.'
     )->name('form-templates.preview');
 });
 
+// ─── Private Finance Documents ─────────────────────────────────────────────
+Route::middleware(['web', 'auth'])->prefix('admin/finance')->name('finance.')->group(function (): void {
+    Route::get('payment-evidence/{file}', [PaymentDocumentController::class, 'evidence'])->name('payment-evidence');
+    Route::get('payment-receipts/{receipt}', [PaymentDocumentController::class, 'receipt'])->name('payment-receipts');
+});
+
 // ─── Public Tracking Routes (no auth) ─────────────────────────────────────
 Route::get('/m/open/{token}.gif', [EmailTrackingController::class, 'open'])->name('marketing.track.open');
 Route::get('/m/click/{token}', [EmailTrackingController::class, 'click'])->name('marketing.track.click');
@@ -42,6 +49,7 @@ Route::get('/lp/{slug}/thank-you', [LandingPageController::class, 'thankYou'])->
 Route::prefix('q')->name('sales.quotation.public.')->group(function (): void {
     Route::get('/{quotationCode}/{token}', [QuotationPublicController::class, 'show'])->name('show');
     Route::get('/{quotationCode}/{token}/pdf', [QuotationPublicController::class, 'pdf'])->name('pdf');
+    Route::get('/{quotationCode}/{token}/receipt', [QuotationPublicController::class, 'receipt'])->name('receipt');
     Route::get('/{quotationCode}/{token}/csrf-token', [QuotationPublicController::class, 'csrfToken'])->name('csrf-token');
     Route::post('/{quotationCode}/{token}/accept', [QuotationPublicController::class, 'accept'])->name('accept');
     Route::post('/{quotationCode}/{token}/reject', [QuotationPublicController::class, 'reject'])->name('reject');

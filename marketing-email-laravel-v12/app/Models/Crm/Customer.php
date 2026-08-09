@@ -2,6 +2,7 @@
 
 namespace App\Models\Crm;
 
+use App\Models\Finance\Payment;
 use App\Enums\Crm\CustomerAssignmentStatus;
 use App\Enums\Crm\CustomerConsentStatus;
 use App\Enums\Crm\CustomerStatus;
@@ -200,6 +201,11 @@ class Customer extends Model
     public function quotations(): HasMany
     {
         return $this->hasMany(Quotation::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
     }
 
     public function emailEvents(): HasMany

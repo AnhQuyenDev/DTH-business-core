@@ -93,7 +93,7 @@ class CustomerCarePage extends Page implements HasTable
         $user = auth()->user();
         $staff = $user->staff;
 
-        if (! $staff && ! $user->isAdmin()) {
+        if (! $staff && ! ($user->isAdmin() || $user->canReadAcrossBusiness())) {
             return ['total' => 0, 'needs_follow_up' => 0];
         }
 
@@ -406,6 +406,14 @@ class CustomerCarePage extends Page implements HasTable
             ->success()
             ->title(__('page.customer_care.released_title'))
             ->send();
+    }
+
+    public function canInteractSelectedCustomer(): bool
+    {
+        $customer = $this->getSelectedCustomer();
+
+        return $customer !== null
+            && (auth()->user()?->can('interact', $customer) ?? false);
     }
 
     public function canRelease(): bool

@@ -492,6 +492,7 @@
                 {{-- ── Tab: Email (Dark Gmail Style) ── --}}
                 @if ($activeTab === 'email')
                     <div class="space-y-6">
+                        @if($this->canInteractSelectedCustomer())
                         <div class="cc-panel">
                             <div class="cc-panel-head">
                                 <div class="flex items-center gap-2">
@@ -599,6 +600,11 @@
                                 </x-filament::button>
                             </div>
                         </div>
+                        @else
+                            <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
+                                Admin/Executive/Viewer chỉ có quyền xem/audit Customer Care; thao tác gửi email thuộc nhân viên CSKH được phân công.
+                            </div>
+                        @endif
 
                         {{-- Email History --}}
                         <div class="cc-panel">
@@ -652,6 +658,7 @@
                 {{-- ── Tab: Call & Message ── --}}
                 @if ($activeTab === 'call')
                     <div class="space-y-6">
+                        @if($this->canInteractSelectedCustomer())
                         <x-filament::section icon="heroicon-m-phone" icon-color="primary" compact>
                             <x-slot name="heading">{{ __('page.customer_care.log_call') }}</x-slot>
                             <x-slot name="description">{{ __('page.customer_care.log_call_desc') }}</x-slot>
@@ -702,6 +709,12 @@
                                 </x-filament::button>
                             </div>
                         </x-filament::section>
+
+                        @else
+                            <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
+                                Bạn đang ở chế độ chỉ xem; thao tác ghi nhận cuộc gọi/tin nhắn thuộc nhân viên CSKH được phân công.
+                            </div>
+                        @endif
 
                         <div class="cc-panel">
                             <div class="cc-panel-head">

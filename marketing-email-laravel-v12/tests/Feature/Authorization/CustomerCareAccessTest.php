@@ -8,6 +8,7 @@ use App\Filament\Pages\CustomerCarePage;
 use App\Filament\Resources\CustomerResource;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
+use App\Models\Crm\CustomerInteraction;
 use App\Models\Crm\Staff;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -100,7 +101,7 @@ class CustomerCareAccessTest extends TestCase
         }
     }
 
-    public function test_admin_has_full_access(): void
+    public function test_admin_customer_care_is_read_only(): void
     {
         $this->actingAs($this->makeUser('admin'));
 
@@ -109,6 +110,11 @@ class CustomerCareAccessTest extends TestCase
         $this->assertTrue(auth()->user()->can('viewAny', Customer::class));
         $this->assertTrue(auth()->user()->can('view', $customer));
         $this->assertTrue(CustomerCarePage::canAccess());
+        $this->assertFalse(auth()->user()->can('update', $customer));
+        $this->assertFalse(auth()->user()->can('interact', $customer));
+        $this->assertFalse(auth()->user()->can('manageAssignments', $customer));
+        $this->assertFalse(auth()->user()->can('create', CustomerInteraction::class));
+        $this->assertFalse(auth()->user()->can('create', CustomerAssignment::class));
     }
 
     public function test_cs_staff_can_interact_assigned_customer(): void

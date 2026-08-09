@@ -9,8 +9,12 @@ use App\Enums\Sales\PaymentNoticeStatus;
 use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
 use App\Jobs\Sales\SendPaymentConfirmedNotificationJob;
+use App\Models\Crm\Customer;
+use App\Models\Finance\Payment;
 use App\Models\Sales\Quotation;
 use App\Models\User;
+use App\Services\Finance\PaymentLedgerService;
+use App\Services\Finance\PaymentReceiptService;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,7 +25,7 @@ final class QuotationPaymentService
         'not_required' => ['unpaid'],
         'unpaid' => [
             'pending_verification',
-            'paid',
+            'paid', // legacy; V2 blocks direct Paid without evidence below.
             'cancelled',
         ],
         'pending_verification' => [
@@ -42,6 +46,8 @@ final class QuotationPaymentService
     public function __construct(
         private readonly AuditLogService $auditLog,
         private readonly ConvertWonOpportunityToCustomerAction $converter,
+        private readonly PaymentLedgerService $ledger,
+        private readonly PaymentReceiptService $receiptService,
     ) {}
 
     public function updateStatus(
@@ -75,6 +81,7 @@ final class QuotationPaymentService
                 ->with([
                     'opportunity',
                     'customer',
+                    'payment',
                 ])
                 ->whereKey($quotation->id)
                 ->lockForUpdate()
@@ -82,24 +89,38 @@ final class QuotationPaymentService
 
             $oldStatus = $locked->payment_status;
 
-            /*
-             * Idempotency: nếu đã paid thì trả về,
-             * không cộng doanh thu hoặc tạo Customer lần nữa.
-             */
-            if (
-                $newStatus === PaymentStatus::Paid
-                && $oldStatus === PaymentStatus::Paid
-            ) {
+            if ($newStatus === PaymentStatus::Paid && $oldStatus === PaymentStatus::Paid) {
                 return [
                     'quotation_id' => $locked->id,
+                    'payment_id' => $locked->payment?->id,
                     'payment_became_paid' => false,
                 ];
             }
 
-            $this->validateTransition(
-                $oldStatus,
-                $newStatus,
-            );
+            $this->validateTransition($oldStatus, $newStatus);
+
+            $pendingNotice = $locked->paymentNotices()
+                ->with('files')
+                ->where('status', PaymentNoticeStatus::Pending->value)
+                ->latest('id')
+                ->first();
+
+            if (
+                $newStatus === PaymentStatus::Paid
+                && config('business_flow.v2_enabled')
+            ) {
+                if ($pendingNotice === null) {
+                    throw ValidationException::withMessages([
+                        'payment_status' => 'Khách hàng chưa gửi thông báo chuyển khoản để Tài chính đối soát.',
+                    ]);
+                }
+
+                if ($pendingNotice->files->isEmpty()) {
+                    throw ValidationException::withMessages([
+                        'payment_status' => 'Thông báo thanh toán chưa có chứng từ chuyển khoản. Không thể xác nhận Paid.',
+                    ]);
+                }
+            }
 
             $locked->update([
                 'payment_status' => $newStatus->value,
@@ -107,30 +128,23 @@ final class QuotationPaymentService
                     ? ($locked->paid_at ?? now())
                     : $locked->paid_at,
                 'payment_verified_by_user_id' => $newStatus === PaymentStatus::Paid
-                        ? $user->id
-                        : $locked->payment_verified_by_user_id,
-                'payment_note' => $note
-                    ?? $locked->payment_note,
+                    ? $user->id
+                    : $locked->payment_verified_by_user_id,
+                'payment_note' => $note ?? $locked->payment_note,
                 'updated_by' => $user->id,
             ]);
 
             $this->auditLog->log(
                 'quotation.payment_updated',
                 $locked,
-                [
-                    'old_status' => $oldStatus?->value,
-                ],
+                ['old_status' => $oldStatus?->value],
                 [
                     'new_status' => $newStatus->value,
                     'note' => $note,
                     'verified_by_user_id' => $user->id,
+                    'payment_notice_id' => $pendingNotice?->id,
                 ],
             );
-
-            $pendingNotice = $locked->paymentNotices()
-                ->where('status', PaymentNoticeStatus::Pending->value)
-                ->latest('id')
-                ->first();
 
             if ($pendingNotice !== null && $newStatus === PaymentStatus::Paid) {
                 $pendingNotice->update([
@@ -148,26 +162,55 @@ final class QuotationPaymentService
                 ]);
             }
 
+            $payment = null;
+
             if ($newStatus === PaymentStatus::Paid) {
-                $this->handlePaid($locked, $user);
+                $payment = $this->ledger->recordVerifiedPayment(
+                    $locked,
+                    $pendingNotice,
+                    $user,
+                );
+
+                $customer = $this->handlePaid($locked, $user);
+                $this->ledger->attachCustomer($payment, $customer?->id);
             }
 
             return [
                 'quotation_id' => $locked->id,
+                'payment_id' => $payment?->id,
                 'payment_became_paid' => $newStatus === PaymentStatus::Paid,
             ];
         });
 
-        if ($result['payment_became_paid']) {
-            SendPaymentConfirmedNotificationJob::dispatch(
-                $result['quotation_id']
-            );
+        if ($result['payment_became_paid'] && $result['payment_id'] !== null) {
+            $payment = Payment::query()->find($result['payment_id']);
+
+            if ($payment !== null) {
+                try {
+                    $this->receiptService->ensureGenerated($payment);
+                } catch (\Throwable $e) {
+                    // Payment verification is authoritative and must not be rolled back
+                    // because document rendering failed. The receipt is idempotent and can
+                    // be generated later by the backfill/repair command.
+                    report($e);
+                }
+            }
+
+            // Payment confirmation is a user-facing transactional email. Send it
+            // immediately after the database commit so production does not depend on a
+            // manually started queue worker. Failure is reported without rolling back Paid.
+            try {
+                SendPaymentConfirmedNotificationJob::dispatchSync($result['quotation_id']);
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         return Quotation::query()
             ->with([
                 'customer',
                 'opportunity',
+                'payment.receipt',
             ])
             ->findOrFail($result['quotation_id']);
     }
@@ -176,9 +219,7 @@ final class QuotationPaymentService
         ?PaymentStatus $current,
         PaymentStatus $target,
     ): void {
-        $currentValue = $current?->value
-            ?? PaymentStatus::Unpaid->value;
-
+        $currentValue = $current?->value ?? PaymentStatus::Unpaid->value;
         $allowed = self::VALID_TRANSITIONS[$currentValue] ?? [];
 
         if (! in_array($target->value, $allowed, true)) {
@@ -191,32 +232,25 @@ final class QuotationPaymentService
     private function handlePaid(
         Quotation $quotation,
         User $user,
-    ): void {
+    ): ?Customer {
         if ($quotation->opportunity_id !== null) {
             $opportunity = $quotation->opportunity;
 
             if ($opportunity === null) {
-                throw new \RuntimeException(
-                    'Opportunity quotation is missing its opportunity.'
-                );
+                throw new \RuntimeException('Opportunity quotation is missing its opportunity.');
             }
 
-            $this->converter->execute(
+            return $this->converter->execute(
                 opportunity: $opportunity,
                 quotation: $quotation,
                 verifiedBy: $user,
             );
-
-            return;
         }
 
-        /*
-         * Luồng legacy: Quotation cũ đã có Customer.
-         */
         $customer = $quotation->customer;
 
         if ($customer === null) {
-            return;
+            return null;
         }
 
         $customer->update([
@@ -239,5 +273,7 @@ final class QuotationPaymentService
                 'quotation_code' => $quotation->quotation_code,
             ],
         );
+
+        return $customer;
     }
 }

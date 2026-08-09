@@ -296,6 +296,8 @@ class QuotationPublicController extends Controller
             'payer_email' => 'required|email|max:255',
             'declared_amount' => 'required|numeric|min:0.01',
             'transfer_reference' => 'nullable|string|max:255',
+            'proof_files' => 'required|array|min:1|max:'.max(1, (int) config('finance.evidence_max_files', 3)),
+            'proof_files.*' => 'required|file|mimes:'.implode(',', (array) config('finance.evidence_mimes', ['jpg', 'jpeg', 'png', 'webp', 'pdf'])).'|max:'.max(1, (int) config('finance.evidence_max_kb', 10240)),
             'note' => 'nullable|string|max:2000',
         ]);
 
@@ -309,6 +311,24 @@ class QuotationPublicController extends Controller
             $quotationCode,
             $token,
             __('sales.public.payment_notice_submitted'),
+        );
+    }
+
+    public function receipt(string $quotationCode, string $token)
+    {
+        $quotation = $this->findOrFail($quotationCode, $token);
+        $quotation->loadMissing('payment.receipt');
+
+        $receipt = $quotation->payment?->receipt;
+
+        if ($receipt === null || ! Storage::disk($receipt->disk)->exists($receipt->file_path)) {
+            abort(404);
+        }
+
+        return Storage::disk($receipt->disk)->response(
+            $receipt->file_path,
+            $receipt->file_name,
+            ['Content-Type' => $receipt->mime_type],
         );
     }
 

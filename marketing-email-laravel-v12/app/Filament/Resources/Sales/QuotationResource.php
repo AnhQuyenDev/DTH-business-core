@@ -11,6 +11,7 @@ use App\Filament\Resources\Sales\QuotationResource\RelationManagers\Confirmation
 use App\Filament\Resources\Sales\QuotationResource\RelationManagers\DocumentsRelationManager;
 use App\Filament\Resources\Sales\QuotationResource\RelationManagers\EmailLogsRelationManager;
 use App\Filament\Resources\Sales\QuotationResource\RelationManagers\ItemsRelationManager;
+use App\Filament\Resources\Sales\QuotationResource\RelationManagers\PaymentsRelationManager;
 use App\Models\Crm\Customer;
 use App\Models\Marketing\Contact;
 use App\Models\Marketing\EmailTemplate;
@@ -658,6 +659,7 @@ class QuotationResource extends Resource
             EmailLogsRelationManager::class,
             DocumentsRelationManager::class,
             ApprovalsRelationManager::class,
+            PaymentsRelationManager::class,
         ];
     }
 

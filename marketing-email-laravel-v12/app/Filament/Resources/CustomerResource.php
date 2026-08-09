@@ -9,6 +9,7 @@ use App\Enums\Crm\CustomerStatus;
 use App\Filament\Resources\CustomerResource\Pages;
 use App\Filament\Resources\CustomerResource\RelationManagers\AssignmentsRelationManager;
 use App\Filament\Resources\CustomerResource\RelationManagers\InteractionsRelationManager;
+use App\Filament\Resources\CustomerResource\RelationManagers\PaymentsRelationManager;
 use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\Staff;
@@ -372,6 +373,7 @@ class CustomerResource extends Resource
         return [
             AssignmentsRelationManager::class,
             InteractionsRelationManager::class,
+            PaymentsRelationManager::class,
         ];
     }
 

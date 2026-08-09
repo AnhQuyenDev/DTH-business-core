@@ -10,32 +10,39 @@
         .content { padding: 20px 0; }
         .details { background: #f0fdf4; padding: 15px; border-radius: 4px; margin: 15px 0; }
         .details p { margin: 5px 0; }
+        .receipt { background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px; border-radius: 4px; margin: 15px 0; }
         .footer { text-align: center; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #999; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>{{ __('sales.email.payment_confirmed_title') }}</h1>
-        </div>
+        <div class="header"><h1>{{ __('sales.email.payment_confirmed_title') }}</h1></div>
         <div class="content">
             <p>{{ __('sales.email.dear_customer') }}</p>
             <p>{{ __('sales.email.payment_confirmed_intro', ['code' => $quotation->quotation_code . '-V' . $quotation->version]) }}</p>
 
             <div class="details">
                 <p><strong>{{ __('sales.email.quotation_number') }}:</strong> {{ $quotation->quotation_code }}-V{{ $quotation->version }}</p>
+                <p><strong>Mã thanh toán:</strong> {{ $payment->payment_code }}</p>
                 <p><strong>{{ __('field.title') }}:</strong> {{ $quotation->title }}</p>
-                <p><strong>{{ __('sales.email.payment_amount') }}:</strong> {{ number_format($quotation->grand_total, 0) }} {{ $quotation->currency }}</p>
+                <p><strong>{{ __('sales.email.payment_amount') }}:</strong> {{ number_format($payment->amount, 0, ',', '.') }} {{ $payment->currency }}</p>
+                <p><strong>Ngày thanh toán:</strong> {{ $payment->paid_at?->format('d/m/Y H:i') }}</p>
+                @if($payment->transfer_reference)<p><strong>Mã giao dịch:</strong> {{ $payment->transfer_reference }}</p>@endif
                 <p><strong>{{ __('field.status') }}:</strong> {{ __('enum.sales.payment_status.paid') }}</p>
             </div>
+
+            @if($receipt)
+                <div class="receipt">
+                    <strong>Biên lai thanh toán: {{ $receipt->receipt_code }}</strong><br>
+                    File PDF biên lai đã được đính kèm email này. Biên lai cũng được lưu trong lịch sử thanh toán của hệ thống để tra cứu về sau.
+                </div>
+            @endif
 
             <p>{{ __('sales.email.payment_confirmed_thanks', ['company' => company_name()]) }}</p>
             <p>{{ __('sales.email.best_regards') }}</p>
             <p><strong>{{ company_name() }}</strong></p>
         </div>
-        <div class="footer">
-            <p>{{ __('sales.email.system_auto_footer', ['company' => company_name()]) }}</p>
-        </div>
+        <div class="footer"><p>{{ __('sales.email.system_auto_footer', ['company' => company_name()]) }}</p></div>
     </div>
 </body>
 </html>

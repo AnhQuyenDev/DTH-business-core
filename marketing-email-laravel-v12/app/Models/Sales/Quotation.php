@@ -2,6 +2,7 @@
 
 namespace App\Models\Sales;
 
+use App\Models\Finance\Payment;
 use App\Enums\Sales\EmailStatus;
 use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Quotation extends Model
@@ -169,6 +171,16 @@ class Quotation extends Model
     public function paymentNotices(): HasMany
     {
         return $this->hasMany(QuotationPaymentNotice::class);
+    }
+
+    public function payment(): HasOne
+    {
+        return $this->hasOne(Payment::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
     }
 
     public function parent(): BelongsTo
