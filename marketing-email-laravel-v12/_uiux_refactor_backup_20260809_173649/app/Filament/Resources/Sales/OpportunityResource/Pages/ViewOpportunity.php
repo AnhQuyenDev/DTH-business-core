@@ -1,0 +1,207 @@
+<?php
+
+namespace App\Filament\Resources\Sales\OpportunityResource\Pages;
+
+use App\Enums\Sales\OpportunityStage;
+use App\Filament\Resources\Sales\OpportunityResource;
+use App\Filament\Resources\Sales\QuotationResource;
+use App\Services\Sales\OpportunityContactService;
+use App\Services\Sales\OpportunityWorkflowService;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
+use App\Models\Sales\Opportunity;
+use App\Models\Crm\Staff;
+use App\Services\Sales\OpportunityAssignmentService;
+
+class ViewOpportunity extends ViewRecord
+{
+    protected static string $resource = OpportunityResource::class;
+
+    public function getTitle(): string
+    {
+        return $this->record->opportunity_code;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('create_quotation')
+                ->label(__('action.create_quotation'))
+                ->icon('heroicon-o-document-plus')
+                ->color('success')
+                ->url(
+                    fn (): string => QuotationResource::getUrl('create', [
+                        'opportunity_id' => $this->record->id,
+                    ])
+                )
+                ->visible(
+                    fn (): bool => config(
+                        'business_flow.opportunity_quotation_enabled'
+                    )
+                        && OpportunityResource::canProcessOpportunity(
+                            $this->record
+                        )
+                        && in_array(
+                            $this->record->stage->value,
+                            ['qualified', 'proposal', 'negotiation'],
+                            true,
+                        )
+                ),
+
+            Action::make('record_interaction')
+                ->label(__('action.record_interaction'))
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->form(OpportunityResource::interactionForm())
+                ->visible(
+                    fn (): bool => OpportunityResource::canProcessOpportunity($this->record)
+                        && ! $this->record->isTerminal()
+                )
+                ->action(function (array $data): void {
+                    $this->record->interactions()->create(array_merge($data, [
+                        'interaction_at' => now(),
+                        'staff_id' => auth()->user()    ?->staff?->id,
+                    ]));
+
+                    $this->record->refresh();
+
+                    Notification::make()
+                        ->title(__('notification.opportunity_interaction_recorded'))
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('add_contact')
+                ->label(__('action.add_contact'))
+                ->icon('heroicon-o-user-plus')
+                ->form(
+                    fn (): array =>
+                        OpportunityResource::addContactForm($this->record)
+                )
+                ->visible(
+                    fn (): bool => OpportunityResource::canProcessOpportunity($this->record)
+                        && ! $this->record->isTerminal()
+                )
+                ->action(function (array $data): void {
+                    app(OpportunityContactService::class)->upsert(
+                        opportunity: $this->record,
+                        contactId: (int) $data['contact_id'],
+                        role: (string) ($data['role'] ?? 'other'),
+                        isPrimary: (bool) ($data['is_primary'] ?? false),
+                        actorUserId: auth()->id(),
+                    );
+
+                    $this->record->refresh();
+
+                    Notification::make()
+                        ->title(__('notification.opportunity_contact_added'))
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('change_stage')
+                ->label(__('action.change_stage'))
+                ->icon('heroicon-o-arrow-path')
+                ->color('info')
+                ->form(
+                    fn (): array => OpportunityResource::stageForm($this->record)
+                )
+                ->visible(
+                    fn (): bool => OpportunityResource::canProcessOpportunity($this->record)
+                        && ! $this->record->isTerminal()
+                )
+                ->action(function (array $data): void {
+                    app(OpportunityWorkflowService::class)->transition(
+                        opportunity: $this->record,
+                        to: OpportunityStage::from($data['stage']),
+                        data: $data,
+                        actorUserId: auth()->id(),
+                    );
+
+                    $this->record->refresh();
+
+                    Notification::make()
+                        ->title(__('notification.opportunity_stage_changed'))
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('mark_lost')
+                ->label(__('action.mark_lost'))
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->form(OpportunityResource::lostForm())
+                ->visible(
+                    fn (): bool => OpportunityResource::canProcessOpportunity($this->record)
+                        && ! $this->record->isTerminal()
+                )
+                ->action(function (array $data): void {
+                    app(OpportunityWorkflowService::class)->transition(
+                        opportunity: $this->record,
+                        to: OpportunityStage::Lost,
+                        data: $data,
+                        actorUserId: auth()->id(),
+                    );
+
+                    $this->record->refresh();
+
+                    Notification::make()
+                        ->title(__('notification.opportunity_lost'))
+                        ->success()
+                        ->send();
+                }),
+            Action::make('reassign_owner')
+                ->label('Chuyển người phụ trách')
+                ->icon('heroicon-o-arrow-right-circle')
+                ->color('warning')
+                ->form(
+                    fn (): array =>
+                        OpportunityResource::reassignOwnerForm($this->record)
+                )
+                ->visible(
+                    fn (): bool =>
+                        OpportunityResource::canReassignOpportunity($this->record)
+                )
+                ->action(function (array $data): void {
+                    app(OpportunityAssignmentService::class)->reassign(
+                        opportunity: $this->record,
+                        newOwner: Staff::query()->findOrFail(
+                            (int) $data['assigned_staff_id']
+                        ),
+                        reason: (string) $data['reason'],
+                        actorUserId: (int) auth()->id(),
+                    );
+
+                    $this->record->refresh();
+
+                    Notification::make()
+                        ->title('Đã chuyển người phụ trách cơ hội')
+                        ->success()
+                        ->send();
+                }),
+        ];
+    }
+
+    public static function contactCanJoinOpportunity(
+        Opportunity $opportunity,
+        int $contactId
+    ): bool {
+        /*
+        * Opportunity doanh nghiệp:
+        * Contact phải thuộc đúng Company.
+        */
+        if ($opportunity->company_id !== null) {
+            return $opportunity
+                ->company
+                ?->contacts()
+                ->whereKey($contactId)
+                ->exists() ?? false;
+        }
+
+        /*
+        * Opportunity cá nhân:
+        * chỉ Contact chính của Opportunity.
+        */
+        return $opportunity->primary_contact_id === $contactId;
+    }
+}
