@@ -28,7 +28,10 @@
     </div>
     <div class="dth-donut-legend">
         @forelse($rows as $index => $row)
-            @php($value = (float) ($row['value'] ?? 0); $pct = $total > 0 ? ($value/$total)*100 : 0)
+            @php
+                $value = (float) ($row['value'] ?? 0);
+                $pct = $total > 0 ? ($value / $total) * 100 : 0;
+            @endphp
             <div class="dth-donut-legend__row">
                 <i style="background: {{ $palette[$index % count($palette)] }}"></i>
                 <span class="dth-donut-legend__label" title="{{ $row['label'] ?? '' }}">{{ $row['label'] ?? '—' }}</span>
