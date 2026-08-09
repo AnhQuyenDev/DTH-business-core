@@ -4,13 +4,13 @@ namespace App\Services\Sales;
 
 use App\Models\Marketing\SendingAccount;
 use App\Models\Sales\Quotation;
-use App\Services\Marketing\EmailSendingService;
+use App\Services\Marketing\SendingAccountMailerService;
 use Illuminate\Validation\ValidationException;
 
 final class QuotationSendingAccountService
 {
     public function __construct(
-        private readonly EmailSendingService $emailSending,
+        private readonly SendingAccountMailerService $mailer,
     ) {}
 
     public function resolve(Quotation $quotation): SendingAccount
@@ -48,20 +48,16 @@ final class QuotationSendingAccountService
             ]);
         }
 
+        $this->mailer->assertUsable($account);
+
         return $account;
     }
 
+    /**
+     * Legacy helper retained for older callers/tests.
+     */
     public function configureMailer(SendingAccount $account): string
     {
-        $mailer = 'quotation_'.$account->id;
-
-        $this->emailSending->configureSmtpMailer(
-            mailer: $mailer,
-            config: $account->config_encrypted ?? [],
-            fromAddress: $account->from_email,
-            fromName: $account->from_name,
-        );
-
-        return $mailer;
+        return $this->mailer->prepareMailer($account);
     }
 }

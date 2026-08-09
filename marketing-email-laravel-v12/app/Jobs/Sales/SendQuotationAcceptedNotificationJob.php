@@ -5,13 +5,13 @@ namespace App\Jobs\Sales;
 use App\Mail\Sales\QuotationAcceptedMail;
 use App\Models\Sales\Quotation;
 use App\Services\Sales\QuotationInteractionService;
+use App\Services\Sales\QuotationNotificationMailerService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class SendQuotationAcceptedNotificationJob implements ShouldQueue
 {
@@ -23,7 +23,10 @@ class SendQuotationAcceptedNotificationJob implements ShouldQueue
         public Quotation $quotation,
     ) {}
 
-    public function handle(QuotationInteractionService $interaction): void
+    public function handle(
+        QuotationInteractionService $interaction,
+        QuotationNotificationMailerService $notificationMailer,
+    ): void
     {
         $notifyEmail = config('sales.quotation.accepted_notification_email', 'accounting@company.com');
 
@@ -37,7 +40,11 @@ class SendQuotationAcceptedNotificationJob implements ShouldQueue
         }
 
         try {
-            Mail::to($notifyEmail)->send(new QuotationAcceptedMail($this->quotation));
+            $notificationMailer->send(
+                $this->quotation,
+                $notifyEmail,
+                new QuotationAcceptedMail($this->quotation),
+            );
 
             $interaction->logAcceptedNotificationSent($this->quotation, $notifyEmail);
 

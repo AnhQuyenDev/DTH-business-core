@@ -4,13 +4,13 @@ namespace App\Jobs\Sales;
 
 use App\Mail\Sales\QuotationExpiringMail;
 use App\Models\Sales\Quotation;
+use App\Services\Sales\QuotationNotificationMailerService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class SendQuotationExpiringNotificationJob implements ShouldQueue
 {
@@ -22,7 +22,7 @@ class SendQuotationExpiringNotificationJob implements ShouldQueue
         public Quotation $quotation,
     ) {}
 
-    public function handle(): void
+    public function handle(QuotationNotificationMailerService $notificationMailer): void
     {
         $notifyEmail = config('sales.quotation.expiring_notification_email', 'sales@company.com');
 
@@ -36,7 +36,11 @@ class SendQuotationExpiringNotificationJob implements ShouldQueue
         }
 
         try {
-            Mail::to($notifyEmail)->send(new QuotationExpiringMail($this->quotation));
+            $notificationMailer->send(
+                $this->quotation,
+                $notifyEmail,
+                new QuotationExpiringMail($this->quotation),
+            );
 
             Log::info('SendQuotationExpiringNotificationJob: notification sent', [
                 'quotation_code' => $this->quotation->quotation_code,

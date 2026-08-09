@@ -5,13 +5,13 @@ namespace App\Jobs\Sales;
 use App\Mail\Sales\QuotationRejectedMail;
 use App\Models\Sales\Quotation;
 use App\Services\Sales\QuotationInteractionService;
+use App\Services\Sales\QuotationNotificationMailerService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class SendQuotationRejectedNotificationJob implements ShouldQueue
 {
@@ -24,7 +24,10 @@ class SendQuotationRejectedNotificationJob implements ShouldQueue
         public string $reason = '',
     ) {}
 
-    public function handle(QuotationInteractionService $interaction): void
+    public function handle(
+        QuotationInteractionService $interaction,
+        QuotationNotificationMailerService $notificationMailer,
+    ): void
     {
         $notifyEmail = config('sales.quotation.rejected_notification_email', 'sales@company.com');
 
@@ -38,10 +41,14 @@ class SendQuotationRejectedNotificationJob implements ShouldQueue
         }
 
         try {
-            Mail::to($notifyEmail)->send(new QuotationRejectedMail(
+            $notificationMailer->send(
                 $this->quotation,
-                $this->reason,
-            ));
+                $notifyEmail,
+                new QuotationRejectedMail(
+                    $this->quotation,
+                    $this->reason,
+                ),
+            );
 
             $interaction->logRejected($this->quotation, $this->reason);
 

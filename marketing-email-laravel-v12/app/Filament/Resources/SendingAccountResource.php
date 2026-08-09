@@ -16,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Throwable;
 
 class SendingAccountResource extends Resource
 {
@@ -72,6 +73,7 @@ class SendingAccountResource extends Resource
                     ->label(__('field.config_encrypted'))
                     ->keyLabel(__('field.key'))
                     ->valueLabel(__('field.value'))
+                    ->helperText('SMTP dùng đúng các key: host, port, encryption, username, password. Ví dụ port 465 + encryption=ssl hoặc port 587 + encryption=tls.')
                     ->columnSpanFull(),
                 TextInput::make('daily_limit')->label(__('field.daily_limit'))->numeric()->default(0),
                 TextInput::make('hourly_limit')->label(__('field.hourly_limit'))->numeric()->default(0),
@@ -128,18 +130,29 @@ class SendingAccountResource extends Resource
                         TextInput::make('body')->required()->default(__('field.sending_account_test_body_default')),
                     ])
                     ->action(function (array $data): void {
-                        $account = SendingAccount::findOrFail((int) $data['sending_account_id']);
-                        app(SendingAccountService::class)->sendTestEmail(
-                            account: $account,
-                            toEmail: (string) $data['to_email'],
-                            subject: (string) $data['subject'],
-                            body: (string) $data['body'],
-                        );
+                        try {
+                            $account = SendingAccount::findOrFail((int) $data['sending_account_id']);
+                            app(SendingAccountService::class)->sendTestEmail(
+                                account: $account,
+                                toEmail: (string) $data['to_email'],
+                                subject: (string) $data['subject'],
+                                body: (string) $data['body'],
+                            );
 
-                        Notification::make()
-                            ->title(__('notification.test_email_sent'))
-                            ->success()
-                            ->send();
+                            Notification::make()
+                                ->title(__('notification.test_email_sent'))
+                                ->success()
+                                ->send();
+                        } catch (Throwable $e) {
+                            report($e);
+
+                            Notification::make()
+                                ->title('Gửi email thử thất bại')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->persistent()
+                                ->send();
+                        }
                     }),
             ]);
     }

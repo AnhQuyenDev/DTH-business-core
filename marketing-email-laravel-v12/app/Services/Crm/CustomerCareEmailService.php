@@ -10,18 +10,17 @@ use App\Models\Crm\Staff;
 use App\Models\Marketing\EmailEvent;
 use App\Models\Marketing\EmailTemplate;
 use App\Models\Marketing\SendingAccount;
-use App\Services\Marketing\EmailSendingService;
+use App\Services\Marketing\SendingAccountMailerService;
 use App\Services\Marketing\TemplateRenderService;
 use App\Services\Sales\QuotationEmailCrmSyncer;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Throwable;
 
 class CustomerCareEmailService
 {
     public function __construct(
-        private readonly EmailSendingService $emailSending,
+        private readonly SendingAccountMailerService $sendingAccountMailer,
         private readonly TemplateRenderService $templateRender,
     ) {}
 
@@ -72,22 +71,13 @@ class CustomerCareEmailService
 
         $htmlWithTracking = $this->injectTracking($htmlBody, $token);
 
-        $mailerName = 'care_'.$account->id;
-        $config = $account->config_encrypted ?? [];
-
-        $this->emailSending->configureSmtpMailer(
-            mailer: $mailerName,
-            config: $config,
-            fromAddress: filled($account->from_email) ? $account->from_email : null,
-            fromName: filled($account->from_name) ? $account->from_name : null,
-        );
-
         try {
-            Mail::mailer($mailerName)
-                ->to($to)
-                ->cc($cc)
-                ->bcc($bcc)
-                ->send(new MarketingCampaignMail(
+            $this->sendingAccountMailer->send(
+                account: $account,
+                recipientEmail: $to,
+                cc: $cc,
+                bcc: $bcc,
+                mailable: new MarketingCampaignMail(
                     subjectLine: $subject,
                     preheader: null,
                     htmlBody: $htmlWithTracking,
@@ -95,7 +85,8 @@ class CustomerCareEmailService
                     fromAddress: filled($account->from_email) ? $account->from_email : null,
                     fromName: filled($account->from_name) ? $account->from_name : null,
                     attachments: $attachments,
-                ));
+                ),
+            );
         } catch (Throwable $e) {
             EmailEvent::create([
                 'tracking_token' => $token,

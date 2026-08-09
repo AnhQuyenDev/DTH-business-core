@@ -9,13 +9,13 @@ use App\Mail\MarketingCampaignMail;
 use App\Models\Marketing\Campaign;
 use App\Models\Marketing\CampaignRecipient;
 use App\Models\Marketing\EmailEvent;
+use App\Services\Marketing\SendingAccountMailerService;
 use App\Services\Marketing\TrackingLinkService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 
 class SendCampaignEmailJob implements ShouldQueue
 {
@@ -25,9 +25,12 @@ class SendCampaignEmailJob implements ShouldQueue
 
     public function __construct(public int $campaignRecipientId) {}
 
-    public function handle(TrackingLinkService $trackingLinkService): void
+    public function handle(
+        TrackingLinkService $trackingLinkService,
+        SendingAccountMailerService $sendingAccountMailer,
+    ): void
     {
-        $recipient = CampaignRecipient::query()->with(['campaign.template', 'customer'])->findOrFail($this->campaignRecipientId);
+        $recipient = CampaignRecipient::query()->with(['campaign.template', 'campaign.sendingAccount', 'customer'])->findOrFail($this->campaignRecipientId);
         $campaign = $recipient->campaign;
         $template = $campaign?->template;
         $customer = $recipient->customer;
@@ -48,14 +51,22 @@ class SendCampaignEmailJob implements ShouldQueue
             $htmlBody = $recipient->personalized_html ?: $template->html_body;
             $htmlBody = $trackingLinkService->processHtml($htmlBody, $recipient);
 
-            Mail::to($recipient->email)->send(new MarketingCampaignMail(
-                subjectLine: $recipient->personalized_subject ?: $template->subject,
-                preheader: $template->preheader,
-                htmlBody: $htmlBody,
-                textBody: $template->text_body,
-                fromAddress: $campaign->sendingAccount?->from_email,
-                fromName: $campaign->sendingAccount?->from_name,
-            ));
+            if (! $campaign->sendingAccount) {
+                throw new \RuntimeException('Campaign sending account not found.');
+            }
+
+            $sendingAccountMailer->send(
+                account: $campaign->sendingAccount,
+                recipientEmail: $recipient->email,
+                mailable: new MarketingCampaignMail(
+                    subjectLine: $recipient->personalized_subject ?: $template->subject,
+                    preheader: $template->preheader,
+                    htmlBody: $htmlBody,
+                    textBody: $template->text_body,
+                    fromAddress: $campaign->sendingAccount->from_email,
+                    fromName: $campaign->sendingAccount->from_name,
+                ),
+            );
 
             $recipient->update([
                 'status' => CampaignRecipientStatus::Sent->value,

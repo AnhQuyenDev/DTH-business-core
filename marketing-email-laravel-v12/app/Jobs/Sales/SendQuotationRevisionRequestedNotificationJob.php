@@ -5,13 +5,13 @@ namespace App\Jobs\Sales;
 use App\Mail\Sales\QuotationRevisionRequestedMail;
 use App\Models\Sales\Quotation;
 use App\Services\Sales\QuotationInteractionService;
+use App\Services\Sales\QuotationNotificationMailerService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class SendQuotationRevisionRequestedNotificationJob implements ShouldQueue
 {
@@ -24,7 +24,10 @@ class SendQuotationRevisionRequestedNotificationJob implements ShouldQueue
         public string $reason,
     ) {}
 
-    public function handle(QuotationInteractionService $interaction): void
+    public function handle(
+        QuotationInteractionService $interaction,
+        QuotationNotificationMailerService $notificationMailer,
+    ): void
     {
         $notifyEmail = config('sales.quotation.revision_notification_email', 'sales@company.com');
 
@@ -38,10 +41,14 @@ class SendQuotationRevisionRequestedNotificationJob implements ShouldQueue
         }
 
         try {
-            Mail::to($notifyEmail)->send(new QuotationRevisionRequestedMail(
+            $notificationMailer->send(
                 $this->quotation,
-                $this->reason,
-            ));
+                $notifyEmail,
+                new QuotationRevisionRequestedMail(
+                    $this->quotation,
+                    $this->reason,
+                ),
+            );
 
             $interaction->logRevisionRequested($this->quotation, $this->reason);
 

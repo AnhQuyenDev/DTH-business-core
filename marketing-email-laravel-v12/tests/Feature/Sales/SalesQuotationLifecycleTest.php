@@ -485,9 +485,7 @@ class SalesQuotationLifecycleTest extends TestCase
 
         $pdfDoc = $quotation->documents()->latest('id')->firstOrFail();
         (new SendQuotationEmailJob($log, $pdfDoc))->handle(
-            app(\App\Services\Sales\QuotationSendingAccountService::class),
-            app(\App\Services\Sales\QuotationStateMachine::class),
-            app(\App\Services\Sales\QuotationInteractionService::class),
+            app(\App\Services\Marketing\SendingAccountMailerService::class),
         );
 
         $log->refresh();

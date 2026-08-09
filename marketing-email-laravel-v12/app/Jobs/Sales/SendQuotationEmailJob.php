@@ -73,6 +73,8 @@ class SendQuotationEmailJob implements ShouldQueue
             $mailer->send(
                 account: $sendingAccount,
                 recipientEmail: $this->emailLog->recipient_email,
+                cc: (array) ($this->emailLog->cc ?? []),
+                bcc: (array) ($this->emailLog->bcc ?? []),
                 mailable: new QuotationMail(
                     subjectText: $this->emailLog->subject,
                     body: $this->emailLog->body_snapshot,

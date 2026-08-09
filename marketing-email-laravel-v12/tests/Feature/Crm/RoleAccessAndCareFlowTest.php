@@ -191,7 +191,7 @@ class RoleAccessAndCareFlowTest extends TestCase
 
         $service = app(CustomerCareEmailService::class);
 
-        Mail::fake(['care_'.$account->id]);
+        Mail::fake();
 
         $service->send(
             $customer,
@@ -201,7 +201,7 @@ class RoleAccessAndCareFlowTest extends TestCase
             staffId: $staff->id,
         );
 
-        Mail::mailer('care_'.$account->id)->assertSent(MarketingCampaignMail::class, 1);
+        Mail::assertSent(MarketingCampaignMail::class, 1);
 
         $this->assertDatabaseHas('email_events', ['customer_id' => $customer->id, 'event_type' => 'sent']);
         $this->assertDatabaseHas('customer_interactions', [

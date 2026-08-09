@@ -6,13 +6,13 @@ use App\Mail\Sales\PaymentConfirmedMail;
 use App\Models\Sales\Quotation;
 use App\Services\Sales\QuotationEmailCrmSyncer;
 use App\Services\Sales\QuotationInteractionService;
+use App\Services\Sales\QuotationNotificationMailerService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class SendPaymentConfirmedNotificationJob implements ShouldQueue
 {
@@ -27,6 +27,7 @@ class SendPaymentConfirmedNotificationJob implements ShouldQueue
     public function handle(
         QuotationInteractionService $interaction,
         QuotationEmailCrmSyncer $syncer,
+        QuotationNotificationMailerService $notificationMailer,
     ): void {
         $quotation = Quotation::query()
             ->with([
@@ -55,7 +56,11 @@ class SendPaymentConfirmedNotificationJob implements ShouldQueue
         }
 
         try {
-            Mail::to($recipientEmail)->send(new PaymentConfirmedMail($quotation));
+            $notificationMailer->send(
+                $quotation,
+                $recipientEmail,
+                new PaymentConfirmedMail($quotation),
+            );
 
             $interaction->logPaymentUpdated($quotation, 'Đã gửi xác nhận thanh toán đến khách hàng');
 
