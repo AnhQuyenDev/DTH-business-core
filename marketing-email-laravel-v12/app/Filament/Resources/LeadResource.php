@@ -368,6 +368,12 @@ class LeadResource extends Resource
                             StaffEmploymentStatus::Active->value
                         )
                         ->where('can_receive_customers', true)
+                        ->whereHas('department', function ($query): void {
+                            $query->where('function_key', 'customer_service');
+                        })
+                        ->whereHas('user', function ($query): void {
+                            $query->where('is_active', true);
+                        })
                         ->whereDoesntHave(
                             'availabilities',
                             fn ($query) => $query
