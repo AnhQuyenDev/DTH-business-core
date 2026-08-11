@@ -20,7 +20,7 @@ class CompanySettingsPage extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
 
-    protected static ?int $navigationSort = 90;
+    protected static ?int $navigationSort = 50;
 
     protected static string $view = 'filament.pages.company-settings';
 
@@ -42,17 +42,17 @@ class CompanySettingsPage extends Page implements HasForms
 
     public static function getNavigationLabel(): string
     {
-        return __('navigation.company_settings');
+        return __('configuration.company.navigation');
     }
 
     public function getTitle(): string
     {
-        return __('page.title.company_settings');
+        return __('configuration.company.title');
     }
 
     public static function getNavigationSort(): ?int
     {
-        return 90;
+        return 50;
     }
 
     public static function canAccess(): bool
@@ -64,7 +64,9 @@ class CompanySettingsPage extends Page implements HasForms
     {
         return $form
             ->schema([
-                Section::make(__('section.company_info'))->schema([
+                Section::make(__('section.company_info'))
+                    ->icon('heroicon-o-building-office')
+                    ->schema([
                     TextInput::make('company_name')->label(__('field.company_name'))->required()->maxLength(255),
                     TextInput::make('tax_code')->label(__('field.tax_code'))->maxLength(50),
                     TextInput::make('address')->label(__('field.address'))->maxLength(255),
@@ -81,7 +83,10 @@ class CompanySettingsPage extends Page implements HasForms
                         ->maxSize(2048)
                         ->helperText(__('helper.company_logo')),
                 ])->columns(['default' => 1, 'md' => 2]),
-                Section::make(__('v1.workflow.section'))->schema([
+                Section::make(__('v1.workflow.section'))
+                    ->icon('heroicon-o-adjustments-horizontal')
+                    ->collapsible()
+                    ->schema([
                     Select::make('quotation_approval_mode')
                         ->label(__('v1.workflow.approval_mode'))
                         ->options([
@@ -117,7 +122,11 @@ class CompanySettingsPage extends Page implements HasForms
                         ->label(__('v1.workflow.support_tickets'))
                         ->helperText(__('v1.workflow.support_tickets_help')),
                 ])->columns(['default' => 1, 'md' => 2]),
-                Section::make(__('section.vietqr'))->schema([
+                Section::make(__('section.vietqr'))
+                    ->icon('heroicon-o-qr-code')
+                    ->collapsible()
+                    ->collapsed()
+                    ->schema([
                     TextInput::make('vietqr_client_id')
                         ->label(__('field.vietqr_client_id'))
                         ->helperText(__('field.vietqr_helper'))

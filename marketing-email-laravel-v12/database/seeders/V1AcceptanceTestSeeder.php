@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\Crm\DepartmentFunction;
 use App\Enums\Crm\PositionAuthority;
+use App\Enums\Crm\PositionGroup;
 use App\Enums\Crm\StaffEmploymentStatus;
 use App\Enums\UserRole;
 use App\Models\Crm\Department;
@@ -51,27 +52,42 @@ class V1AcceptanceTestSeeder extends Seeder
             ]);
         }
 
-        $positionIds = [];
-        foreach (Department::query()->whereIn('code', array_keys($departments))->get() as $department) {
-            $positionIds[$department->code]['manager'] = Position::query()->updateOrCreate([
-                'department_id' => $department->id,
-                'title' => $department->code === 'founder_office' ? 'Giám đốc' : 'Trưởng bộ phận',
-            ], [
-                'authority_level' => $department->code === 'founder_office'
-                    ? PositionAuthority::Executive->value
-                    : PositionAuthority::Manager->value,
-                'is_active' => true,
-                'sort_order' => 10,
-            ])->id;
+        // Configuration V2: Job Titles are company-wide master data. Do not
+        // duplicate generic titles under every Department.
+        $directorPosition = Position::query()->updateOrCreate(['title' => 'Giám đốc'], [
+            'code' => 'giam_doc',
+            'group_key' => PositionGroup::Leadership->value,
+            'authority_level' => PositionAuthority::Executive->value,
+            'function_key' => null,
+            'department_id' => null,
+            'is_active' => true,
+            'sort_order' => 10,
+        ]);
+        $managerPosition = Position::query()->updateOrCreate(['title' => 'Trưởng bộ phận'], [
+            'code' => 'truong_bo_phan',
+            'group_key' => PositionGroup::Management->value,
+            'authority_level' => PositionAuthority::Manager->value,
+            'function_key' => null,
+            'department_id' => null,
+            'is_active' => true,
+            'sort_order' => 20,
+        ]);
+        $memberPosition = Position::query()->updateOrCreate(['title' => 'Nhân viên'], [
+            'code' => 'nhan_vien',
+            'group_key' => PositionGroup::Professional->value,
+            'authority_level' => PositionAuthority::Member->value,
+            'function_key' => null,
+            'department_id' => null,
+            'is_active' => true,
+            'sort_order' => 50,
+        ]);
 
-            $positionIds[$department->code]['member'] = Position::query()->updateOrCreate([
-                'department_id' => $department->id,
-                'title' => 'Nhân viên',
-            ], [
-                'authority_level' => PositionAuthority::Member->value,
-                'is_active' => true,
-                'sort_order' => 50,
-            ])->id;
+        $positionIds = [];
+        foreach (array_keys($departments) as $departmentCode) {
+            $positionIds[$departmentCode]['manager'] = $departmentCode === 'founder_office'
+                ? $directorPosition->id
+                : $managerPosition->id;
+            $positionIds[$departmentCode]['member'] = $memberPosition->id;
         }
 
         $superAdmin = User::query()->updateOrCreate(['email' => 'superadmin.v1@dth.local'], [

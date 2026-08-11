@@ -4,6 +4,7 @@ namespace Tests\Support;
 
 use App\Enums\Crm\DepartmentFunction;
 use App\Enums\Crm\PositionAuthority;
+use App\Enums\Crm\PositionGroup;
 use App\Enums\Crm\StaffEmploymentStatus;
 use App\Enums\UserRole;
 use App\Models\Crm\Department;
@@ -48,12 +49,15 @@ trait MakesV1Actors
         );
 
         $position = Position::query()->firstOrCreate(
+            ['title' => 'Test '.$primaryAuthority->value],
             [
-                'department_id' => $department->id,
-                'title' => 'Test '.$primaryAuthority->value,
-            ],
-            [
+                'code' => 'test_'.$primaryAuthority->value,
+                'group_key' => $primaryAuthority->isDepartmentManager()
+                    ? PositionGroup::Management->value
+                    : PositionGroup::Professional->value,
                 'authority_level' => $primaryAuthority->value,
+                'function_key' => null,
+                'department_id' => null,
                 'sort_order' => 900,
                 'is_active' => true,
             ],

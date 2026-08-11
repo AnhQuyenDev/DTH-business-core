@@ -2,8 +2,8 @@
     <x-filament-panels::form wire:submit="save">
         {{ $this->form }}
 
-        <div class="flex justify-end gap-3">
-            <x-filament::button type="submit">
+        <div class="dth-config-form-footer">
+            <x-filament::button type="submit" icon="heroicon-o-check">
                 {{ __('action.save') }}
             </x-filament::button>
         </div>

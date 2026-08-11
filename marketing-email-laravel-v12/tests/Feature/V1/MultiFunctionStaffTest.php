@@ -107,7 +107,7 @@ class MultiFunctionStaffTest extends TestCase
         ]);
         $position = Position::query()->create([
             'department_id' => $department->id,
-            'title' => 'Nhân viên',
+            'title' => 'Chuyên viên',
             'authority_level' => PositionAuthority::Member->value,
             'is_active' => true,
         ]);

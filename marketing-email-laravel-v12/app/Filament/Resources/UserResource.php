@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Enums\UserRole;
+use App\Filament\Pages\AccessControlPage;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\Crm\Staff;
 use App\Models\User;
@@ -27,28 +28,33 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-circle';
+    protected static ?string $navigationIcon = 'heroicon-o-key';
 
-    protected static ?int $navigationSort = 50;
+    protected static ?int $navigationSort = 24;
 
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');
     }
 
+    public static function getNavigationParentItem(): ?string
+    {
+        return AccessControlPage::getNavigationLabel();
+    }
+
     public static function getNavigationLabel(): string
     {
-        return __('resource.user.singular');
+        return __('configuration.navigation.accounts');
     }
 
     public static function getModelLabel(): string
     {
-        return __('resource.user.singular');
+        return __('configuration.account.singular');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('resource.user.plural');
+        return __('configuration.account.plural');
     }
 
     public static function canViewAny(): bool
@@ -80,12 +86,11 @@ class UserResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make(__('section.user_staff_link'))
-                ->description(__('helper.user_staff_link_section'))
+            Section::make(__('configuration.account.section_link'))
                 ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
                 ->schema([
                     Select::make('staff_id')
-                        ->label(__('field.staff'))
+                        ->label(__('configuration.account.staff'))
                         ->options(function (?User $record): array {
                             return Staff::query()
                                 ->with('department')
@@ -115,9 +120,7 @@ class UserResource extends Resource
                         ->default(fn (): ?int => request()->integer('staff_id') ?: null)
                         ->live()
                         ->required(
-                            fn (Get $get): bool => app(
-                                RoleDepartmentService::class
-                            )->requiresStaff($get('role'))
+                            fn (Get $get): bool => app(RoleDepartmentService::class)->requiresStaff($get('role'))
                         )
                         ->afterStateUpdated(function (Set $set, ?string $state): void {
                             if (! $state) {
@@ -129,38 +132,34 @@ class UserResource extends Resource
                             if ($staff) {
                                 $set('name', $staff->full_name);
                             }
-                        })
-                        ->helperText(__('helper.user_staff_link')),
+                        }),
 
                     Placeholder::make('staff_department_preview')
-                        ->label(__('field.department'))
+                        ->label(__('configuration.account.department'))
                         ->content(function (Get $get): string {
                             $staff = filled($get('staff_id'))
                                 ? Staff::query()->with('department')->find((int) $get('staff_id'))
                                 : null;
 
-                            return $staff?->department?->name
-                                ?? __('common.not_available');
+                            return $staff?->department?->name ?? __('common.not_available');
                         }),
 
                     Placeholder::make('staff_position_preview')
-                        ->label(__('field.position'))
+                        ->label(__('configuration.account.position'))
                         ->content(function (Get $get): string {
                             $staff = filled($get('staff_id'))
                                 ? Staff::query()->with('position')->find((int) $get('staff_id'))
                                 : null;
 
-                            return $staff?->position?->title
-                                ?? __('common.not_available');
+                            return $staff?->position?->title ?? __('common.not_available');
                         }),
                 ]),
 
-            Section::make(__('section.user_access'))
-                ->description(__('helper.user_access_section'))
+            Section::make(__('configuration.account.section_access'))
                 ->columns(['default' => 1, 'md' => 2])
                 ->schema([
                     TextInput::make('name')
-                        ->label(__('field.name'))
+                        ->label(__('configuration.account.name'))
                         ->default(function (): ?string {
                             $staffId = request()->integer('staff_id');
 
@@ -169,17 +168,16 @@ class UserResource extends Resource
                                 : null;
                         })
                         ->required()
-                        ->maxLength(255)
-                        ->helperText(__('helper.user_name_from_staff')),
+                        ->maxLength(255),
 
                     TextInput::make('email')
-                        ->label(__('field.email'))
+                        ->label(__('configuration.account.email'))
                         ->email()
                         ->required()
                         ->unique(ignoreRecord: true),
 
                     Select::make('role')
-                        ->label(__('field.system_role'))
+                        ->label(__('configuration.account.system_role'))
                         ->options(function (): array {
                             $options = UserRole::options();
                             if (! (auth()->user()?->isSuperAdmin() ?? false)) {
@@ -190,11 +188,11 @@ class UserResource extends Resource
                         })
                         ->required()
                         ->searchable()
-                        ->live()
-                        ->helperText(__('helper.system_role_separation')),
+                        ->native(false)
+                        ->live(),
 
                     Select::make('roles')
-                        ->label(__('v1.rbac.additional_roles'))
+                        ->label(__('configuration.account.additional_roles'))
                         ->relationship('roles', 'label')
                         ->getOptionLabelFromRecordUsing(fn ($record): string => $record->label ?: $record->name)
                         ->multiple()
@@ -204,12 +202,11 @@ class UserResource extends Resource
                         ->visible(fn (): bool => auth()->user()?->can('system.manage-rbac') ?? false),
 
                     Toggle::make('is_active')
-                        ->label(__('field.account_active'))
-                        ->default(true)
-                        ->helperText(__('helper.account_active')),
+                        ->label(__('configuration.account.active'))
+                        ->default(true),
 
                     TextInput::make('password')
-                        ->label(__('field.password'))
+                        ->label(__('configuration.account.password'))
                         ->password()
                         ->revealable()
                         ->dehydrated(fn ($state) => filled($state))
@@ -221,53 +218,55 @@ class UserResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            TextColumn::make('name')
-                ->label(__('field.name'))
-                ->searchable()
-                ->sortable(),
-            TextColumn::make('email')
-                ->label(__('field.email'))
-                ->searchable()
-                ->sortable(),
-            TextColumn::make('staff.department.name')
-                ->label(__('field.department'))
-                ->badge()
-                ->placeholder(__('common.not_available'))
-                ->color(
-                    fn (User $record): string => $record->staff?->department?->color
-                        ?? 'gray'
-                ),
-            TextColumn::make('staff.position.title')
-                ->label(__('field.position'))
-                ->placeholder(__('common.not_available'))
-                ->toggleable(),
-            TextColumn::make('role')
-                ->label(__('field.system_role'))
-                ->badge()
-                ->formatStateUsing(
-                    fn (?string $state): string => $state
-                        ? UserRole::tryFrom($state)?->label()
-                            ?? __('common.not_available')
-                        : __('common.not_available')
-                )
-                ->color(
-                    fn (?string $state): string => UserRole::tryFrom(
-                        (string) $state
-                    )?->color() ?? 'gray'
-                ),
-            IconColumn::make('is_active')
-                ->label(__('field.account_active'))
-                ->boolean(),
-            TextColumn::make('created_at')
-                ->label(__('field.created_at'))
-                ->dateTime('d/m/Y H:i')
-                ->sortable(),
-        ])
-            ->actions([ActionGroup::make([
-                EditAction::make(),
-            ])->icon('heroicon-o-ellipsis-vertical')->iconButton()])
-;
+        return $table
+            ->columns([
+                TextColumn::make('name')
+                    ->label(__('configuration.account.name'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('email')
+                    ->label(__('configuration.account.email'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('staff.full_name')
+                    ->label(__('configuration.account.staff'))
+                    ->placeholder(__('common.not_available'))
+                    ->searchable(),
+                TextColumn::make('staff.department.name')
+                    ->label(__('configuration.account.department'))
+                    ->badge()
+                    ->placeholder(__('common.not_available'))
+                    ->color(fn (User $record): string => $record->staff?->department?->color ?? 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('staff.position.title')
+                    ->label(__('configuration.account.position'))
+                    ->placeholder(__('common.not_available'))
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('role')
+                    ->label(__('configuration.account.system_role'))
+                    ->badge()
+                    ->formatStateUsing(
+                        fn (?string $state): string => $state
+                            ? UserRole::tryFrom($state)?->label() ?? __('common.not_available')
+                            : __('common.not_available')
+                    )
+                    ->color(
+                        fn (?string $state): string => UserRole::tryFrom((string) $state)?->color() ?? 'gray'
+                    ),
+                IconColumn::make('is_active')
+                    ->label(__('configuration.account.active'))
+                    ->boolean(),
+                TextColumn::make('created_at')
+                    ->label(__('configuration.account.created_at'))
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->actions([
+                ActionGroup::make([
+                    EditAction::make()->label(__('configuration.account.edit')),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
+            ]);
     }
 
     public static function getPages(): array

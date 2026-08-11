@@ -13,11 +13,11 @@ final class BadgePalette
 {
     private static ?bool $tableAvailable = null;
 
-    public const COLORS = ['gray', 'primary', 'info', 'success', 'warning', 'danger'];
+    public const COLORS = SystemColorPalette::COLORS;
 
     public static function color(string $category, string $key, string $fallback = 'gray'): string
     {
-        $fallback = in_array($fallback, self::COLORS, true) ? $fallback : 'gray';
+        $fallback = SystemColorPalette::normalize($fallback);
 
         try {
             self::$tableAvailable ??= Schema::hasTable('ui_badge_styles');
@@ -35,17 +35,22 @@ final class BadgePalette
                     ->value('color')
             );
 
-            return in_array($configured, self::COLORS, true) ? $configured : $fallback;
+            return SystemColorPalette::isSupported($configured) ? $configured : $fallback;
         } catch (\Throwable) {
             return $fallback;
         }
     }
 
+    /**
+     * Business statuses use a fixed semantic palette. Keeping status colors
+     * deterministic prevents one screen from showing "Paid" as green while
+     * another administrator changes the same meaning to an arbitrary color.
+     */
     public static function status(string|\BackedEnum|null $state, ?string $fallback = null): string
     {
         $key = $state instanceof \BackedEnum ? (string) $state->value : (string) $state;
 
-        return self::color('status', $key, $fallback ?? self::defaultStatusColor($key));
+        return SystemColorPalette::normalize($fallback ?? self::defaultStatusColor($key));
     }
 
     public static function role(string|UserRole|null $role, string $fallback = 'gray'): string
@@ -109,20 +114,24 @@ final class BadgePalette
     /** @return array<string, string> */
     public static function colorOptions(): array
     {
-        return collect(self::COLORS)
-            ->mapWithKeys(fn (string $color): array => [$color => __('color.'.$color)])
-            ->all();
+        return SystemColorPalette::options();
     }
 
     /** @return array<string, string> */
     public static function categoryOptions(): array
     {
         return [
-            'status' => __('ui.badge.category.status'),
-            'role' => __('ui.badge.category.role'),
-            'department_function' => __('ui.badge.category.department_function'),
-            'audience' => __('uiux.audience.business').' / '.__('uiux.audience.personal'),
+            'status' => __('configuration.appearance.categories.status'),
+            'role' => __('configuration.appearance.categories.role'),
+            'department_function' => __('configuration.appearance.categories.department_function'),
+            'audience' => __('configuration.appearance.categories.audience'),
         ];
+    }
+
+    /** @return array<string, string> */
+    public static function editableCategoryOptions(): array
+    {
+        return collect(self::categoryOptions())->except('status')->all();
     }
 
     /** @return array<string, string> */

@@ -4,6 +4,7 @@ namespace App\Models\Crm;
 
 use App\Enums\Crm\DepartmentFunction;
 use App\Models\Marketing\SendingAccount;
+use App\Support\Ui\SystemColorPalette;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -45,6 +46,11 @@ class Department extends Model
         return $this->hasMany(SendingAccount::class);
     }
 
+    /**
+     * Legacy compatibility only. From Configuration V2, Department describes
+     * organizational structure and no longer grants a business capability.
+     * StaffBusinessFunction is the authoritative source for new records.
+     */
     public function function(): ?DepartmentFunction
     {
         if ($this->function_key) {
@@ -67,27 +73,7 @@ class Department extends Model
 
     public static function colorOptions(): array
     {
-        return [
-            'gray' => __('color.gray'),
-            'primary' => __('color.primary'),
-            'info' => __('color.info'),
-            'success' => __('color.success'),
-            'warning' => __('color.warning'),
-            'danger' => __('color.danger'),
-            'orange' => __('color.orange'),
-            'lime' => __('color.lime'),
-            'emerald' => __('color.emerald'),
-            'teal' => __('color.teal'),
-            'cyan' => __('color.cyan'),
-            'sky' => __('color.sky'),
-            'blue' => __('color.blue'),
-            'indigo' => __('color.indigo'),
-            'violet' => __('color.violet'),
-            'purple' => __('color.purple'),
-            'fuchsia' => __('color.fuchsia'),
-            'pink' => __('color.pink'),
-            'rose' => __('color.rose'),
-        ];
+        return SystemColorPalette::options();
     }
 
     public static function options(): array

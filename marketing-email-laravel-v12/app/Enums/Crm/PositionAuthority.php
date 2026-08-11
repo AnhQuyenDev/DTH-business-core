@@ -12,7 +12,7 @@ enum PositionAuthority: string
 
     public function label(): string
     {
-        return __('enum.position_authority.'.$this->value);
+        return __('configuration.position.authority_levels.'.$this->value);
     }
 
     public function isDepartmentManager(): bool

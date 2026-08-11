@@ -4,15 +4,19 @@ namespace Tests\Feature\Configuration;
 
 use App\Enums\Crm\DepartmentFunction;
 use App\Enums\Crm\PositionAuthority;
-use App\Enums\UserRole;
+use App\Enums\Crm\PositionGroup;
+use App\Filament\Pages\AccessControlPage;
+use App\Filament\Pages\AppearanceSettingsPage;
+use App\Filament\Pages\OrganizationAccessPage;
 use App\Filament\Resources\DepartmentResource;
-use App\Livewire\DepartmentPositionsTable;
-use App\Livewire\DepartmentStaffTable;
+use App\Filament\Resources\PositionResource;
+use App\Filament\Resources\StaffResource;
 use App\Models\Crm\Department;
 use App\Models\Crm\Position;
-use App\Models\User;
+use App\Models\Crm\Staff;
+use App\Models\Crm\StaffBusinessFunction;
+use App\Models\System\UiBadgeStyle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
 use Tests\Support\MakesV1Actors;
 use Tests\TestCase;
 
@@ -21,127 +25,94 @@ class V1OrganizationUiActionsTest extends TestCase
     use MakesV1Actors;
     use RefreshDatabase;
 
-    public function test_system_admin_can_open_organization_configuration_surfaces(): void
+    public function test_system_admin_can_open_the_three_configuration_hubs_and_organization_catalogs(): void
     {
         $this->actingAs($this->makeV1SystemAdmin());
 
-        $this->get('/admin/departments')->assertOk();
-        $this->get('/admin/positions')->assertOk();
-        $this->get('/admin/staff')->assertOk();
-        $this->get('/admin/users')->assertOk();
-        $this->assertTrue(DepartmentResource::canCreate());
+        $this->get(OrganizationAccessPage::getUrl())->assertOk();
+        $this->get(AccessControlPage::getUrl())->assertOk();
+        $this->get(AppearanceSettingsPage::getUrl())->assertOk();
+        $this->get(DepartmentResource::getUrl())->assertOk();
+        $this->get(PositionResource::getUrl())->assertOk();
+        $this->get(StaffResource::getUrl())->assertOk();
     }
 
-    public function test_marketing_manager_cannot_open_system_organization_configuration(): void
+    public function test_business_staff_cannot_open_system_configuration_surfaces(): void
     {
-        $actor = $this->makeV1MarketingManager()[0];
-
-        $this->actingAs($actor);
-        $this->get('/admin/departments')->assertForbidden();
-        $this->get('/admin/positions')->assertForbidden();
-        $this->get('/admin/staff')->assertForbidden();
+        foreach ([
+            $this->makeV1MarketingManager()[0],
+            $this->makeV1SalesManager()[0],
+            $this->makeV1CustomerCareManager()[0],
+            $this->makeV1Finance()[0],
+        ] as $actor) {
+            $this->actingAs($actor);
+            session()->flush();
+            $this->get(DepartmentResource::getUrl())->assertForbidden();
+            $this->get(PositionResource::getUrl())->assertForbidden();
+            $this->get(StaffResource::getUrl())->assertForbidden();
+        }
     }
 
-    public function test_sales_manager_cannot_open_system_organization_configuration(): void
+    public function test_one_global_job_title_can_be_reused_by_staff_in_multiple_departments(): void
     {
-        $actor = $this->makeV1SalesManager()[0];
-
-        $this->actingAs($actor);
-        $this->get('/admin/departments')->assertForbidden();
-        $this->get('/admin/positions')->assertForbidden();
-        $this->get('/admin/staff')->assertForbidden();
-    }
-
-    public function test_customer_care_manager_cannot_open_system_organization_configuration(): void
-    {
-        $actor = $this->makeV1CustomerCareManager()[0];
-
-        $this->actingAs($actor);
-        $this->get('/admin/departments')->assertForbidden();
-        $this->get('/admin/positions')->assertForbidden();
-        $this->get('/admin/staff')->assertForbidden();
-    }
-
-    public function test_finance_staff_cannot_open_system_organization_configuration(): void
-    {
-        $actor = $this->makeV1Finance()[0];
-
-        $this->actingAs($actor);
-        $this->get('/admin/departments')->assertForbidden();
-        $this->get('/admin/positions')->assertForbidden();
-        $this->get('/admin/staff')->assertForbidden();
-    }
-
-    public function test_create_position_inside_department_binds_the_department(): void
-    {
-        $this->actingAs($this->makeV1SystemAdmin());
-        $department = Department::factory()->create([
-            'function_key' => DepartmentFunction::CustomerService->value,
-        ]);
-
-        Livewire::test(DepartmentPositionsTable::class, ['departmentId' => $department->id])
-            ->callTableAction('create', data: [
-                'title' => 'Nhân viên chăm sóc khách hàng',
-                'is_active' => true,
-            ])
-            ->assertHasNoTableActionErrors();
-
-        $this->assertDatabaseHas('positions', [
-            'department_id' => $department->id,
-            'title' => 'Nhân viên chăm sóc khách hàng',
-        ]);
-    }
-
-    public function test_create_staff_inside_department_binds_position_and_keeps_login_optional(): void
-    {
-        $this->actingAs($this->makeV1SystemAdmin());
-        $department = Department::factory()->create([
-            'function_key' => DepartmentFunction::CustomerService->value,
-        ]);
-        $position = Position::factory()->create([
-            'department_id' => $department->id,
+        $sales = Department::factory()->create(['code' => 'sales-v2', 'name' => 'Phòng Kinh doanh']);
+        $care = Department::factory()->create(['code' => 'care-v2', 'name' => 'Phòng CSKH']);
+        $title = Position::factory()->create([
+            'code' => 'chuyen-vien',
+            'title' => 'Chuyên viên',
+            'group_key' => PositionGroup::Professional->value,
             'authority_level' => PositionAuthority::Member->value,
+            'department_id' => null,
+        ]);
+
+        $first = Staff::factory()->create(['department_id' => $sales->id, 'position_id' => $title->id]);
+        $second = Staff::factory()->create(['department_id' => $care->id, 'position_id' => $title->id]);
+
+        $this->assertSame($title->id, $first->position_id);
+        $this->assertSame($title->id, $second->position_id);
+        $this->assertSame(1, Position::query()->where('title', 'Chuyên viên')->count());
+    }
+
+    public function test_department_identity_color_does_not_overwrite_business_function_color(): void
+    {
+        UiBadgeStyle::query()->create([
+            'category' => 'department_function',
+            'key' => DepartmentFunction::Finance->value,
+            'color' => 'blue',
+        ]);
+
+        $department = Department::factory()->create([
+            'function_key' => DepartmentFunction::Finance->value, // legacy compatibility only
+            'color' => 'rose',
+        ]);
+        $department->update(['color' => 'indigo']);
+
+        $this->assertDatabaseHas('ui_badge_styles', [
+            'category' => 'department_function',
+            'key' => DepartmentFunction::Finance->value,
+            'color' => 'blue',
+        ]);
+        $this->assertSame('indigo', $department->fresh()->color);
+    }
+
+    public function test_business_function_is_assigned_to_staff_independently_from_physical_department(): void
+    {
+        $department = Department::factory()->create([
+            'code' => 'growth-team-v2',
+            'name' => 'Phòng Growth',
+            'function_key' => DepartmentFunction::Marketing->value,
+        ]);
+        $staff = Staff::factory()->create(['department_id' => $department->id]);
+
+        StaffBusinessFunction::query()->create([
+            'staff_id' => $staff->id,
+            'function_key' => DepartmentFunction::Finance->value,
+            'authority_level' => PositionAuthority::Member->value,
+            'is_primary' => true,
             'is_active' => true,
         ]);
 
-        Livewire::test(DepartmentStaffTable::class, ['departmentId' => $department->id])
-            ->callTableAction('create', data: [
-                'user_id' => null,
-                'position_id' => $position->id,
-                'full_name' => 'Nhân viên không có tài khoản',
-                'employment_status' => 'active',
-                'can_receive_customers' => true,
-                'distribution_weight' => 1,
-            ])
-            ->assertHasNoTableActionErrors();
-
-        $this->assertDatabaseHas('staff', [
-            'department_id' => $department->id,
-            'position_id' => $position->id,
-            'full_name' => 'Nhân viên không có tài khoản',
-            'user_id' => null,
-        ]);
-    }
-
-    public function test_staff_create_rejects_position_from_another_department(): void
-    {
-        $this->actingAs($this->makeV1SystemAdmin());
-        $care = Department::factory()->create(['function_key' => DepartmentFunction::CustomerService->value]);
-        $sales = Department::factory()->create(['function_key' => DepartmentFunction::Sales->value]);
-        $salesPosition = Position::factory()->create([
-            'department_id' => $sales->id,
-            'authority_level' => PositionAuthority::Member->value,
-            'is_active' => true,
-        ]);
-        $user = User::factory()->create(['role' => UserRole::User->value]);
-
-        Livewire::test(DepartmentStaffTable::class, ['departmentId' => $care->id])
-            ->callTableAction('create', data: [
-                'user_id' => $user->id,
-                'position_id' => $salesPosition->id,
-                'full_name' => 'Sai chức danh',
-                'employment_status' => 'active',
-            ])
-            ->assertHasTableActionErrors(['position_id']);
+        $this->assertTrue($staff->fresh()->hasBusinessFunction(DepartmentFunction::Finance));
+        $this->assertSame(DepartmentFunction::Finance, $staff->fresh()->primaryBusinessFunction());
     }
 }

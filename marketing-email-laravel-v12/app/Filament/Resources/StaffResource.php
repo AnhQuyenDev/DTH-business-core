@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\Crm\DepartmentFunction;
+use App\Enums\Crm\PositionAuthority;
 use App\Enums\Crm\StaffEmploymentStatus;
+use App\Filament\Pages\OrganizationAccessPage;
 use App\Filament\Resources\StaffResource\Pages;
 use App\Filament\Resources\StaffResource\RelationManagers\AvailabilitiesRelationManager;
-use App\Filament\Resources\StaffResource\RelationManagers\BusinessFunctionsRelationManager;
 use App\Filament\Resources\StaffResource\RelationManagers\InteractionsRelationManager;
 use App\Filament\Resources\StaffResource\RelationManagers\ScheduleRelationManager;
 use App\Filament\Resources\StaffResource\RelationManagers\WorkScheduleRelationManager;
@@ -13,9 +15,9 @@ use App\Models\Crm\Department;
 use App\Models\Crm\Position;
 use App\Models\Crm\Staff;
 use App\Models\User;
-use App\Services\Organization\RoleDepartmentService;
-use Closure;
+use App\Support\Ui\BadgePalette;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -34,6 +36,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class StaffResource extends Resource
@@ -42,7 +45,7 @@ class StaffResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
-    protected static ?int $navigationSort = 40;
+    protected static ?int $navigationSort = 23;
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -54,19 +57,24 @@ class StaffResource extends Resource
         return __('navigation.group.configuration');
     }
 
+    public static function getNavigationParentItem(): ?string
+    {
+        return OrganizationAccessPage::getNavigationLabel();
+    }
+
     public static function getNavigationLabel(): string
     {
-        return __('resource.staff.singular');
+        return __('configuration.navigation.staff');
     }
 
     public static function getModelLabel(): string
     {
-        return __('resource.staff.singular');
+        return __('configuration.staff.singular');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('resource.staff.plural');
+        return __('configuration.staff.plural');
     }
 
     public static function canViewAny(): bool
@@ -89,15 +97,139 @@ class StaffResource extends Resource
         return auth()->user()?->can('crm.manage-staff') ?? false;
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with([
+            'department',
+            'position',
+            'user',
+            'businessFunctions',
+        ]);
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make(__('section.staff_organization'))
-                ->description(__('helper.staff_organization'))
+            Section::make(__('configuration.staff.identity_section'))
+                ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
+                ->schema([
+                    TextInput::make('full_name')
+                        ->label(__('configuration.staff.full_name'))
+                        ->required()
+                        ->maxLength(255)
+                        ->columnSpan(['default' => 1, 'xl' => 2]),
+                    TextInput::make('phone')
+                        ->label(__('configuration.staff.phone'))
+                        ->tel()
+                        ->maxLength(30),
+                    TextInput::make('employee_code')
+                        ->label(__('configuration.staff.employee_code'))
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->placeholder(__('configuration.staff.employee_code_auto')),
+                ]),
+
+            Section::make(__('configuration.staff.organization_section'))
                 ->columns(['default' => 1, 'md' => 2])
                 ->schema([
+                    Select::make('department_id')
+                        ->label(__('configuration.staff.department'))
+                        ->options(Department::options())
+                        ->default(fn (): ?int => request()->integer('department_id') ?: null)
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+
+                    Select::make('position_id')
+                        ->label(__('configuration.staff.position'))
+                        ->options(fn (): array => Position::groupedOptions())
+                        ->searchable()
+                        ->preload()
+                        ->placeholder(__('configuration.staff.position_optional')),
+                ]),
+
+            Section::make(__('configuration.staff.business_section'))
+                ->schema([
+                    Repeater::make('businessFunctions')
+                        ->relationship('businessFunctions')
+                        ->label(__('configuration.business_functions.title'))
+                        ->addActionLabel(__('configuration.business_functions.add'))
+                        ->defaultItems(0)
+                        ->collapsed()
+                        ->itemLabel(function (array $state): string {
+                            $function = DepartmentFunction::tryFrom((string) ($state['function_key'] ?? ''));
+                            $authority = PositionAuthority::tryFrom((string) ($state['authority_level'] ?? ''));
+
+                            return collect([
+                                $function?->label(),
+                                $authority?->label(),
+                            ])->filter()->implode(' · ') ?: __('configuration.business_functions.new_item');
+                        })
+                        ->schema([
+                            Select::make('function_key')
+                                ->label(__('configuration.business_functions.function'))
+                                ->options(collect(DepartmentFunction::options())->except(['admin', 'other'])->all())
+                                ->native(false)
+                                ->searchable()
+                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                ->required(),
+                            Select::make('authority_level')
+                                ->label(__('configuration.business_functions.authority'))
+                                ->options(PositionAuthority::options())
+                                ->default(PositionAuthority::Member->value)
+                                ->native(false)
+                                ->required(),
+                            Toggle::make('is_primary')
+                                ->label(__('configuration.business_functions.primary'))
+                                ->fixIndistinctState()
+                                ->default(false),
+                            Toggle::make('is_active')
+                                ->label(__('configuration.business_functions.active'))
+                                ->default(true),
+                        ])
+                        ->columns(['default' => 1, 'md' => 2, 'xl' => 4])
+                        ->columnSpanFull(),
+                ]),
+
+            Section::make(__('configuration.staff.capacity_section'))
+                ->collapsible()
+                ->collapsed()
+                ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
+                ->schema([
+                    Select::make('employment_status')
+                        ->label(__('configuration.staff.employment_status'))
+                        ->options(StaffEmploymentStatus::options())
+                        ->default(StaffEmploymentStatus::Active->value)
+                        ->native(false)
+                        ->required(),
+                    Toggle::make('can_receive_customers')
+                        ->label(__('configuration.staff.can_receive_customers'))
+                        ->default(false),
+                    TextInput::make('customer_capacity')
+                        ->label(__('configuration.staff.customer_capacity'))
+                        ->numeric()
+                        ->minValue(0),
+                    TextInput::make('distribution_weight')
+                        ->label(__('configuration.staff.distribution_weight'))
+                        ->numeric()
+                        ->minValue(0)
+                        ->default(1),
+                    DatePicker::make('started_at')
+                        ->label(__('configuration.staff.started_at'))
+                        ->native(false)
+                        ->displayFormat('d/m/Y'),
+                    DatePicker::make('ended_at')
+                        ->label(__('configuration.staff.ended_at'))
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->minDate(fn (Get $get) => $get('started_at')),
+                ]),
+
+            Section::make(__('configuration.staff.account_section'))
+                ->collapsed()
+                ->schema([
                     Select::make('user_id')
-                        ->label(__('field.user_account'))
+                        ->label(__('configuration.staff.account'))
                         ->options(function (?Staff $record): array {
                             return User::query()
                                 ->where(function ($query) use ($record): void {
@@ -124,222 +256,89 @@ class StaffResource extends Resource
                             }
 
                             $name = User::query()->whereKey((int) $state)->value('name');
-
                             if ($name) {
                                 $set('full_name', $name);
                             }
-                        })
-                        ->rules([
-                            fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
-                                if (! filled($value) || ! filled($get('department_id'))) {
-                                    return;
-                                }
-
-                                $user = User::query()->find((int) $value);
-                                $department = Department::query()->find((int) $get('department_id'));
-
-                                if (
-                                    $user
-                                    && ! app(RoleDepartmentService::class)->isCompatible(
-                                        $user->role,
-                                        $department,
-                                    )
-                                ) {
-                                    $fail(__('validation.user_role_department_mismatch'));
-                                }
-                            },
-                        ])
-                        ->helperText(__('helper.staff_user_optional')),
-
-                    Select::make('department_id')
-                        ->label(__('field.department'))
-                        ->options(Department::options())
-                        ->searchable()
-                        ->required()
-                        ->live()
-                        ->afterStateUpdated(function (Set $set, Get $get): void {
-                            $positionId = $get('position_id');
-                            if (! $positionId) {
-                                return;
-                            }
-
-                            $position = Position::find((int) $positionId);
-
-                            if (! $position || (int) $position->department_id !== (int) $get('department_id')) {
-                                $set('position_id', null);
-                            }
-                        })
-                        ->rules([
-                            fn (Get $get, ?Staff $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get, $record): void {
-                                if (! filled($value)) {
-                                    return;
-                                }
-
-                                $userId = $get('user_id') ?: $record?->user_id;
-                                if (! $userId) {
-                                    return;
-                                }
-
-                                $user = User::query()->find((int) $userId);
-                                $department = Department::query()->find((int) $value);
-
-                                if (
-                                    $user
-                                    && ! app(RoleDepartmentService::class)->isCompatible(
-                                        $user->role,
-                                        $department,
-                                    )
-                                ) {
-                                    $fail(__('validation.user_role_department_mismatch'));
-                                }
-                            },
-                        ]),
-
-                    Select::make('position_id')
-                        ->label(__('field.position'))
-                        ->options(fn (Get $get): array => Position::query()
-                            ->where('department_id', (int) $get('department_id'))
-                            ->where('is_active', true)
-                            ->orderBy('title')
-                            ->pluck('title', 'id')
-                            ->all())
-                        ->searchable()
-                        ->rules([
-                            fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
-                                if (! filled($value)) {
-                                    return;
-                                }
-
-                                $position = Position::find((int) $value);
-
-                                if (! $position || (int) $position->department_id !== (int) $get('department_id')) {
-                                    $fail(__('field.position_department_mismatch'));
-                                }
-                            },
-                        ]),
-
-                    TextInput::make('employee_code')
-                        ->label(__('field.employee_code'))
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->placeholder(__('helper.employee_code_auto')),
-                ]),
-
-            Section::make(__('section.staff_identity'))
-                ->description(__('helper.staff_identity'))
-                ->columns(['default' => 1, 'md' => 2])
-                ->schema([
-                    TextInput::make('full_name')
-                        ->label(__('field.full_name'))
-                        ->required()
-                        ->maxLength(255),
-                    TextInput::make('phone')
-                        ->label(__('field.phone'))
-                        ->tel()
-                        ->maxLength(30),
-                ]),
-
-            Section::make(__('section.staff_capacity'))
-                ->description(__('helper.staff_capacity'))
-                ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
-                ->schema([
-                    Select::make('employment_status')
-                        ->label(__('field.employment_status'))
-                        ->options(StaffEmploymentStatus::options())
-                        ->default(StaffEmploymentStatus::Active->value)
-                        ->required(),
-                    Toggle::make('can_receive_customers')
-                        ->label(__('field.can_receive_customers'))
-                        ->default(true),
-                    TextInput::make('customer_capacity')
-                        ->label(__('field.customer_capacity'))
-                        ->numeric()
-                        ->minValue(0),
-                    TextInput::make('distribution_weight')
-                        ->label(__('field.distribution_weight'))
-                        ->numeric()
-                        ->minValue(0)
-                        ->default(1),
-                    DatePicker::make('started_at')
-                        ->label(__('field.started_at'))
-                        ->native(false)
-                        ->displayFormat('d/m/Y'),
-                    DatePicker::make('ended_at')
-                        ->label(__('field.ended_at'))
-                        ->native(false)
-                        ->displayFormat('d/m/Y')
-                        ->minDate(fn (Get $get) => $get('started_at')),
+                        }),
                 ]),
         ]);
     }
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            TextColumn::make('employee_code')
-                ->label(__('field.employee_code'))
-                ->searchable()
-                ->sortable(),
-            TextColumn::make('full_name')
-                ->label(__('field.full_name'))
-                ->searchable()
-                ->sortable(),
-            TextColumn::make('department.name')
-                ->label(__('field.department'))
-                ->badge()
-                ->color(fn (Staff $record): string => $record->department?->color ?? 'gray'),
-            TextColumn::make('position.title')
-                ->label(__('field.position'))
-                ->placeholder(__('common.not_available'))
-                ->toggleable(),
-            TextColumn::make('user.email')
-                ->label(__('field.user_account'))
-                ->placeholder(__('common.not_available'))
-                ->toggleable(),
-            TextColumn::make('employment_status')
-                ->label(__('field.employment_status'))
-                ->badge()
-                ->color(fn (StaffEmploymentStatus $state): string => $state->color()),
-            IconColumn::make('can_receive_customers')
-                ->label(__('field.can_receive_customers'))
-                ->boolean(),
-            TextColumn::make('created_at')
-                ->label(__('field.created_at'))
-                ->dateTime('d/m/Y H:i')
-                ->sortable(),
-        ])
-            ->actions([ActionGroup::make([
-                Action::make('provision_account')
-                    ->label(__('action.provision_user_account'))
-                    ->icon('heroicon-o-user-plus')
-                    ->url(fn (Staff $record): string => UserResource::getUrl('create', [
-                        'staff_id' => $record->id,
-                    ]))
-                    ->visible(fn (Staff $record): bool => $record->user_id === null),
-                EditAction::make(),
-                DeleteAction::make(),
-            ])->icon('heroicon-o-ellipsis-vertical')->iconButton()])
+        return $table
+            ->columns([
+                TextColumn::make('employee_code')
+                    ->label(__('configuration.staff.employee_code'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('full_name')
+                    ->label(__('configuration.staff.full_name'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('department.name')
+                    ->label(__('configuration.staff.department'))
+                    ->badge()
+                    ->color(fn (Staff $record): string => $record->department?->color ?? 'gray'),
+                TextColumn::make('position.title')
+                    ->label(__('configuration.staff.position'))
+                    ->placeholder(__('common.not_available')),
+                TextColumn::make('primary_business_function')
+                    ->label(__('configuration.staff.primary_business_function'))
+                    ->getStateUsing(fn (Staff $record): ?string => $record->primaryBusinessFunction()?->value)
+                    ->formatStateUsing(fn (?string $state): string => DepartmentFunction::tryFrom((string) $state)?->label() ?? __('common.not_available'))
+                    ->badge()
+                    ->color(fn (?string $state): string => DepartmentFunction::tryFrom((string) $state)?->color() ?? 'gray'),
+                TextColumn::make('user.email')
+                    ->label(__('configuration.staff.account'))
+                    ->placeholder(__('common.not_available'))
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('employment_status')
+                    ->label(__('configuration.staff.employment_status'))
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => ($state instanceof StaffEmploymentStatus
+                        ? $state
+                        : StaffEmploymentStatus::tryFrom((string) $state))?->label() ?? __('common.not_available'))
+                    ->color(fn ($state): string => BadgePalette::status($state instanceof StaffEmploymentStatus ? $state->value : (string) $state)),
+                IconColumn::make('can_receive_customers')
+                    ->label(__('configuration.staff.can_receive_customers'))
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->actions([
+                ActionGroup::make([
+                    Action::make('provision_account')
+                        ->label(__('configuration.staff.provision_account'))
+                        ->icon('heroicon-o-user-plus')
+                        ->url(fn (Staff $record): string => UserResource::getUrl('create', [
+                            'staff_id' => $record->id,
+                        ]))
+                        ->visible(fn (Staff $record): bool => $record->user_id === null),
+                    EditAction::make()->label(__('configuration.staff.edit')),
+                    DeleteAction::make()->label(__('configuration.staff.delete')),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
+            ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->label(__('configuration.staff.delete')),
                 ]),
-            ])->filters([
+            ])
+            ->filters([
                 SelectFilter::make('department_id')
-                    ->label(__('field.department'))
+                    ->label(__('configuration.staff.department'))
                     ->relationship('department', 'name'),
+                SelectFilter::make('position_id')
+                    ->label(__('configuration.staff.position'))
+                    ->relationship('position', 'title'),
                 SelectFilter::make('employment_status')
+                    ->label(__('configuration.staff.employment_status'))
                     ->options(StaffEmploymentStatus::options()),
-                SelectFilter::make('can_receive_customers')->options([
-                    1 => __('field.yes'),
-                    0 => __('field.no'),
-                ]),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            BusinessFunctionsRelationManager::class,
             AvailabilitiesRelationManager::class,
             InteractionsRelationManager::class,
             ScheduleRelationManager::class,

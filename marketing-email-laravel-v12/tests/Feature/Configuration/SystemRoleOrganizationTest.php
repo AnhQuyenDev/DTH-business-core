@@ -37,14 +37,14 @@ class SystemRoleOrganizationTest extends TestCase
         ]);
 
         $managerPosition = Position::query()->create([
-            'title' => 'Trưởng phòng',
+            'title' => 'Trưởng nhóm',
             'authority_level' => 'manager',
             'department_id' => $sales->id,
             'is_active' => true,
         ]);
 
         $staffPosition = Position::query()->create([
-            'title' => 'Nhân viên',
+            'title' => 'Chuyên viên',
             'authority_level' => 'member',
             'department_id' => $sales->id,
             'is_active' => true,
