@@ -25,10 +25,29 @@ class ListDepartments extends ListRecords
         }
     }
 
+    public function getSubheading(): ?string
+    {
+        return __('configuration.department.list_subheading');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()->label(__('action.create_department')),
+            Actions\CreateAction::make()
+                ->label(__('configuration.department.create'))
+                ->icon('heroicon-o-plus-circle')
+                ->modalIcon('heroicon-o-building-office-2')
+                ->modalIconColor('primary')
+                ->modalHeading(__('configuration.department.create'))
+                ->modalDescription(__('configuration.department.create_subheading'))
+                ->modalSubmitAction(fn (\Filament\Actions\StaticAction $action) => $action->icon('heroicon-o-plus-circle'))
+                ->modalCancelAction(fn (\Filament\Actions\StaticAction $action) => $action->icon('heroicon-o-x-mark'))
+                ->modalWidth('5xl')
+                ->extraModalFooterActions(fn (Actions\CreateAction $action): array => [
+                    $action->makeModalSubmitAction('createAnother', arguments: ['another' => true])
+                        ->label(__('filament-actions::create.single.modal.actions.create_another.label'))
+                        ->icon('heroicon-o-plus'),
+                ]),
         ];
     }
 

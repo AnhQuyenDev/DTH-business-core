@@ -8,9 +8,6 @@ use App\Enums\Crm\StaffEmploymentStatus;
 use App\Filament\Pages\OrganizationAccessPage;
 use App\Filament\Resources\StaffResource\Pages;
 use App\Filament\Resources\StaffResource\RelationManagers\AvailabilitiesRelationManager;
-use App\Filament\Resources\StaffResource\RelationManagers\InteractionsRelationManager;
-use App\Filament\Resources\StaffResource\RelationManagers\ScheduleRelationManager;
-use App\Filament\Resources\StaffResource\RelationManagers\WorkScheduleRelationManager;
 use App\Models\Crm\Department;
 use App\Models\Crm\Position;
 use App\Models\Crm\Staff;
@@ -28,6 +25,7 @@ use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -35,8 +33,10 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 class StaffResource extends Resource
@@ -111,26 +111,47 @@ class StaffResource extends Resource
     {
         return $form->schema([
             Section::make(__('configuration.staff.identity_section'))
-                ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
+                ->icon('heroicon-o-user-circle')
+                ->iconColor('primary')
+                ->compact()
+                ->extraAttributes(['class' => 'dth-config-form'])
+                ->columns(12)
                 ->schema([
                     TextInput::make('full_name')
                         ->label(__('configuration.staff.full_name'))
+                        ->prefixIcon('heroicon-o-user')
                         ->required()
                         ->maxLength(255)
-                        ->columnSpan(['default' => 1, 'xl' => 2]),
+                        ->columnSpan(['default' => 12, 'md' => 7]),
+
                     TextInput::make('phone')
                         ->label(__('configuration.staff.phone'))
+                        ->prefixIcon('heroicon-o-phone')
                         ->tel()
-                        ->maxLength(30),
+                        ->maxLength(30)
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(fn (Set $set, ?string $state) => $set('phone', Staff::normalizePhone($state)))
+                        ->dehydrateStateUsing(fn (?string $state): ?string => Staff::normalizePhone($state))
+                        ->unique(ignoreRecord: true)
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.staff.phone_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 5]),
+
                     TextInput::make('employee_code')
                         ->label(__('configuration.staff.employee_code'))
+                        ->prefixIcon('heroicon-o-identification')
                         ->disabled()
                         ->dehydrated(false)
-                        ->placeholder(__('configuration.staff.employee_code_auto')),
+                        ->visible(fn (?Staff $record): bool => $record !== null)
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.staff.employee_code_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 4]),
                 ]),
 
             Section::make(__('configuration.staff.organization_section'))
-                ->columns(['default' => 1, 'md' => 2])
+                ->icon('heroicon-o-building-office-2')
+                ->iconColor('primary')
+                ->compact()
+                ->extraAttributes(['class' => 'dth-config-form'])
+                ->columns(12)
                 ->schema([
                     Select::make('department_id')
                         ->label(__('configuration.staff.department'))
@@ -138,17 +159,25 @@ class StaffResource extends Resource
                         ->default(fn (): ?int => request()->integer('department_id') ?: null)
                         ->searchable()
                         ->preload()
-                        ->required(),
+                        ->required()
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.staff.department_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 6]),
 
                     Select::make('position_id')
                         ->label(__('configuration.staff.position'))
                         ->options(fn (): array => Position::groupedOptions())
                         ->searchable()
                         ->preload()
-                        ->placeholder(__('configuration.staff.position_optional')),
+                        ->placeholder(__('configuration.staff.position_optional'))
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.staff.position_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 6]),
                 ]),
 
             Section::make(__('configuration.staff.business_section'))
+                ->icon('heroicon-o-squares-plus')
+                ->iconColor('primary')
+                ->compact()
+                ->extraAttributes(['class' => 'dth-config-form'])
                 ->schema([
                     Repeater::make('businessFunctions')
                         ->relationship('businessFunctions')
@@ -172,61 +201,95 @@ class StaffResource extends Resource
                                 ->native(false)
                                 ->searchable()
                                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                ->required(),
+                                ->required()
+                                ->hintIcon('heroicon-m-question-mark-circle', __('configuration.business_functions.function_hint')),
                             Select::make('authority_level')
                                 ->label(__('configuration.business_functions.authority'))
                                 ->options(PositionAuthority::options())
                                 ->default(PositionAuthority::Member->value)
                                 ->native(false)
-                                ->required(),
+                                ->required()
+                                ->hintIcon('heroicon-m-question-mark-circle', __('configuration.business_functions.authority_hint')),
                             Toggle::make('is_primary')
                                 ->label(__('configuration.business_functions.primary'))
+                                ->inline()
                                 ->fixIndistinctState()
-                                ->default(false),
+                                ->default(false)
+                                ->extraFieldWrapperAttributes(['class' => 'dth-config-toggle-wrap']),
                             Toggle::make('is_active')
                                 ->label(__('configuration.business_functions.active'))
-                                ->default(true),
+                                ->inline()
+                                ->default(true)
+                                ->extraFieldWrapperAttributes(['class' => 'dth-config-toggle-wrap']),
                         ])
                         ->columns(['default' => 1, 'md' => 2, 'xl' => 4])
                         ->columnSpanFull(),
                 ]),
 
             Section::make(__('configuration.staff.capacity_section'))
+                ->icon('heroicon-o-chart-bar-square')
+                ->iconColor('primary')
+                ->compact()
                 ->collapsible()
-                ->collapsed()
-                ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
+                ->extraAttributes(['class' => 'dth-config-form'])
+                ->columns(12)
                 ->schema([
                     Select::make('employment_status')
                         ->label(__('configuration.staff.employment_status'))
                         ->options(StaffEmploymentStatus::options())
                         ->default(StaffEmploymentStatus::Active->value)
                         ->native(false)
-                        ->required(),
+                        ->required()
+                        ->columnSpan(['default' => 12, 'md' => 4]),
+
                     Toggle::make('can_receive_customers')
                         ->label(__('configuration.staff.can_receive_customers'))
-                        ->default(false),
+                        ->inline()
+                        ->live()
+                        ->default(false)
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.staff.can_receive_customers_hint'))
+                        ->extraFieldWrapperAttributes(['class' => 'dth-config-toggle-wrap'])
+                        ->columnSpan(['default' => 12, 'md' => 4]),
+
                     TextInput::make('customer_capacity')
                         ->label(__('configuration.staff.customer_capacity'))
                         ->numeric()
-                        ->minValue(0),
+                        ->minValue(1)
+                        ->required(fn (Get $get): bool => (bool) $get('can_receive_customers'))
+                        ->disabled(fn (Get $get): bool => ! (bool) $get('can_receive_customers'))
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.staff.customer_capacity_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 4]),
+
                     TextInput::make('distribution_weight')
                         ->label(__('configuration.staff.distribution_weight'))
                         ->numeric()
                         ->minValue(0)
-                        ->default(1),
+                        ->default(1)
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.staff.distribution_weight_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 4]),
+
                     DatePicker::make('started_at')
                         ->label(__('configuration.staff.started_at'))
                         ->native(false)
-                        ->displayFormat('d/m/Y'),
+                        ->displayFormat('d/m/Y')
+                        ->columnSpan(['default' => 12, 'md' => 4]),
+
                     DatePicker::make('ended_at')
                         ->label(__('configuration.staff.ended_at'))
                         ->native(false)
                         ->displayFormat('d/m/Y')
-                        ->minDate(fn (Get $get) => $get('started_at')),
+                        ->minDate(fn (Get $get) => $get('started_at'))
+                        ->rule('after_or_equal:started_at')
+                        ->columnSpan(['default' => 12, 'md' => 4]),
                 ]),
 
             Section::make(__('configuration.staff.account_section'))
+                ->icon('heroicon-o-lock-closed')
+                ->iconColor('primary')
+                ->compact()
+                ->collapsible()
                 ->collapsed()
+                ->extraAttributes(['class' => 'dth-config-form'])
                 ->schema([
                     Select::make('user_id')
                         ->label(__('configuration.staff.account'))
@@ -250,6 +313,7 @@ class StaffResource extends Resource
                         ->preload()
                         ->nullable()
                         ->live()
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.staff.account_hint'))
                         ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
                             if (! $state || filled($get('full_name'))) {
                                 return;
@@ -283,16 +347,6 @@ class StaffResource extends Resource
                 TextColumn::make('position.title')
                     ->label(__('configuration.staff.position'))
                     ->placeholder(__('common.not_available')),
-                TextColumn::make('primary_business_function')
-                    ->label(__('configuration.staff.primary_business_function'))
-                    ->getStateUsing(fn (Staff $record): ?string => $record->primaryBusinessFunction()?->value)
-                    ->formatStateUsing(fn (?string $state): string => DepartmentFunction::tryFrom((string) $state)?->label() ?? __('common.not_available'))
-                    ->badge()
-                    ->color(fn (?string $state): string => DepartmentFunction::tryFrom((string) $state)?->color() ?? 'gray'),
-                TextColumn::make('user.email')
-                    ->label(__('configuration.staff.account'))
-                    ->placeholder(__('common.not_available'))
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('employment_status')
                     ->label(__('configuration.staff.employment_status'))
                     ->badge()
@@ -302,7 +356,17 @@ class StaffResource extends Resource
                     ->color(fn ($state): string => BadgePalette::status($state instanceof StaffEmploymentStatus ? $state->value : (string) $state)),
                 IconColumn::make('can_receive_customers')
                     ->label(__('configuration.staff.can_receive_customers'))
-                    ->boolean()
+                    ->boolean(),
+                TextColumn::make('user.email')
+                    ->label(__('configuration.staff.account'))
+                    ->placeholder(__('common.not_available'))
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('primary_business_function')
+                    ->label(__('configuration.staff.primary_business_function'))
+                    ->getStateUsing(fn (Staff $record): ?string => $record->primaryBusinessFunction()?->value)
+                    ->formatStateUsing(fn (?string $state): string => DepartmentFunction::tryFrom((string) $state)?->label() ?? __('common.not_available'))
+                    ->badge()
+                    ->color(fn (?string $state): string => DepartmentFunction::tryFrom((string) $state)?->color() ?? 'gray')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
@@ -314,13 +378,39 @@ class StaffResource extends Resource
                             'staff_id' => $record->id,
                         ]))
                         ->visible(fn (Staff $record): bool => $record->user_id === null),
-                    EditAction::make()->label(__('configuration.staff.edit')),
+                    EditAction::make()->label(__('configuration.staff.edit'))->icon('heroicon-o-pencil-square'),
                     DeleteAction::make()->label(__('configuration.staff.delete')),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()->label(__('configuration.staff.delete')),
+                    BulkAction::make('enable_customer_intake')
+                        ->label(__('configuration.staff.bulk_enable_intake'))
+                        ->icon('heroicon-o-user-plus')
+                        ->color('success')
+                        ->form([
+                            TextInput::make('customer_capacity')
+                                ->label(__('configuration.staff.customer_capacity'))
+                                ->numeric()
+                                ->minValue(1)
+                                ->required()
+                                ->hintIcon('heroicon-m-question-mark-circle', __('configuration.staff.customer_capacity_hint')),
+                        ])
+                        ->action(fn (Collection $records, array $data) => Staff::query()
+                            ->whereKey($records->modelKeys())
+                            ->update([
+                                'can_receive_customers' => true,
+                                'customer_capacity' => (int) $data['customer_capacity'],
+                            ]))
+                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('disable_customer_intake')
+                        ->label(__('configuration.staff.bulk_disable_intake'))
+                        ->icon('heroicon-o-user-minus')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(fn (Collection $records) => Staff::query()->whereKey($records->modelKeys())->update(['can_receive_customers' => false]))
+                        ->deselectRecordsAfterCompletion(),
+                    DeleteBulkAction::make()->label(__('configuration.common.delete_selected')),
                 ]),
             ])
             ->filters([
@@ -333,6 +423,12 @@ class StaffResource extends Resource
                 SelectFilter::make('employment_status')
                     ->label(__('configuration.staff.employment_status'))
                     ->options(StaffEmploymentStatus::options()),
+                TernaryFilter::make('has_account')
+                    ->label(__('configuration.staff.account_filter'))
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereNotNull('user_id'),
+                        false: fn (Builder $query): Builder => $query->whereNull('user_id'),
+                    ),
             ]);
     }
 
@@ -340,9 +436,6 @@ class StaffResource extends Resource
     {
         return [
             AvailabilitiesRelationManager::class,
-            InteractionsRelationManager::class,
-            ScheduleRelationManager::class,
-            WorkScheduleRelationManager::class,
         ];
     }
 

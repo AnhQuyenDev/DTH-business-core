@@ -11,6 +11,7 @@ use App\Models\Crm\Staff;
 use App\Models\User;
 use App\Services\Crm\CustomerDistributionService;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,11 @@ use Illuminate\Support\Facades\DB;
 class EditStaff extends EditRecord
 {
     protected static string $resource = StaffResource::class;
+
+    public function getTitle(): string
+    {
+        return __('configuration.staff.edit');
+    }
 
     protected ?string $originalEmploymentStatus = null;
 
@@ -148,7 +154,23 @@ class EditStaff extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()->label(__('configuration.staff.delete'))->icon('heroicon-o-trash'),
         ];
     }
+
+    public function getSubheading(): ?string
+    {
+        return __('configuration.staff.edit_subheading');
+    }
+
+    protected function getSaveFormAction(): Action
+    {
+        return parent::getSaveFormAction()->icon('heroicon-o-check-circle');
+    }
+
+    protected function getCancelFormAction(): Action
+    {
+        return parent::getCancelFormAction()->icon('heroicon-o-arrow-left');
+    }
+
 }

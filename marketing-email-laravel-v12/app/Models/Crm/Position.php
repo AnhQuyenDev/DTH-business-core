@@ -43,6 +43,31 @@ class Position extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $position): void {
+            if (blank($position->code)) {
+                $position->code = static::nextCode();
+            }
+
+        });
+
+        static::saving(function (self $position): void {
+            $position->title = trim((string) $position->title);
+        });
+    }
+
+    public static function nextCode(): string
+    {
+        $next = (static::max('id') ?? 0) + 1;
+
+        do {
+            $code = 'JOB-'.str_pad((string) $next++, 4, '0', STR_PAD_LEFT);
+        } while (static::where('code', $code)->exists());
+
+        return $code;
+    }
+
     /**
      * Legacy-only relation retained so historical imports / old records do not
      * break during the transition. Job Titles are global master data in V2.

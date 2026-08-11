@@ -587,4 +587,520 @@
     .dth-config-matrix tbody tr:last-child td { border-bottom:0; }
     .dth-config-matrix tbody tr:hover { background:var(--dth-surface-soft); }
 
+
+    /* Configuration UX polish: visible hierarchy, compact forms and accessible color swatches. */
+    .dth-config-sidebar-scope .fi-sidebar-sub-group-items {
+        margin-left: .6rem;
+        padding-left: .45rem;
+        border-left: 1px solid var(--dth-border);
+    }
+    .dth-config-sidebar-scope .fi-sidebar-sub-group-items > .fi-sidebar-item > .fi-sidebar-item-button {
+        padding-left: .45rem !important;
+    }
+    .dth-config-sidebar-scope .fi-sidebar-sub-group-items .fi-sidebar-item-grouped-border {
+        width: 1.15rem !important;
+        margin-left: -.12rem;
+    }
+
+    .dth-config-form .fi-section-content {
+        row-gap: .9rem !important;
+    }
+    .dth-config-form .fi-fo-field-wrp-label {
+        margin-bottom: .15rem;
+    }
+    .dth-config-toggle-wrap {
+        padding-top: 1.45rem;
+        align-self: start;
+    }
+    @media (max-width: 767px) {
+        .dth-config-toggle-wrap { padding-top: 0; }
+    }
+
+    .dth-color-swatch-picker {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        grid-template-columns: none !important;
+        gap: .55rem !important;
+        margin-top: .15rem !important;
+    }
+    .dth-color-swatch-picker > div {
+        padding-top: 0 !important;
+    }
+    .dth-color-swatch-picker .fi-btn {
+        width: 2.15rem !important;
+        min-width: 2.15rem !important;
+        height: 2.15rem !important;
+        min-height: 2.15rem !important;
+        padding: 0 !important;
+        border-radius: 999px !important;
+        border: 2px solid rgba(148, 163, 184, .26) !important;
+        box-shadow: inset 0 0 0 2px rgba(255,255,255,.72), 0 1px 2px rgba(15,23,42,.10) !important;
+        transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease !important;
+    }
+    .dark .dth-color-swatch-picker .fi-btn {
+        box-shadow: inset 0 0 0 2px rgba(24,24,27,.82), 0 1px 2px rgba(0,0,0,.26) !important;
+    }
+    .dth-color-swatch-picker .fi-btn:hover {
+        transform: translateY(-1px) scale(1.05);
+        border-color: rgba(var(--primary-500), .48) !important;
+    }
+    .dth-color-swatch-picker input:checked + .fi-btn {
+        border-color: rgb(var(--primary-500)) !important;
+        box-shadow: 0 0 0 3px rgba(var(--primary-500), .22), inset 0 0 0 2px rgba(255,255,255,.88) !important;
+        transform: scale(1.06);
+    }
+    .dark .dth-color-swatch-picker input:checked + .fi-btn {
+        box-shadow: 0 0 0 3px rgba(var(--primary-500), .24), inset 0 0 0 2px rgba(24,24,27,.9) !important;
+    }
+    .dth-color-swatch-picker label[for$="-gray"] { background:#6b7280 !important; }
+    .dth-color-swatch-picker label[for$="-primary"],
+    .dth-color-swatch-picker label[for$="-amber"] { background:#f59e0b !important; }
+    .dth-color-swatch-picker label[for$="-info"],
+    .dth-color-swatch-picker label[for$="-sky"] { background:#0ea5e9 !important; }
+    .dth-color-swatch-picker label[for$="-success"],
+    .dth-color-swatch-picker label[for$="-green"] { background:#22c55e !important; }
+    .dth-color-swatch-picker label[for$="-warning"] { background:#f59e0b !important; }
+    .dth-color-swatch-picker label[for$="-danger"] { background:#ef4444 !important; }
+    .dth-color-swatch-picker label[for$="-orange"] { background:#f97316 !important; }
+    .dth-color-swatch-picker label[for$="-yellow"] { background:#eab308 !important; }
+    .dth-color-swatch-picker label[for$="-lime"] { background:#84cc16 !important; }
+    .dth-color-swatch-picker label[for$="-emerald"] { background:#10b981 !important; }
+    .dth-color-swatch-picker label[for$="-teal"] { background:#14b8a6 !important; }
+    .dth-color-swatch-picker label[for$="-cyan"] { background:#06b6d4 !important; }
+    .dth-color-swatch-picker label[for$="-blue"] { background:#3b82f6 !important; }
+    .dth-color-swatch-picker label[for$="-indigo"] { background:#6366f1 !important; }
+    .dth-color-swatch-picker label[for$="-violet"] { background:#8b5cf6 !important; }
+    .dth-color-swatch-picker label[for$="-purple"] { background:#a855f7 !important; }
+    .dth-color-swatch-picker label[for$="-fuchsia"] { background:#d946ef !important; }
+    .dth-color-swatch-picker label[for$="-pink"] { background:#ec4899 !important; }
+    .dth-color-swatch-picker label[for$="-rose"] { background:#f43f5e !important; }
+
+    .dth-config-color-orbit {
+        display:flex;
+        align-items:center;
+        flex-wrap:wrap;
+        gap:.65rem;
+    }
+    .dth-config-color-orbit__swatch {
+        width:1.85rem;
+        height:1.85rem;
+        border-radius:999px;
+        background:var(--swatch-color);
+        border:2px solid rgba(148,163,184,.24);
+        box-shadow:inset 0 0 0 2px rgba(255,255,255,.72), 0 1px 2px rgba(15,23,42,.10);
+        transition:transform .12s ease, box-shadow .12s ease;
+        cursor:help;
+    }
+    .dark .dth-config-color-orbit__swatch {
+        box-shadow:inset 0 0 0 2px rgba(24,24,27,.84), 0 1px 2px rgba(0,0,0,.25);
+    }
+    .dth-config-color-orbit__swatch:hover {
+        transform:translateY(-1px) scale(1.08);
+        box-shadow:0 0 0 3px rgba(var(--primary-500),.16), inset 0 0 0 2px rgba(255,255,255,.82);
+    }
+
+
+    /* Configuration UI/UX RC3 - scoped visual system inspired by the approved reference direction. */
+    body.dth-config-page {
+        --dth-config-accent: 245 158 11;
+        --dth-config-panel: rgba(255,255,255,.92);
+        --dth-config-panel-soft: rgba(248,250,252,.92);
+        --dth-config-border: rgba(15,23,42,.08);
+        --dth-config-text: rgb(15 23 42);
+        --dth-config-muted: rgb(100 116 139);
+        --dth-config-shadow: 0 16px 36px rgba(15,23,42,.06);
+    }
+    .dark body.dth-config-page,
+    body.dth-config-page.dark {
+        --dth-config-panel: rgba(24,24,27,.86);
+        --dth-config-panel-soft: rgba(255,255,255,.028);
+        --dth-config-border: rgba(255,255,255,.095);
+        --dth-config-text: rgb(250 250 250);
+        --dth-config-muted: rgb(161 161 170);
+        --dth-config-shadow: 0 18px 44px rgba(0,0,0,.18);
+    }
+
+    body.dth-config-page .fi-main {
+        background:
+            radial-gradient(circle at 88% 4%, rgba(var(--dth-config-accent), .055), transparent 26rem),
+            transparent;
+    }
+    body.dth-config-page .fi-header { gap:.35rem; margin-bottom:1.35rem; }
+    body.dth-config-page .fi-header-heading {
+        font-size:clamp(1.55rem,2vw,2rem) !important;
+        line-height:1.15 !important;
+        font-weight:800 !important;
+        letter-spacing:-.035em !important;
+    }
+    body.dth-config-page .fi-header-subheading {
+        max-width:58rem;
+        color:var(--dth-config-muted) !important;
+        font-size:.86rem !important;
+        line-height:1.55 !important;
+    }
+    body.dth-config-page .fi-breadcrumbs-item-label { font-size:.76rem !important; }
+
+    /* Sidebar: stronger parent/child hierarchy only for Configuration (the only nested group in V1). */
+    .dth-config-sidebar-scope {
+        padding:.2rem .15rem .35rem;
+        border-radius:1rem;
+    }
+    .dth-config-sidebar-scope .fi-sidebar-group-button {
+        min-height:2.7rem;
+        border-radius:.8rem;
+        padding:.55rem .7rem !important;
+        background:rgba(var(--dth-config-accent),.035);
+    }
+    .dth-config-sidebar-scope .fi-sidebar-group-icon {
+        width:1.2rem !important;
+        height:1.2rem !important;
+        color:rgb(var(--dth-config-accent)) !important;
+    }
+    .dth-config-sidebar-scope .fi-sidebar-group-label {
+        color:rgb(var(--dth-config-accent)) !important;
+        font-size:.72rem !important;
+        font-weight:800 !important;
+        letter-spacing:.055em !important;
+    }
+    .dth-config-sidebar-scope > .fi-sidebar-group-items { gap:.3rem !important; }
+    .dth-config-sidebar-scope > .fi-sidebar-group-items > .fi-sidebar-item > .fi-sidebar-item-button {
+        min-height:2.75rem;
+        padding:.55rem .72rem !important;
+        border-radius:.78rem !important;
+    }
+    .dth-config-sidebar-scope > .fi-sidebar-group-items > .fi-sidebar-item.fi-active > .fi-sidebar-item-button {
+        background:linear-gradient(90deg, rgba(var(--dth-config-accent),.17), rgba(var(--dth-config-accent),.055)) !important;
+        box-shadow:inset 3px 0 0 rgb(var(--dth-config-accent)), inset 0 0 0 1px rgba(var(--dth-config-accent),.18) !important;
+    }
+    .dth-config-sidebar-scope > .fi-sidebar-group-items > .fi-sidebar-item.fi-active > .fi-sidebar-item-button .fi-sidebar-item-label,
+    .dth-config-sidebar-scope > .fi-sidebar-group-items > .fi-sidebar-item.fi-active > .fi-sidebar-item-button .fi-sidebar-item-icon {
+        color:rgb(var(--dth-config-accent)) !important;
+    }
+    .dth-config-sidebar-scope .fi-sidebar-sub-group-items {
+        margin:.15rem 0 .2rem 1.05rem !important;
+        padding:.15rem 0 .15rem .62rem !important;
+        border-left:1px solid rgba(148,163,184,.22) !important;
+        gap:.18rem !important;
+    }
+    .dth-config-sidebar-scope .fi-sidebar-sub-group-items > .fi-sidebar-item > .fi-sidebar-item-button {
+        min-height:2.3rem !important;
+        padding:.38rem .5rem !important;
+        border-radius:.62rem !important;
+    }
+    .dth-config-sidebar-scope .fi-sidebar-sub-group-items .fi-sidebar-item-grouped-border {
+        width:.9rem !important;
+        margin-left:-.05rem !important;
+    }
+    .dth-config-sidebar-scope .fi-sidebar-sub-group-items .fi-sidebar-item-icon {
+        width:1.05rem !important;
+        height:1.05rem !important;
+    }
+    .dth-config-sidebar-scope .fi-sidebar-sub-group-items .fi-sidebar-item-label {
+        font-size:.8rem !important;
+        font-weight:560 !important;
+    }
+    .dth-config-sidebar-scope .fi-sidebar-sub-group-items .fi-sidebar-item.fi-active > .fi-sidebar-item-button {
+        background:rgba(var(--dth-config-accent),.09) !important;
+    }
+
+    /* Configuration cards and forms. */
+    body.dth-config-page .dth-config-form.fi-section,
+    body.dth-config-page .fi-section.dth-config-form,
+    body.dth-config-page .fi-ta-ctn,
+    body.dth-config-page .fi-modal-window {
+        border:1px solid var(--dth-config-border) !important;
+        background:var(--dth-config-panel) !important;
+        box-shadow:var(--dth-config-shadow) !important;
+        border-radius:1rem !important;
+        overflow:hidden;
+    }
+    body.dth-config-page .dth-config-form .fi-section-header {
+        min-height:3.6rem;
+        padding:.8rem 1rem !important;
+        background:linear-gradient(90deg, rgba(var(--dth-config-accent),.035), transparent 28%);
+    }
+    body.dth-config-page .dth-config-form .fi-section-header-icon {
+        width:2rem !important;
+        height:2rem !important;
+        padding:.42rem;
+        border-radius:.62rem;
+        background:linear-gradient(145deg, rgba(var(--dth-config-accent),.25), rgba(var(--dth-config-accent),.08));
+        color:rgb(var(--dth-config-accent)) !important;
+        box-shadow:inset 0 0 0 1px rgba(var(--dth-config-accent),.15);
+        margin:0 !important;
+    }
+    body.dth-config-page .dth-config-form .fi-section-header-heading {
+        font-size:.91rem !important;
+        font-weight:780 !important;
+    }
+    body.dth-config-page .dth-config-form .fi-section-header-description {
+        font-size:.72rem !important;
+        color:var(--dth-config-muted) !important;
+    }
+    body.dth-config-page .dth-config-form .fi-section-content {
+        padding:1rem !important;
+        row-gap:.9rem !important;
+    }
+    body.dth-config-page .dth-config-form .fi-section-content-ctn {
+        border-color:var(--dth-config-border) !important;
+    }
+
+    /* Fields: compact, balanced, reference-like. */
+    body.dth-config-page .fi-fo-field-wrp-label { margin-bottom:.28rem !important; }
+    body.dth-config-page .fi-fo-field-wrp-label label,
+    body.dth-config-page .fi-fo-field-wrp-label span { font-size:.78rem !important; font-weight:680 !important; }
+    body.dth-config-page .fi-input-wrp,
+    body.dth-config-page .fi-select-input,
+    body.dth-config-page .fi-fo-textarea textarea {
+        border-radius:.66rem !important;
+        border-color:var(--dth-config-border) !important;
+    }
+    body.dth-config-page .fi-input-wrp { min-height:2.65rem; }
+    body.dth-config-page .fi-input,
+    body.dth-config-page .fi-select-input { font-size:.82rem !important; }
+    body.dth-config-page .fi-fo-textarea textarea { min-height:6.5rem; }
+    body.dth-config-page .fi-fo-field-wrp-hint-icon { color:rgb(113 113 122) !important; }
+    body.dth-config-page .fi-fo-placeholder { color:var(--dth-config-text); font-weight:650; }
+
+    /* Toggles: center vertically in their grid cell, never float near the top. */
+    body.dth-config-page .dth-config-toggle-wrap {
+        padding-top:0 !important;
+        align-self:stretch !important;
+        display:flex !important;
+        align-items:center !important;
+        min-height:4.5rem;
+    }
+    body.dth-config-page .dth-config-toggle-wrap > * { width:100%; }
+    body.dth-config-page .dth-config-toggle-wrap .fi-fo-field-wrp { display:flex; flex-direction:column; justify-content:center; height:100%; }
+    body.dth-config-page .dth-config-toggle-wrap .fi-fo-toggle { gap:.55rem; }
+
+    /* Every configuration action looks deliberate; primary actions are vivid but not neon. */
+    body.dth-config-page .fi-btn {
+        min-height:2.5rem;
+        border-radius:.68rem !important;
+        gap:.48rem !important;
+        font-size:.8rem !important;
+        font-weight:720 !important;
+    }
+    body.dth-config-page .fi-btn.fi-color-primary {
+        box-shadow:0 7px 18px rgba(var(--dth-config-accent),.16), inset 0 1px 0 rgba(255,255,255,.18) !important;
+    }
+    body.dth-config-page .fi-btn.fi-color-primary:hover { transform:translateY(-1px); }
+    body.dth-config-page .fi-icon-btn { border-radius:.62rem !important; }
+
+    /* Tables: stronger information hierarchy without becoming dense. */
+    body.dth-config-page .fi-ta-header { padding:.72rem .9rem !important; }
+    body.dth-config-page .fi-ta-header-cell { background:rgba(148,163,184,.035); }
+    body.dth-config-page .fi-ta-header-cell-label { font-size:.69rem !important; font-weight:760 !important; }
+    body.dth-config-page .fi-ta-row { min-height:3.4rem; }
+    body.dth-config-page .fi-ta-row:hover { background:rgba(var(--dth-config-accent),.025) !important; }
+    body.dth-config-page .fi-ta-cell { padding-top:.72rem !important; padding-bottom:.72rem !important; }
+    body.dth-config-page .fi-ta-actions .fi-icon-btn { color:rgb(var(--dth-config-accent)) !important; }
+
+    /* Real circular color picker. Labels stay accessible to screen readers and tooltips only. */
+    body.dth-config-page .dth-color-swatch-picker.fi-fo-toggle-buttons,
+    body.dth-config-page .dth-color-swatch-picker .fi-fo-toggle-buttons {
+        display:flex !important;
+        flex-wrap:wrap !important;
+        gap:.62rem !important;
+        margin-top:.18rem !important;
+    }
+    body.dth-config-page .dth-color-swatch-picker > div,
+    body.dth-config-page .dth-color-swatch-picker .fi-fo-toggle-buttons > div { padding:0 !important; }
+    body.dth-config-page .dth-color-swatch-picker label.fi-btn {
+        width:2.55rem !important;
+        min-width:2.55rem !important;
+        height:2.55rem !important;
+        min-height:2.55rem !important;
+        padding:0 !important;
+        border-radius:999px !important;
+        border:2px solid rgba(148,163,184,.28) !important;
+        box-shadow:inset 0 0 0 3px rgba(255,255,255,.80), 0 4px 10px rgba(15,23,42,.10) !important;
+        transform:none;
+        transition:transform .13s ease, box-shadow .13s ease, border-color .13s ease !important;
+    }
+    .dark body.dth-config-page .dth-color-swatch-picker label.fi-btn {
+        box-shadow:inset 0 0 0 3px rgba(24,24,27,.90), 0 5px 12px rgba(0,0,0,.28) !important;
+    }
+    body.dth-config-page .dth-color-swatch-picker label.fi-btn:hover { transform:translateY(-2px) scale(1.06); }
+    body.dth-config-page .dth-color-swatch-picker input:checked + label.fi-btn {
+        border-color:rgb(var(--dth-config-accent)) !important;
+        box-shadow:0 0 0 3px rgba(var(--dth-config-accent),.26), inset 0 0 0 3px rgba(255,255,255,.92), 0 7px 18px rgba(15,23,42,.12) !important;
+        transform:scale(1.07);
+    }
+    .dark body.dth-config-page .dth-color-swatch-picker input:checked + label.fi-btn {
+        box-shadow:0 0 0 3px rgba(var(--dth-config-accent),.28), inset 0 0 0 3px rgba(24,24,27,.94), 0 7px 18px rgba(0,0,0,.32) !important;
+    }
+    body.dth-config-page .dth-color-swatch-picker input[value="gray"] + label.fi-btn { background:#6b7280 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="primary"] + label.fi-btn,
+    body.dth-config-page .dth-color-swatch-picker input[value="amber"] + label.fi-btn { background:#f59e0b !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="info"] + label.fi-btn,
+    body.dth-config-page .dth-color-swatch-picker input[value="sky"] + label.fi-btn { background:#0ea5e9 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="success"] + label.fi-btn,
+    body.dth-config-page .dth-color-swatch-picker input[value="green"] + label.fi-btn { background:#22c55e !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="warning"] + label.fi-btn { background:#f59e0b !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="danger"] + label.fi-btn { background:#ef4444 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="orange"] + label.fi-btn { background:#f97316 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="yellow"] + label.fi-btn { background:#eab308 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="lime"] + label.fi-btn { background:#84cc16 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="emerald"] + label.fi-btn { background:#10b981 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="teal"] + label.fi-btn { background:#14b8a6 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="cyan"] + label.fi-btn { background:#06b6d4 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="blue"] + label.fi-btn { background:#3b82f6 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="indigo"] + label.fi-btn { background:#6366f1 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="violet"] + label.fi-btn { background:#8b5cf6 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="purple"] + label.fi-btn { background:#a855f7 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="fuchsia"] + label.fi-btn { background:#d946ef !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="pink"] + label.fi-btn { background:#ec4899 !important; }
+    body.dth-config-page .dth-color-swatch-picker input[value="rose"] + label.fi-btn { background:#f43f5e !important; }
+
+    /* Permission picker becomes a clean card grid while keeping Filament's native relationship handling. */
+    body.dth-config-page .dth-config-form .fi-fo-checkbox-list {
+        gap:.65rem !important;
+    }
+    body.dth-config-page .dth-config-form .fi-fo-checkbox-list-option-label {
+        min-height:2.65rem;
+        align-items:flex-start;
+        padding:.58rem .65rem;
+        border:1px solid var(--dth-config-border);
+        border-radius:.68rem;
+        background:var(--dth-config-panel-soft);
+        transition:border-color .12s ease, background .12s ease, transform .12s ease;
+    }
+    body.dth-config-page .dth-config-form .fi-fo-checkbox-list-option-label:hover {
+        border-color:rgba(var(--dth-config-accent),.30);
+        background:rgba(var(--dth-config-accent),.035);
+        transform:translateY(-1px);
+    }
+    body.dth-config-page .dth-config-form .fi-fo-checkbox-list-option-label > span:last-child {
+        font-size:.76rem !important;
+        line-height:1.4;
+    }
+
+    /* Hub cards now look like admin launchers, not documentation blocks. */
+    body.dth-config-page .dth-config-shell { gap:.9rem !important; }
+    body.dth-config-page .dth-config-toolbar {
+        padding:.8rem .95rem !important;
+        background:var(--dth-config-panel-soft) !important;
+        border:1px solid var(--dth-config-border) !important;
+        border-radius:.8rem !important;
+    }
+    body.dth-config-page .dth-config-launch-card {
+        min-height:5.35rem !important;
+        border:1px solid var(--dth-config-border) !important;
+        border-radius:.9rem !important;
+        background:var(--dth-config-panel) !important;
+        box-shadow:0 8px 20px rgba(15,23,42,.035);
+    }
+    body.dth-config-page .dth-config-launch-card:hover {
+        border-color:rgba(var(--dth-config-accent),.30) !important;
+        box-shadow:0 14px 30px rgba(15,23,42,.065) !important;
+    }
+    body.dth-config-page .dth-config-launch-card__icon {
+        width:2.45rem !important;
+        height:2.45rem !important;
+        border-radius:.7rem !important;
+        background:linear-gradient(145deg,rgba(var(--dth-config-accent),.23),rgba(var(--dth-config-accent),.075)) !important;
+        color:rgb(var(--dth-config-accent)) !important;
+    }
+
+    @media (max-width: 767px) {
+        body.dth-config-page .dth-config-form .fi-section-content { padding:.85rem !important; }
+        body.dth-config-page .dth-config-toggle-wrap { min-height:auto; }
+        body.dth-config-page .dth-color-swatch-picker label.fi-btn { width:2.35rem !important; min-width:2.35rem !important; height:2.35rem !important; min-height:2.35rem !important; }
+    }
+
 </style>
+
+
+<script>
+(function () {
+    function applySwatchTooltips(root) {
+        (root || document).querySelectorAll('.dth-color-swatch-picker .fi-btn').forEach(function (button) {
+            if (button.getAttribute('title')) return;
+            var label = (button.textContent || '').replace(/\s+/g, ' ').trim();
+            if (label) {
+                button.setAttribute('title', label);
+                button.setAttribute('aria-label', label);
+            }
+        });
+    }
+
+    function markConfigurationSidebar() {
+        document.querySelectorAll('.fi-sidebar-group').forEach(function (group) {
+            var configLink = group.querySelector('a[href*="/departments"], a[href*="/positions"], a[href*="/staff"]');
+            group.classList.toggle('dth-config-sidebar-scope', Boolean(configLink));
+        });
+    }
+
+    function bootSwatches() {
+        markConfigurationSidebar();
+        applySwatchTooltips(document);
+        if (window.__dthSwatchObserver) return;
+        window.__dthSwatchObserver = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
+                mutation.addedNodes.forEach(function (node) {
+                    if (node.nodeType === 1) applySwatchTooltips(node);
+                });
+            });
+        });
+        window.__dthSwatchObserver.observe(document.body, { childList: true, subtree: true });
+    }
+
+    document.addEventListener('DOMContentLoaded', bootSwatches);
+    document.addEventListener('livewire:navigated', bootSwatches);
+    if (document.readyState !== 'loading') bootSwatches();
+})();
+</script>
+
+<script>
+(function () {
+    const configurationFragments = [
+        '/admin/configuration/',
+        '/admin/departments',
+        '/admin/positions',
+        '/admin/staff',
+        '/admin/users',
+        '/admin/security/rbac-roles',
+        '/admin/ui-badge-styles'
+    ];
+
+    function markConfigurationPage() {
+        const path = window.location.pathname || '';
+        let activeConfigurationGroup = false;
+
+        document.querySelectorAll('.fi-sidebar-group').forEach(function (group) {
+            const isConfigGroup = Boolean(group.querySelector('a[href*="/configuration/"], a[href*="/departments"], a[href*="/positions"], a[href*="/staff"], a[href*="/users"], a[href*="/ui-badge-styles"]'));
+            group.classList.toggle('dth-config-sidebar-scope', isConfigGroup);
+            if (isConfigGroup && group.querySelector('.fi-sidebar-item.fi-active')) {
+                activeConfigurationGroup = true;
+            }
+        });
+
+        const isConfigurationPath = configurationFragments.some((fragment) => path.indexOf(fragment) !== -1);
+        document.body.classList.toggle('dth-config-page', isConfigurationPath || activeConfigurationGroup);
+    }
+
+    function enhanceConfigurationSwatches(root) {
+        (root || document).querySelectorAll('.dth-color-swatch-picker label.fi-btn').forEach(function (button) {
+            const input = button.previousElementSibling;
+            if (!input) return;
+            const hiddenLabel = (button.textContent || '').replace(/\s+/g, ' ').trim();
+            if (hiddenLabel) {
+                button.title = hiddenLabel;
+                button.setAttribute('aria-label', hiddenLabel);
+            }
+        });
+    }
+
+    function bootConfigurationChrome() {
+        markConfigurationPage();
+        enhanceConfigurationSwatches(document);
+    }
+
+    document.addEventListener('DOMContentLoaded', bootConfigurationChrome);
+    document.addEventListener('livewire:navigated', bootConfigurationChrome);
+    document.addEventListener('livewire:initialized', bootConfigurationChrome);
+    if (document.readyState !== 'loading') bootConfigurationChrome();
+})();
+</script>

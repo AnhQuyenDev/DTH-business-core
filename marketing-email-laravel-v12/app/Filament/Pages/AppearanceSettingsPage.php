@@ -32,6 +32,11 @@ class AppearanceSettingsPage extends Page
         return __('configuration.appearance_hub.title');
     }
 
+    public function getSubheading(): ?string
+    {
+        return __('configuration.appearance_hub.subheading');
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -44,6 +49,7 @@ class AppearanceSettingsPage extends Page
     {
         return [
             'colors' => SystemColorPalette::options(),
+            'colorHex' => SystemColorPalette::hexMap(),
             'canManageDepartments' => DepartmentResource::canViewAny(),
             'canManageSharedBadges' => UiBadgeStyleResource::canViewAny(),
             'departmentUrl' => DepartmentResource::getUrl(),

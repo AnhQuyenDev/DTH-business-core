@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class Staff extends Model
 {
@@ -52,6 +53,48 @@ class Staff extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $staff): void {
+            if (blank($staff->employee_code)) {
+                $staff->employee_code = static::nextEmployeeCode();
+            }
+
+            $staff->phone = static::normalizePhone($staff->phone);
+        });
+
+        static::saving(function (self $staff): void {
+            $staff->full_name = trim((string) $staff->full_name);
+            $staff->phone = static::normalizePhone($staff->phone);
+
+            if (filled($staff->phone)) {
+                $duplicatePhone = static::query()
+                    ->where('phone', $staff->phone)
+                    ->when($staff->exists, fn (Builder $query): Builder => $query->whereKeyNot($staff->getKey()))
+                    ->exists();
+
+                if ($duplicatePhone) {
+                    throw ValidationException::withMessages([
+                        'phone' => __('validation.unique', ['attribute' => __('configuration.staff.phone')]),
+                    ]);
+                }
+            }
+        });
+    }
+
+    public static function normalizePhone(?string $phone): ?string
+    {
+        $phone = trim((string) $phone);
+        if ($phone === '') {
+            return null;
+        }
+
+        $hasInternationalPrefix = str_starts_with($phone, '+');
+        $digits = preg_replace('/\\D+/', '', $phone) ?: '';
+
+        return $digits === '' ? null : ($hasInternationalPrefix ? '+' : '').$digits;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -59,9 +102,13 @@ class Staff extends Model
 
     public static function nextEmployeeCode(): string
     {
-        $nextId = (static::withTrashed()->max('id') ?? 0) + 1;
+        $next = (static::withTrashed()->max('id') ?? 0) + 1;
 
-        return 'EMP-'.str_pad((string) $nextId, 4, '0', STR_PAD_LEFT);
+        do {
+            $code = 'EMP-'.str_pad((string) $next++, 4, '0', STR_PAD_LEFT);
+        } while (static::withTrashed()->where('employee_code', $code)->exists());
+
+        return $code;
     }
 
     public function department(): BelongsTo

@@ -35,6 +35,11 @@ class OrganizationAccessPage extends Page
         return __('configuration.organization.title');
     }
 
+    public function getSubheading(): ?string
+    {
+        return __('configuration.organization.subheading');
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

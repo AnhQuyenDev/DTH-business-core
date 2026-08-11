@@ -31,6 +31,31 @@ class Department extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $department): void {
+            if (blank($department->code)) {
+                $department->code = static::nextCode();
+            }
+
+        });
+
+        static::saving(function (self $department): void {
+            $department->name = trim((string) $department->name);
+        });
+    }
+
+    public static function nextCode(): string
+    {
+        $next = (static::max('id') ?? 0) + 1;
+
+        do {
+            $code = 'DEPT-'.str_pad((string) $next++, 4, '0', STR_PAD_LEFT);
+        } while (static::where('code', $code)->exists());
+
+        return $code;
+    }
+
     public function staff(): HasMany
     {
         return $this->hasMany(Staff::class);

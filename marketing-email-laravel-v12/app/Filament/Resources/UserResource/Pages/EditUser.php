@@ -6,6 +6,7 @@ use App\Filament\Resources\UserResource;
 use App\Models\Crm\Staff;
 use App\Models\User;
 use App\Services\Organization\RoleDepartmentService;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,11 @@ use Illuminate\Validation\ValidationException;
 class EditUser extends EditRecord
 {
     protected static string $resource = UserResource::class;
+
+    public function getTitle(): string
+    {
+        return __('configuration.account.edit');
+    }
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
@@ -72,6 +78,22 @@ class EditUser extends EditRecord
 
             return $record;
         });
+    }
+
+
+    public function getSubheading(): ?string
+    {
+        return __('configuration.account.edit_subheading');
+    }
+
+    protected function getSaveFormAction(): Action
+    {
+        return parent::getSaveFormAction()->icon('heroicon-o-check-circle');
+    }
+
+    protected function getCancelFormAction(): Action
+    {
+        return parent::getCancelFormAction()->icon('heroicon-o-arrow-left');
     }
 
 }

@@ -36,6 +36,11 @@ class AccessControlPage extends Page
         return __('configuration.access.title');
     }
 
+    public function getSubheading(): ?string
+    {
+        return __('configuration.access.subheading');
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

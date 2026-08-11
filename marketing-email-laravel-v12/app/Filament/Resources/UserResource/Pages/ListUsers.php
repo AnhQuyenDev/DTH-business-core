@@ -10,10 +10,15 @@ class ListUsers extends ListRecords
 {
     protected static string $resource = UserResource::class;
 
+    public function getSubheading(): ?string
+    {
+        return __('configuration.account.list_subheading');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()->label(__('configuration.account.create'))->icon('heroicon-o-key'),
         ];
     }
 }

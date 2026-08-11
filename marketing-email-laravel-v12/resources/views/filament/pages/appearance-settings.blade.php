@@ -1,9 +1,5 @@
 <x-filament-panels::page>
     <div class="dth-config-shell">
-        <div class="dth-config-toolbar">
-            <p>{{ __('configuration.appearance_hub.description') }}</p>
-        </div>
-
         <div class="dth-config-launch-grid dth-config-launch-grid--2">
             @if ($canManageDepartments)
                 <a href="{{ $departmentUrl }}" class="dth-config-launch-card">
@@ -41,12 +37,14 @@
                 <strong>{{ __('configuration.appearance_hub.palette_title') }}</strong>
                 <span>{{ count($colors) }}</span>
             </div>
-            <div class="dth-config-palette-strip">
+            <div class="dth-config-color-orbit" aria-label="{{ __('configuration.appearance_hub.palette_title') }}">
                 @foreach ($colors as $key => $label)
-                    <div class="dth-config-palette-chip" title="{{ $label }}">
-                        <span class="dth-color-dot dth-color-dot--{{ $key }}"></span>
-                        <span>{{ $label }}</span>
-                    </div>
+                    <span
+                        class="dth-config-color-orbit__swatch"
+                        style="--swatch-color: {{ $colorHex[$key] ?? '#6b7280' }}"
+                        title="{{ $label }}"
+                        aria-label="{{ $label }}"
+                    ></span>
                 @endforeach
             </div>
         </div>

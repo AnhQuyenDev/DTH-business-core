@@ -10,10 +10,15 @@ class ListPositions extends ListRecords
 {
     protected static string $resource = PositionResource::class;
 
+    public function getSubheading(): ?string
+    {
+        return __('configuration.position.list_subheading');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()->label(__('configuration.position.create'))->icon('heroicon-o-plus-circle'),
         ];
     }
 }

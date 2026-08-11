@@ -84,36 +84,53 @@ class RbacRoleResource extends Resource
     {
         return $form->schema([
             Section::make(__('configuration.rbac.role_information'))
+                ->icon('heroicon-o-identification')
+                ->iconColor('primary')
+                ->compact()
+                ->extraAttributes(['class' => 'dth-config-form'])
+                ->columns(12)
                 ->schema([
                     TextInput::make('label')
                         ->label(__('field.name'))
+                        ->prefixIcon('heroicon-o-identification')
                         ->required()
-                        ->maxLength(150),
+                        ->maxLength(150)
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.rbac.role_label_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 8]),
+
                     TextInput::make('name')
                         ->label(__('configuration.rbac.role_key'))
-                        ->required()
-                        ->alphaDash()
-                        ->unique(ignoreRecord: true)
-                        ->disabled(fn (?Role $record): bool => (bool) $record?->is_system)
-                        ->dehydrated(),
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->visible(fn (?Role $record): bool => $record !== null)
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.rbac.role_key_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 4]),
+
                     Textarea::make('description')
                         ->label(__('field.description'))
                         ->rows(2)
                         ->columnSpanFull(),
+
                     TextInput::make('guard_name')
                         ->default('web')
                         ->hidden()
                         ->dehydrated(),
-                ])
-                ->columns(2),
+                ]),
 
             Section::make(__('configuration.rbac.permissions'))
+                ->icon('heroicon-o-shield-check')
+                ->iconColor('primary')
+                ->compact()
                 ->schema([
                     CheckboxList::make('permissions')
-                        ->relationship('permissions', 'name')
+                        ->relationship(
+                            'permissions',
+                            'name',
+                            fn ($query) => $query->orderBy('module')->orderBy('label'),
+                        )
                         ->getOptionLabelFromRecordUsing(
                             fn (Permission $permission): string => sprintf(
-                                '[%s] %s',
+                                '%s · %s',
                                 $permission->module ?: __('configuration.rbac.system_module'),
                                 $permission->label ?: $permission->name,
                             )
@@ -137,7 +154,8 @@ class RbacRoleResource extends Resource
                 TextColumn::make('name')
                     ->label(__('configuration.rbac.role_key'))
                     ->badge()
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('permissions_count')
                     ->counts('permissions')
                     ->label(__('configuration.rbac.permission_count'))
@@ -148,7 +166,7 @@ class RbacRoleResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    EditAction::make()->visible(fn (Role $record): bool => static::canEdit($record)),
+                    EditAction::make()->icon('heroicon-o-pencil-square')->visible(fn (Role $record): bool => static::canEdit($record)),
                     DeleteAction::make()->visible(fn (Role $record): bool => static::canDelete($record)),
                 ])->iconButton(),
             ]);

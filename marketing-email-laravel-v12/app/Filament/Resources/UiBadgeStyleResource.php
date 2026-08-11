@@ -17,6 +17,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -86,6 +87,10 @@ class UiBadgeStyleResource extends Resource
     {
         return $form->schema([
             Section::make(__('configuration.appearance.plural'))
+                ->icon('heroicon-o-swatch')
+                ->iconColor('primary')
+                ->compact()
+                ->extraAttributes(['class' => 'dth-config-form'])
                 ->schema([
                     Select::make('category')
                         ->label(__('configuration.appearance.category'))
@@ -93,9 +98,8 @@ class UiBadgeStyleResource extends Resource
                         ->native(false)
                         ->required()
                         ->live()
-                        ->afterStateUpdated(function (Set $set): void {
-                            $set('key', null);
-                        }),
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.appearance.helper_category'))
+                        ->afterStateUpdated(fn (Set $set) => $set('key', null)),
 
                     Select::make('key')
                         ->label(__('configuration.appearance.key'))
@@ -103,6 +107,7 @@ class UiBadgeStyleResource extends Resource
                         ->native(false)
                         ->searchable()
                         ->required()
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.appearance.helper_key'))
                         ->rules([
                             fn (Get $get, ?UiBadgeStyle $record) => Rule::unique('ui_badge_styles', 'key')
                                 ->where('category', (string) $get('category'))
@@ -113,12 +118,10 @@ class UiBadgeStyleResource extends Resource
                         ->label(__('configuration.appearance.color'))
                         ->options(SystemColorPalette::options())
                         ->colors(SystemColorPalette::toggleColors())
-                        ->columns([
-                            'default' => 2,
-                            'sm' => 4,
-                            'md' => 6,
-                            'xl' => 11,
-                        ])
+                        ->hiddenButtonLabels()
+                        ->inline()
+                        ->extraAttributes(['class' => 'dth-color-swatch-picker'])
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.appearance.helper_color'))
                         ->required()
                         ->columnSpanFull(),
                 ])
@@ -137,24 +140,21 @@ class UiBadgeStyleResource extends Resource
 
                 TextColumn::make('key')
                     ->label(__('configuration.appearance.key'))
-                    ->formatStateUsing(
-                        fn (string $state, UiBadgeStyle $record): string => BadgePalette::keyOptions($record->category)[$state] ?? BadgePalette::statusLabel($state)
-                    )
+                    ->formatStateUsing(fn (string $state, UiBadgeStyle $record): string => BadgePalette::keyOptions($record->category)[$state] ?? BadgePalette::statusLabel($state))
                     ->searchable()
                     ->sortable(),
 
+                IconColumn::make('color')
+                    ->label(__('configuration.appearance.color'))
+                    ->icon('heroicon-s-circle')
+                    ->color(fn (UiBadgeStyle $record): string => SystemColorPalette::normalize($record->color))
+                    ->tooltip(fn (UiBadgeStyle $record): string => SystemColorPalette::options()[$record->color] ?? $record->color),
+
                 TextColumn::make('preview')
                     ->label(__('configuration.appearance.preview'))
-                    ->getStateUsing(
-                        fn (UiBadgeStyle $record): string => BadgePalette::keyOptions($record->category)[$record->key] ?? BadgePalette::statusLabel($record->key)
-                    )
+                    ->getStateUsing(fn (UiBadgeStyle $record): string => BadgePalette::keyOptions($record->category)[$record->key] ?? BadgePalette::statusLabel($record->key))
                     ->badge()
                     ->color(fn (UiBadgeStyle $record): string => SystemColorPalette::normalize($record->color)),
-
-                TextColumn::make('color')
-                    ->label(__('configuration.appearance.color'))
-                    ->formatStateUsing(fn (string $state): string => SystemColorPalette::options()[$state] ?? $state)
-                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
                     ->label(__('configuration.appearance.updated_at'))
@@ -170,8 +170,8 @@ class UiBadgeStyleResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    EditAction::make()->label(__('configuration.appearance.edit')),
-                    DeleteAction::make(),
+                    EditAction::make()->label(__('configuration.appearance.edit'))->icon('heroicon-o-pencil-square'),
+                    DeleteAction::make()->label(__('configuration.common.delete'))->icon('heroicon-o-trash'),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ]);
     }

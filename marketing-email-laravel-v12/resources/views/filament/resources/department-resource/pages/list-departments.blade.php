@@ -3,7 +3,7 @@
 
     @if ($this->getSelectedDepartment())
         <div class="mt-5" id="department-structure">
-            <x-filament::section>
+            <x-filament::section icon="heroicon-o-users" icon-color="primary" class="dth-config-form">
                 <x-slot name="heading">
                     {{ __('configuration.department.staff_tab') }} · {{ $this->getSelectedDepartment()->name }}
                 </x-slot>

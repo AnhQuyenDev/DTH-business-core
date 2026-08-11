@@ -3,7 +3,7 @@
         {{ $this->form }}
 
         <div class="dth-config-form-footer">
-            <x-filament::button type="submit" icon="heroicon-o-check">
+            <x-filament::button type="submit" icon="heroicon-o-check-circle">
                 {{ __('action.save') }}
             </x-filament::button>
         </div>

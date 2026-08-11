@@ -18,10 +18,14 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 class UserResource extends Resource
@@ -87,7 +91,11 @@ class UserResource extends Resource
     {
         return $form->schema([
             Section::make(__('configuration.account.section_link'))
-                ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
+                ->icon('heroicon-o-user-plus')
+                ->iconColor('primary')
+                ->compact()
+                ->extraAttributes(['class' => 'dth-config-form'])
+                ->columns(12)
                 ->schema([
                     Select::make('staff_id')
                         ->label(__('configuration.account.staff'))
@@ -119,20 +127,19 @@ class UserResource extends Resource
                         ->preload()
                         ->default(fn (): ?int => request()->integer('staff_id') ?: null)
                         ->live()
-                        ->required(
-                            fn (Get $get): bool => app(RoleDepartmentService::class)->requiresStaff($get('role'))
-                        )
+                        ->required(fn (Get $get): bool => app(RoleDepartmentService::class)->requiresStaff($get('role')))
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.account.staff_hint'))
                         ->afterStateUpdated(function (Set $set, ?string $state): void {
                             if (! $state) {
                                 return;
                             }
 
                             $staff = Staff::query()->find((int) $state);
-
                             if ($staff) {
                                 $set('name', $staff->full_name);
                             }
-                        }),
+                        })
+                        ->columnSpan(['default' => 12, 'md' => 6]),
 
                     Placeholder::make('staff_department_preview')
                         ->label(__('configuration.account.department'))
@@ -142,7 +149,8 @@ class UserResource extends Resource
                                 : null;
 
                             return $staff?->department?->name ?? __('common.not_available');
-                        }),
+                        })
+                        ->columnSpan(['default' => 6, 'md' => 3]),
 
                     Placeholder::make('staff_position_preview')
                         ->label(__('configuration.account.position'))
@@ -152,14 +160,20 @@ class UserResource extends Resource
                                 : null;
 
                             return $staff?->position?->title ?? __('common.not_available');
-                        }),
+                        })
+                        ->columnSpan(['default' => 6, 'md' => 3]),
                 ]),
 
             Section::make(__('configuration.account.section_access'))
-                ->columns(['default' => 1, 'md' => 2])
+                ->icon('heroicon-o-lock-closed')
+                ->iconColor('primary')
+                ->compact()
+                ->extraAttributes(['class' => 'dth-config-form'])
+                ->columns(12)
                 ->schema([
                     TextInput::make('name')
                         ->label(__('configuration.account.name'))
+                        ->prefixIcon('heroicon-o-user')
                         ->default(function (): ?string {
                             $staffId = request()->integer('staff_id');
 
@@ -168,13 +182,16 @@ class UserResource extends Resource
                                 : null;
                         })
                         ->required()
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->columnSpan(['default' => 12, 'md' => 6]),
 
                     TextInput::make('email')
                         ->label(__('configuration.account.email'))
+                        ->prefixIcon('heroicon-o-envelope')
                         ->email()
                         ->required()
-                        ->unique(ignoreRecord: true),
+                        ->unique(ignoreRecord: true)
+                        ->columnSpan(['default' => 12, 'md' => 6]),
 
                     Select::make('role')
                         ->label(__('configuration.account.system_role'))
@@ -189,7 +206,9 @@ class UserResource extends Resource
                         ->required()
                         ->searchable()
                         ->native(false)
-                        ->live(),
+                        ->live()
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.account.system_role_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 5]),
 
                     Select::make('roles')
                         ->label(__('configuration.account.additional_roles'))
@@ -198,20 +217,26 @@ class UserResource extends Resource
                         ->multiple()
                         ->searchable()
                         ->preload()
-                        ->helperText(__('v1.rbac.additional_roles_helper'))
-                        ->visible(fn (): bool => auth()->user()?->can('system.manage-rbac') ?? false),
+                        ->hintIcon('heroicon-m-question-mark-circle', __('v1.rbac.additional_roles_helper'))
+                        ->visible(fn (): bool => auth()->user()?->can('system.manage-rbac') ?? false)
+                        ->columnSpan(['default' => 12, 'md' => 5]),
 
                     Toggle::make('is_active')
                         ->label(__('configuration.account.active'))
-                        ->default(true),
+                        ->inline()
+                        ->default(true)
+                        ->extraFieldWrapperAttributes(['class' => 'dth-config-toggle-wrap'])
+                        ->columnSpan(['default' => 12, 'md' => 2]),
 
                     TextInput::make('password')
                         ->label(__('configuration.account.password'))
+                        ->prefixIcon('heroicon-o-lock-closed')
                         ->password()
                         ->revealable()
                         ->dehydrated(fn ($state) => filled($state))
                         ->required(fn (string $operation) => $operation === 'create')
-                        ->columnSpanFull(),
+                        ->hintIcon('heroicon-m-question-mark-circle', __('configuration.account.password_hint'))
+                        ->columnSpan(['default' => 12, 'md' => 6]),
                 ]),
         ]);
     }
@@ -232,6 +257,16 @@ class UserResource extends Resource
                     ->label(__('configuration.account.staff'))
                     ->placeholder(__('common.not_available'))
                     ->searchable(),
+                TextColumn::make('role')
+                    ->label(__('configuration.account.system_role'))
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => $state
+                        ? UserRole::tryFrom($state)?->label() ?? __('common.not_available')
+                        : __('common.not_available'))
+                    ->color(fn (?string $state): string => UserRole::tryFrom((string) $state)?->color() ?? 'gray'),
+                IconColumn::make('is_active')
+                    ->label(__('configuration.account.active'))
+                    ->boolean(),
                 TextColumn::make('staff.department.name')
                     ->label(__('configuration.account.department'))
                     ->badge()
@@ -242,30 +277,41 @@ class UserResource extends Resource
                     ->label(__('configuration.account.position'))
                     ->placeholder(__('common.not_available'))
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('role')
-                    ->label(__('configuration.account.system_role'))
-                    ->badge()
-                    ->formatStateUsing(
-                        fn (?string $state): string => $state
-                            ? UserRole::tryFrom($state)?->label() ?? __('common.not_available')
-                            : __('common.not_available')
-                    )
-                    ->color(
-                        fn (?string $state): string => UserRole::tryFrom((string) $state)?->color() ?? 'gray'
-                    ),
-                IconColumn::make('is_active')
-                    ->label(__('configuration.account.active'))
-                    ->boolean(),
                 TextColumn::make('created_at')
                     ->label(__('configuration.account.created_at'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->filters([
+                TernaryFilter::make('is_active')->label(__('configuration.account.active')),
+            ])
             ->actions([
                 ActionGroup::make([
-                    EditAction::make()->label(__('configuration.account.edit')),
+                    EditAction::make()->label(__('configuration.account.edit'))->icon('heroicon-o-pencil-square'),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    BulkAction::make('activate')
+                        ->label(__('configuration.common.activate_selected'))
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->action(fn (Collection $records) => User::query()->whereKey($records->modelKeys())->update(['is_active' => true]))
+                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('deactivate')
+                        ->label(__('configuration.common.deactivate_selected'))
+                        ->icon('heroicon-o-no-symbol')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records): void {
+                            $actorId = auth()->id();
+                            $ids = $records->reject(fn (User $user): bool => $user->isSuperAdmin() || $user->id === $actorId)->modelKeys();
+
+                            User::query()->whereKey($ids)->update(['is_active' => false]);
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                ]),
             ]);
     }
 

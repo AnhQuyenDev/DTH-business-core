@@ -6,6 +6,7 @@ use App\Filament\Resources\UserResource;
 use App\Models\Crm\Staff;
 use App\Models\User;
 use App\Services\Organization\RoleDepartmentService;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,11 @@ use Illuminate\Validation\ValidationException;
 class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
+
+    public function getTitle(): string
+    {
+        return __('configuration.account.create');
+    }
 
     protected function handleRecordCreation(array $data): Model
     {
@@ -52,4 +58,25 @@ class CreateUser extends CreateRecord
             return $user;
         });
     }
+
+    public function getSubheading(): ?string
+    {
+        return __('configuration.account.create_subheading');
+    }
+
+    protected function getCreateFormAction(): Action
+    {
+        return parent::getCreateFormAction()->icon('heroicon-o-key');
+    }
+
+    protected function getCreateAnotherFormAction(): Action
+    {
+        return parent::getCreateAnotherFormAction()->icon('heroicon-o-plus');
+    }
+
+    protected function getCancelFormAction(): Action
+    {
+        return parent::getCancelFormAction()->icon('heroicon-o-arrow-left');
+    }
+
 }
