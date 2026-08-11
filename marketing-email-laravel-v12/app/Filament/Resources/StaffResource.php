@@ -5,7 +5,6 @@ namespace App\Filament\Resources;
 use App\Enums\Crm\DepartmentFunction;
 use App\Enums\Crm\PositionAuthority;
 use App\Enums\Crm\StaffEmploymentStatus;
-use App\Filament\Pages\OrganizationAccessPage;
 use App\Filament\Resources\StaffResource\Pages;
 use App\Filament\Resources\StaffResource\RelationManagers\AvailabilitiesRelationManager;
 use App\Models\Crm\Department;
@@ -45,7 +44,7 @@ class StaffResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
-    protected static ?int $navigationSort = 23;
+    protected static ?int $navigationSort = 22;
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -55,11 +54,6 @@ class StaffResource extends Resource
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');
-    }
-
-    public static function getNavigationParentItem(): ?string
-    {
-        return OrganizationAccessPage::getNavigationLabel();
     }
 
     public static function getNavigationLabel(): string

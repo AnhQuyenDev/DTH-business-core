@@ -20,6 +20,11 @@ class OrganizationAccessPage extends Page
 
     protected static string $view = 'filament.pages.organization-access';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');

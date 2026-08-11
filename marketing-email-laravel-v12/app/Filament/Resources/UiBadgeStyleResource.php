@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Pages\AppearanceSettingsPage;
 use App\Filament\Resources\UiBadgeStyleResource\Pages;
 use App\Models\System\UiBadgeStyle;
 use App\Support\Ui\BadgePalette;
@@ -36,11 +35,6 @@ class UiBadgeStyleResource extends Resource
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');
-    }
-
-    public static function getNavigationParentItem(): ?string
-    {
-        return AppearanceSettingsPage::getNavigationLabel();
     }
 
     public static function getNavigationLabel(): string

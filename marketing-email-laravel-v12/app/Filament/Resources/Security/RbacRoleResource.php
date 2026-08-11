@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Security;
 
-use App\Filament\Pages\AccessControlPage;
 use App\Filament\Resources\Security\RbacRoleResource\Pages;
 use App\Models\Security\Permission;
 use App\Models\Security\Role;
@@ -26,16 +25,11 @@ class RbacRoleResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static ?int $navigationSort = 40;
+    protected static ?int $navigationSort = 31;
 
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');
-    }
-
-    public static function getNavigationParentItem(): ?string
-    {
-        return AccessControlPage::getNavigationLabel();
     }
 
     public static function getNavigationLabel(): string

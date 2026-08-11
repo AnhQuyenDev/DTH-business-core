@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Pages\OrganizationAccessPage;
 use App\Filament\Resources\DepartmentResource\Pages;
 use App\Models\Crm\Department;
 use App\Support\Ui\SystemColorPalette;
@@ -26,6 +25,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 
 class DepartmentResource extends Resource
 {
@@ -33,16 +33,11 @@ class DepartmentResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
 
-    protected static ?int $navigationSort = 21;
+    protected static ?int $navigationSort = 20;
 
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');
-    }
-
-    public static function getNavigationParentItem(): ?string
-    {
-        return OrganizationAccessPage::getNavigationLabel();
     }
 
     public static function getNavigationLabel(): string
@@ -96,7 +91,10 @@ class DepartmentResource extends Resource
                         ->maxLength(255)
                         ->unique(ignoreRecord: true)
                         ->hintIcon('heroicon-m-question-mark-circle', __('configuration.department.name_hint'))
-                        ->columnSpan(['default' => 12, 'md' => 8]),
+                        ->columnSpan([
+                            'default' => 12,
+                            'md' => fn (?Department $record): int => $record ? 5 : 8,
+                        ]),
 
                     TextInput::make('code')
                         ->label(__('configuration.department.code'))
@@ -107,11 +105,33 @@ class DepartmentResource extends Resource
                         ->hintIcon('heroicon-m-question-mark-circle', __('configuration.department.code_helper'))
                         ->columnSpan(['default' => 12, 'md' => 4]),
 
+                    Toggle::make('is_active')
+                        ->label(__('configuration.department.active'))
+                        ->inline(false)
+                        ->default(true)
+                        ->extraFieldWrapperAttributes(['class' => 'dth-config-toggle-wrap'])
+                        ->columnSpan([
+                            'default' => 12,
+                            'md' => fn (?Department $record): int => $record ? 3 : 4,
+                        ]),
+
                     ToggleButtons::make('color')
-                        ->label(__('configuration.department.color'))
-                        ->options(SystemColorPalette::options())
-                        ->colors(SystemColorPalette::toggleColors())
-                        ->hiddenButtonLabels()
+                        ->label(new HtmlString(
+                            self::departmentColorPickerStyles() . e(__('configuration.department.color'))
+                        ))
+                        ->options(
+                            collect(SystemColorPalette::options())
+                                ->mapWithKeys(fn (string $label, string $color): array => [
+                                    $color => new HtmlString(sprintf(
+                                        '<span class="dth-department-color-swatch" title="%s" aria-hidden="true" style="--dth-swatch:%s;background-color:%s;"></span><span class="sr-only">%s</span>',
+                                        e($label),
+                                        e(SystemColorPalette::hex($color)),
+                                        e(SystemColorPalette::hex($color)),
+                                        e($label),
+                                    )),
+                                ])
+                                ->all()
+                        )
                         ->inline()
                         ->extraAttributes(['class' => 'dth-color-swatch-picker'])
                         ->hintIcon('heroicon-m-question-mark-circle', __('configuration.department.color_helper'))
@@ -123,17 +143,87 @@ class DepartmentResource extends Resource
                         ->label(__('configuration.department.description'))
                         ->rows(3)
                         ->maxLength(1000)
-                        ->columnSpan(['default' => 12, 'md' => 9]),
-
-                    Toggle::make('is_active')
-                        ->label(__('configuration.department.active'))
-                        ->inline()
-                        ->default(true)
-                        ->extraFieldWrapperAttributes(['class' => 'dth-config-toggle-wrap'])
-                        ->columnSpan(['default' => 12, 'md' => 3]),
+                        ->columnSpanFull(),
                 ])
                 ->columns(12),
         ]);
+    }
+
+
+    private static function departmentColorPickerStyles(): string
+    {
+        return <<<'HTML'
+<style>
+    .dth-color-swatch-picker.fi-fo-toggle-buttons,
+    .dth-color-swatch-picker .fi-fo-toggle-buttons {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: .62rem !important;
+    }
+
+    .dth-color-swatch-picker > div,
+    .dth-color-swatch-picker .fi-fo-toggle-buttons > div {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .dth-color-swatch-picker label.fi-btn {
+        width: 2rem !important;
+        min-width: 2rem !important;
+        height: 2rem !important;
+        min-height: 2rem !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 9999px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+        transform: none !important;
+        overflow: visible !important;
+    }
+
+    .dth-color-swatch-picker label.fi-btn:hover,
+    .dth-color-swatch-picker label.fi-btn:focus-visible {
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .dth-color-swatch-picker .dth-department-color-swatch {
+        display: block;
+        width: 1.72rem;
+        height: 1.72rem;
+        border-radius: 9999px;
+        border: 2px solid color-mix(in srgb, var(--dth-swatch) 72%, #111827 28%);
+        box-shadow:
+            inset 0 0 0 2px color-mix(in srgb, var(--dth-swatch) 88%, white 12%),
+            0 0 0 1px rgba(255, 255, 255, .08);
+        box-sizing: border-box;
+        transition: box-shadow .14s ease, transform .14s ease, filter .14s ease;
+    }
+
+    .dth-color-swatch-picker label.fi-btn:hover .dth-department-color-swatch,
+    .dth-color-swatch-picker label.fi-btn:focus-visible .dth-department-color-swatch {
+        transform: scale(1.06);
+        filter: saturate(1.06) brightness(1.04);
+        box-shadow:
+            inset 0 0 0 2px color-mix(in srgb, var(--dth-swatch) 88%, white 12%),
+            0 0 0 2px #ffffff,
+            0 0 0 4px var(--dth-swatch),
+            0 0 12px color-mix(in srgb, var(--dth-swatch) 72%, transparent);
+    }
+
+    .dth-color-swatch-picker input:checked + label.fi-btn .dth-department-color-swatch {
+        transform: scale(1.06);
+        box-shadow:
+            inset 0 0 0 2px color-mix(in srgb, var(--dth-swatch) 88%, white 12%),
+            0 0 0 2px #ffffff,
+            0 0 0 4px var(--dth-swatch),
+            0 0 12px color-mix(in srgb, var(--dth-swatch) 72%, transparent);
+    }
+</style>
+HTML;
     }
 
     public static function table(Table $table): Table

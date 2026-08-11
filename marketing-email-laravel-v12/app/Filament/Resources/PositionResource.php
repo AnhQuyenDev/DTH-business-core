@@ -5,7 +5,6 @@ namespace App\Filament\Resources;
 use App\Enums\Crm\DepartmentFunction;
 use App\Enums\Crm\PositionAuthority;
 use App\Enums\Crm\PositionGroup;
-use App\Filament\Pages\OrganizationAccessPage;
 use App\Filament\Resources\PositionResource\Pages;
 use App\Models\Crm\Position;
 use Filament\Forms\Components\Section;
@@ -35,7 +34,7 @@ class PositionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-identification';
 
-    protected static ?int $navigationSort = 22;
+    protected static ?int $navigationSort = 21;
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -45,11 +44,6 @@ class PositionResource extends Resource
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');
-    }
-
-    public static function getNavigationParentItem(): ?string
-    {
-        return OrganizationAccessPage::getNavigationLabel();
     }
 
     public static function getNavigationLabel(): string

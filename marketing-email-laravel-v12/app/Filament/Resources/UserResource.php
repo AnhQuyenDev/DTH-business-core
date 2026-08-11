@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Enums\UserRole;
-use App\Filament\Pages\AccessControlPage;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\Crm\Staff;
 use App\Models\User;
@@ -34,16 +33,11 @@ class UserResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-key';
 
-    protected static ?int $navigationSort = 24;
+    protected static ?int $navigationSort = 30;
 
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');
-    }
-
-    public static function getNavigationParentItem(): ?string
-    {
-        return AccessControlPage::getNavigationLabel();
     }
 
     public static function getNavigationLabel(): string
