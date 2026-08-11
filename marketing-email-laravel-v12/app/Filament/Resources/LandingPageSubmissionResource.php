@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Actions\QuickViewAction;
 use App\Support\Ui\BadgePalette;
 use App\Enums\Marketing\LandingPageContactAction;
 use App\Enums\Marketing\LandingPageSubmissionStatus;
@@ -16,7 +17,6 @@ use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -155,7 +155,7 @@ class LandingPageSubmissionResource extends Resource
                     ]),
             ])
             ->actions([ActionGroup::make([
-                ViewAction::make(),
+                QuickViewAction::make(),
                 Action::make('edit')
                     ->label(__('action.edit'))
                     ->icon('heroicon-o-pencil-square')

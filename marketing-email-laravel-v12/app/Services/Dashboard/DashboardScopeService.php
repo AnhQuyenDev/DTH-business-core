@@ -64,11 +64,11 @@ final class DashboardScopeService
     {
         $query = Lead::query();
 
-        if ($this->isCrossBusiness($user) || $user->isCustomerServiceManager() || $user->isMarketingManager()) {
+        if ($this->isCrossBusiness($user) || $user->isSalesManager() || $user->isMarketingManager()) {
             return $query;
         }
 
-        if ($user->isCustomerServiceStaff() && $user->staff) {
+        if ($user->isSalesStaff() && $user->staff) {
             return $query->where('assigned_staff_id', $user->staff->id);
         }
 

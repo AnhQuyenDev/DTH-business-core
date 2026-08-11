@@ -5,56 +5,39 @@ namespace Tests\Feature\Sales\Concerns;
 use App\Enums\Crm\ContactQualificationStatus;
 use App\Enums\Crm\LeadIntakeStatus;
 use App\Enums\Crm\QualificationResult;
-use App\Enums\Crm\StaffEmploymentStatus;
 use App\Enums\Sales\OpportunityStage;
+use App\Enums\Sales\PaymentNoticeStatus;
+use App\Enums\Sales\PaymentStatus;
 use App\Models\Crm\BusinessContactProfile;
 use App\Models\Crm\Company;
 use App\Models\Crm\ContactQualification;
-use App\Models\Crm\Department;
-use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\Contact;
 use App\Models\Sales\Opportunity;
 use App\Models\Sales\Quotation;
+use App\Models\Sales\QuotationPaymentNotice;
 use App\Models\User;
+use Tests\Support\MakesV1Actors;
 
 trait PaymentConversionSetup
 {
+    use MakesV1Actors;
+
     private function makeAdminUser(): User
     {
-        return User::query()->create([
-            'name' => 'Admin',
-            'email' => 'admin-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
-            'password' => 'secret',
-            'role' => 'admin',
-        ]);
-    }
-
-    private function makeUser(string $role): User
-    {
-        return User::query()->create([
-            'name' => ucfirst(str_replace('_', ' ', $role)),
-            'email' => $role.'-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
-            'password' => 'secret',
-            'role' => $role,
-        ]);
+        return $this->makeV1SystemAdmin('Test System Admin');
     }
 
     private function makeStaff(?User $user = null): Staff
     {
-        $user ??= $this->makeUser('customer_service_staff');
+        if ($user?->staff !== null) {
+            return $user->staff;
+        }
 
-        return Staff::query()->create([
-            'user_id' => $user->id,
-            'employee_code' => 'NV-'.fake()->unique()->numberBetween(1000, 999999),
-            'full_name' => 'Nhân viên '.fake()->lastName(),
-            'department_id' => Department::query()->firstOrCreate(
-                ['code' => 'sales'],
-                ['name' => 'Kinh doanh', 'sort_order' => 4, 'is_active' => true]
-            )->id,
-            'employment_status' => StaffEmploymentStatus::Active,
-            'can_receive_customers' => true,
-        ]);
+        // Business workflow fixtures always use a canonical Sales actor.
+        // System accounts remain infrastructure-only and are never granted
+        // implicit commercial authority by a test helper.
+        return $this->makeV1SalesStaff('Payment Flow Sales Staff')[1];
     }
 
     private function makeCompany(?Staff $accountOwner = null): Company
@@ -98,18 +81,19 @@ trait PaymentConversionSetup
                 'last_name' => 'Văn '.fake()->lastName(),
                 'email' => 'personal-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
                 'phone' => '0912345678',
-            ]
+            ],
         );
 
         return $contact->fresh('personalProfile');
     }
 
     /**
-     * Builds a full convertible flow: Lead → Qualification → Opportunity → Quotation.
+     * Builds a canonical convertible flow through Accepted, but deliberately
+     * stops before customer conversion. Paid is the only conversion boundary.
      *
-     * @return array{admin: User, company: ?Company, staff: Staff, contact: Contact,
-     *               lead: Lead, qualification: ContactQualification, opportunity: Opportunity,
-     *               quotation: Quotation}
+     * @return array{admin:User,company:?Company,staff:Staff,contact:Contact,
+     *               lead:\App\Models\Crm\Lead,qualification:ContactQualification,
+     *               opportunity:Opportunity,quotation:Quotation}
      */
     private function buildFlow(
         bool $withCompany = true,
@@ -124,7 +108,7 @@ trait PaymentConversionSetup
             : $this->makePersonalContact();
         $staff = $opportunityOwner ?? $this->makeStaff();
 
-        $lead = Lead::query()->create([
+        $lead = \App\Models\Crm\Lead::query()->create([
             'lead_code' => 'LEAD-'.now()->format('Y').'-'.fake()->unique()->numberBetween(100000, 999999),
             'contact_id' => $contact->id,
             'company_id' => $company?->id,
@@ -145,6 +129,11 @@ trait PaymentConversionSetup
             'qualification_result' => QualificationResult::ConfirmedNeed->value,
             'service_interest' => 'VPS doanh nghiệp',
             'estimated_value' => 30_000_000,
+            'budget_status' => 'confirmed_fit',
+            'budget_amount' => 30_000_000,
+            'purchase_timeline' => 'within_30_days',
+            'decision_role' => 'decision_maker',
+            'qualification_note' => 'Đủ nhu cầu, ngân sách, thời gian và vai trò quyết định.',
             'priority' => 'normal',
             'score' => 80,
             'qualified_at' => now(),
@@ -168,6 +157,7 @@ trait PaymentConversionSetup
         $quotation = Quotation::factory()->forOpportunity($opportunity)->create([
             'status' => 'accepted',
             'accepted_at' => now(),
+            'payment_status' => PaymentStatus::Unpaid->value,
             'created_by' => $admin->id,
             'customer_snapshot' => [
                 'id' => null,
@@ -182,15 +172,29 @@ trait PaymentConversionSetup
             ],
         ]);
 
-        return [
-            'admin' => $admin,
-            'company' => $company,
-            'staff' => $staff,
-            'contact' => $contact,
-            'lead' => $lead,
-            'qualification' => $qualification,
-            'opportunity' => $opportunity,
-            'quotation' => $quotation,
-        ];
+        return compact(
+            'admin', 'company', 'staff', 'contact', 'lead',
+            'qualification', 'opportunity', 'quotation',
+        );
+    }
+
+    /**
+     * Put an Accepted quotation into the exact state produced by the public
+     * payment-notice step. Paid tests should always call this first.
+     */
+    private function preparePendingPaymentNotice(Quotation $quotation): QuotationPaymentNotice
+    {
+        $quotation->update([
+            'payment_status' => PaymentStatus::PendingVerification->value,
+        ]);
+
+        return $quotation->paymentNotices()->create([
+            'status' => PaymentNoticeStatus::Pending->value,
+            'payer_name' => 'Nguyễn Minh Khoa',
+            'payer_email' => $quotation->party_email,
+            'declared_amount' => $quotation->grand_total,
+            'transfer_reference' => 'TEST-'.fake()->unique()->numerify('######'),
+            'submitted_at' => now(),
+        ]);
     }
 }

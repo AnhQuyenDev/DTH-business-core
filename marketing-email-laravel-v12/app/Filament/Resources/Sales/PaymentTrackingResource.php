@@ -44,13 +44,7 @@ class PaymentTrackingResource extends Resource
     {
         $user = auth()->user();
 
-        return $user !== null
-            && (
-                $user->isAdmin()
-                || $user->canReadAcrossBusiness()
-                || $user->isSalesManager()
-                || $user->isFinanceStaff()
-            );
+        return $user !== null && $user->can('sales.view-payments');
     }
 
     public static function table(Table $table): Table

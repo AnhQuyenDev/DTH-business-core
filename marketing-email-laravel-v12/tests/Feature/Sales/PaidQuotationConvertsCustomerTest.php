@@ -21,13 +21,14 @@ class PaidQuotationConvertsCustomerTest extends TestCase
         Mail::fake();
 
         $flow = $this->buildFlow();
-        $admin = $flow['admin'];
+        $finance = $this->makeV1Finance()[0];
+        $this->preparePendingPaymentNotice($flow['quotation']);
 
         $service = app(QuotationPaymentService::class);
         $service->updateStatus(
             quotation: $flow['quotation'],
             newStatus: PaymentStatus::Paid,
-            user: $admin,
+            user: $finance,
             note: 'Đã đối soát giao dịch ngân hàng ngày 06/08/2026.',
         );
 
@@ -55,7 +56,7 @@ class PaidQuotationConvertsCustomerTest extends TestCase
 
         $paid = $flow['quotation']->fresh();
         $this->assertNotNull($paid->paid_at);
-        $this->assertSame($admin->id, $paid->payment_verified_by_user_id);
+        $this->assertSame($finance->id, $paid->payment_verified_by_user_id);
         $this->assertSame('Đã đối soát giao dịch ngân hàng ngày 06/08/2026.', $paid->payment_note);
 
         $this->assertDatabaseHas('sales_opportunities', [
@@ -81,11 +82,13 @@ class PaidQuotationConvertsCustomerTest extends TestCase
         Mail::fake();
 
         $flow = $this->buildFlow(withCompany: false);
+        $finance = $this->makeV1Finance()[0];
+        $this->preparePendingPaymentNotice($flow['quotation']);
 
         app(QuotationPaymentService::class)->updateStatus(
             quotation: $flow['quotation'],
             newStatus: PaymentStatus::Paid,
-            user: $flow['admin'],
+            user: $finance,
             note: 'Đã xác minh chuyển khoản.',
         );
 
@@ -115,11 +118,13 @@ class PaidQuotationConvertsCustomerTest extends TestCase
             accountOwner: $accountOwner,
             opportunityOwner: $opportunityOwner,
         );
+        $finance = $this->makeV1Finance()[0];
+        $this->preparePendingPaymentNotice($flow['quotation']);
 
         app(QuotationPaymentService::class)->updateStatus(
             quotation: $flow['quotation'],
             newStatus: PaymentStatus::Paid,
-            user: $flow['admin'],
+            user: $finance,
             note: 'Xác minh.',
         );
 
@@ -153,11 +158,13 @@ class PaidQuotationConvertsCustomerTest extends TestCase
             accountOwner: null,
             opportunityOwner: $opportunityOwner,
         );
+        $finance = $this->makeV1Finance()[0];
+        $this->preparePendingPaymentNotice($flow['quotation']);
 
         app(QuotationPaymentService::class)->updateStatus(
             quotation: $flow['quotation'],
             newStatus: PaymentStatus::Paid,
-            user: $flow['admin'],
+            user: $finance,
             note: 'Xác minh.',
         );
 
@@ -179,11 +186,13 @@ class PaidQuotationConvertsCustomerTest extends TestCase
         Mail::fake();
 
         $flow = $this->buildFlow();
+        $finance = $this->makeV1Finance()[0];
+        $this->preparePendingPaymentNotice($flow['quotation']);
 
         app(QuotationPaymentService::class)->updateStatus(
             quotation: $flow['quotation'],
             newStatus: PaymentStatus::Paid,
-            user: $flow['admin'],
+            user: $finance,
             note: 'Xác minh.',
         );
 

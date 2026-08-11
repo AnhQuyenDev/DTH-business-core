@@ -7,11 +7,13 @@ use App\Enums\Crm\LeadIntakeStatus;
 use App\Models\Crm\ContactQualification;
 use App\Models\Crm\Lead;
 use App\Models\Marketing\LandingPageSubmission;
+use App\Services\Security\BusinessNotificationService;
 
 final class LeadCreationService
 {
     public function __construct(
         private readonly LeadCodeGenerator $codeGenerator,
+        private readonly BusinessNotificationService $notifications,
     ) {}
 
     public function createFromSubmission(
@@ -112,6 +114,12 @@ final class LeadCreationService
             'priority' => 'normal',
             'service_interest' => $serviceInterest,
         ]);
+
+        $this->notifications->notifyPermission(
+            'crm.assign-lead',
+            __('v1.notification.lead_created_title'),
+            __('v1.notification.lead_created_body', ['code' => $lead->lead_code, 'title' => $lead->title]),
+        );
 
         return $lead->fresh([
             'submission',

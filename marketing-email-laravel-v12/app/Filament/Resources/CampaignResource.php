@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Actions\QuickViewAction;
 use App\Filament\Resources\CampaignResource\Pages;
 use App\Models\Marketing\Campaign;
 use App\Models\Marketing\SendingAccount;
@@ -19,7 +20,6 @@ use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -159,7 +159,7 @@ class CampaignResource extends Resource
             TextColumn::make('sent_at')->label(__('field.sent_at'))->dateTime('d/m/Y H:i')->toggleable(),
         ])
             ->actions([ActionGroup::make([
-                ViewAction::make(),
+                QuickViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton()])

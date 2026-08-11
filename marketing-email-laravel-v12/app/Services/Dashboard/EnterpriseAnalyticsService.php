@@ -2,10 +2,12 @@
 
 namespace App\Services\Dashboard;
 
+use App\Enums\Crm\DepartmentFunction;
 use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
 use App\Models\Finance\Payment;
 use App\Models\Finance\PaymentRevenueLine;
+use App\Models\Crm\Staff;
 use App\Models\Marketing\Campaign;
 use App\Models\Marketing\LandingPageSubmission;
 use App\Models\Marketing\LandingPageView;
@@ -277,9 +279,13 @@ final class EnterpriseAnalyticsService
             return \App\Models\Crm\CustomerInteraction::query()->whereBetween('interaction_at', [$start, $end])->count();
         }
 
-        if ($user->isCustomerServiceManager() && $user->staff?->department_id) {
+        if ($user->isCustomerServiceManager()) {
+            $staffIds = Staff::query()
+                ->withBusinessFunction(DepartmentFunction::CustomerService)
+                ->pluck('id');
+
             return \App\Models\Crm\CustomerInteraction::query()
-                ->whereHas('staff', fn (Builder $q): Builder => $q->where('department_id', $user->staff->department_id))
+                ->whereIn('staff_id', $staffIds)
                 ->whereBetween('interaction_at', [$start, $end])
                 ->count();
         }

@@ -45,7 +45,7 @@ class CompanyMatchCandidateResource extends Resource
     {
         return config('business_flow.v2_enabled')
             && (auth()->user()?->isAdmin()
-                || auth()->user()?->isCustomerServiceManager());
+                || auth()->user()?->isSalesManager());
     }
 
     public static function canViewAny(): bool
@@ -114,6 +114,7 @@ class CompanyMatchCandidateResource extends Resource
                     ->requiresConfirmation()
                     ->visible(
                         fn (CompanyMatchCandidate $record): bool => $record->status === 'pending'
+                            && (auth()->user()?->isSalesManager() ?? false)
                     )
                     ->action(function (
                         CompanyMatchCandidate $record
@@ -130,6 +131,7 @@ class CompanyMatchCandidateResource extends Resource
                     ->requiresConfirmation()
                     ->visible(
                         fn (CompanyMatchCandidate $record): bool => $record->status === 'pending'
+                            && (auth()->user()?->isSalesManager() ?? false)
                     )
                     ->action(function (
                         CompanyMatchCandidate $record

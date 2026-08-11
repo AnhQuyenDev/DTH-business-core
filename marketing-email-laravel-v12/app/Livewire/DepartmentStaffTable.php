@@ -22,7 +22,6 @@ use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -51,6 +50,7 @@ class DepartmentStaffTable extends Component implements HasForms, HasTable
                 TextColumn::make('employment_status')
                     ->label(__('field.employment_status'))
                     ->badge()
+                    ->formatStateUsing(fn (StaffEmploymentStatus $state): string => $state->label())
                     ->color(fn (StaffEmploymentStatus $state): string => $state->color()),
                 IconColumn::make('can_receive_customers')->label(__('field.can_receive_customers'))->boolean(),
                 TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->sortable(),
@@ -64,16 +64,17 @@ class DepartmentStaffTable extends Component implements HasForms, HasTable
                         'staff_id' => $record->id,
                     ]))
                     ->visible(fn (Staff $record): bool => $record->user_id === null),
-                Action::make('manage')
-                    ->label(__('action.manage_staff'))
-                    ->icon('heroicon-o-identification')
+                Action::make('edit')
+                    ->label(__('action.edit'))
+                    ->icon('heroicon-o-pencil-square')
                     ->url(fn (Model $record): string => StaffResource::getUrl('edit', ['record' => $record])),
-                EditAction::make(),
                 DeleteAction::make(),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton()])
             ->headerActions([
                 CreateAction::make()
                     ->label(__('action.create_staff'))
+                    ->modalHeading(__('action.create_staff'))
+                    ->modalSubmitActionLabel(__('action.create'))
                     ->icon('heroicon-o-plus')
                     ->form($this->staffForm())
                     ->mutateFormDataUsing(fn (array $data): array => [

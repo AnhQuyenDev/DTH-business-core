@@ -9,6 +9,7 @@ use App\Enums\Sales\TaxMode;
 use App\Filament\Resources\Sales\PriceBookResource\Pages;
 use App\Filament\Resources\Sales\PriceBookResource\RelationManagers\PriceBookAccessRuleRelationManager;
 use App\Models\Sales\PriceBook;
+use App\Models\Sales\PriceBookItem;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -20,6 +21,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -147,13 +149,40 @@ class PriceBookResource extends Resource
                         ->relationship('items')
                         ->label('')
                         ->schema([
+                            Select::make('catalog_type')
+                                ->label(__('v1.catalog.sellable_type'))
+                                ->options([
+                                    'product' => __('v1.catalog.product'),
+                                    'package' => __('resource.service_package.singular'),
+                                ])
+                                ->default('package')
+                                ->native(false)
+                                ->live()
+                                ->dehydrated(false)
+                                ->afterStateHydrated(function (Select $component, ?PriceBookItem $record): void {
+                                    $component->state($record?->service_product_id ? 'product' : 'package');
+                                })
+                                ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                    if ($state === 'product') $set('service_package_id', null);
+                                    if ($state === 'package') $set('service_product_id', null);
+                                })
+                                ->required()
+                                ->columnSpan(['default' => 12, 'lg' => 2]),
+                            Select::make('service_product_id')
+                                ->label(__('v1.catalog.product'))
+                                ->relationship('serviceProduct', 'name')
+                                ->searchable()->preload()
+                                ->visible(fn (Get $get): bool => $get('catalog_type') === 'product')
+                                ->required(fn (Get $get): bool => $get('catalog_type') === 'product')
+                                ->dehydrated(fn (Get $get): bool => $get('catalog_type') === 'product')
+                                ->columnSpan(['default' => 12, 'lg' => 4]),
                             Select::make('service_package_id')
                                 ->label(__('resource.service_package.singular'))
                                 ->relationship('servicePackage', 'name')
-                                ->searchable()
-                                ->preload()
-                                ->required()
-                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                ->searchable()->preload()
+                                ->visible(fn (Get $get): bool => $get('catalog_type') !== 'product')
+                                ->required(fn (Get $get): bool => $get('catalog_type') !== 'product')
+                                ->dehydrated(fn (Get $get): bool => $get('catalog_type') !== 'product')
                                 ->columnSpan(['default' => 12, 'lg' => 4]),
                             TextInput::make('unit_price')
                                 ->label(__('field.unit_price'))

@@ -8,8 +8,8 @@ use Illuminate\Validation\ValidationException;
 class QuotationStateMachine
 {
     private static array $transitions = [
-        // Every commercial quotation follows maker-checker approval.
-        'draft' => ['pending_approval', 'cancelled'],
+        // Draft quotations may be auto-approved by policy or sent through maker-checker approval.
+        'draft' => ['pending_approval', 'approved', 'cancelled'],
         'pending_approval' => ['approved', 'draft', 'cancelled'],
         'approved' => ['sent', 'cancelled'],
         'sent' => ['viewed', 'accepted', 'rejected', 'revision_requested', 'expired', 'cancelled'],

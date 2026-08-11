@@ -223,6 +223,24 @@ class LandingPageSubmissionService
                         $validatedData,
                     );
 
+                    if (
+                        $landingPage->auto_create_tags
+                        || $formTemplate->auto_create_tags
+                        || $landingPage->auto_create_lists
+                        || $formTemplate->auto_create_lists
+                    ) {
+                        $this->applyTagsAndLists(
+                            $contact,
+                            $landingPage,
+                            $formTemplate,
+                            $validatedData,
+                        );
+                    }
+
+                    if ($landingPage->auto_create_segment) {
+                        $this->autoCreateSegmentIfNeeded($landingPage);
+                    }
+
                     $taxCodeKey = $this->findFieldKeyByMapping(
                         $formTemplate,
                         $resolvedType,

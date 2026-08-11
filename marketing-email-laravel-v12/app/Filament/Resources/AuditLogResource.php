@@ -45,7 +45,7 @@ class AuditLogResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('marketing.view-audit') ?? false;
+        return auth()->user()?->can('system.view-audit') ?? false;
     }
 
     public static function getEloquentQuery(): Builder

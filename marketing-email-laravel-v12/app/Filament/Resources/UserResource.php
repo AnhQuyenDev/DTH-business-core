@@ -53,17 +53,23 @@ class UserResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('system.manage-users') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('system.manage-users') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        $actor = auth()->user();
+
+        if (! ($actor?->can('system.manage-users') ?? false)) {
+            return false;
+        }
+
+        return ! ($record instanceof User && $record->isSuperAdmin() && ! $actor->isSuperAdmin());
     }
 
     public static function canDelete(Model $record): bool
@@ -174,11 +180,28 @@ class UserResource extends Resource
 
                     Select::make('role')
                         ->label(__('field.system_role'))
-                        ->options(UserRole::options())
+                        ->options(function (): array {
+                            $options = UserRole::options();
+                            if (! (auth()->user()?->isSuperAdmin() ?? false)) {
+                                unset($options[UserRole::SuperAdmin->value]);
+                            }
+
+                            return $options;
+                        })
                         ->required()
                         ->searchable()
                         ->live()
                         ->helperText(__('helper.system_role_separation')),
+
+                    Select::make('roles')
+                        ->label(__('v1.rbac.additional_roles'))
+                        ->relationship('roles', 'label')
+                        ->getOptionLabelFromRecordUsing(fn ($record): string => $record->label ?: $record->name)
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->helperText(__('v1.rbac.additional_roles_helper'))
+                        ->visible(fn (): bool => auth()->user()?->can('system.manage-rbac') ?? false),
 
                     Toggle::make('is_active')
                         ->label(__('field.account_active'))

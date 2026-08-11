@@ -2,31 +2,30 @@
 
 namespace Tests\Feature\Sales;
 
-use App\Enums\Crm\StaffEmploymentStatus;
 use App\Enums\Sales\DocumentType;
 use App\Enums\Sales\PackageStatus;
 use App\Enums\Sales\PriceBookStatus;
 use App\Enums\Sales\ServiceStatus;
-use App\Models\Crm\Department;
-use App\Models\Crm\Staff;
 use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
+use App\Models\Sales\PriceBookAccessRule;
 use App\Models\Sales\PriceBookItem;
 use App\Models\Sales\Quotation;
 use App\Models\Sales\QuotationDocument;
 use App\Models\Sales\Service;
 use App\Models\Sales\ServicePackage;
-use App\Models\User;
 use App\Services\Sales\QuotationCreationService;
 use App\Services\Sales\QuotationPdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\MakesV1Actors;
 use Tests\TestCase;
 
 class QuotationPdfWithoutCustomerTest extends TestCase
 {
+    use MakesV1Actors;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -63,24 +62,7 @@ class QuotationPdfWithoutCustomerTest extends TestCase
 
     private function makeOpportunityQuotation(): Quotation
     {
-        $admin = User::query()->create([
-            'name' => 'Admin',
-            'email' => 'admin-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
-            'password' => 'secret',
-            'role' => 'admin',
-        ]);
-
-        $staff = Staff::query()->create([
-            'user_id' => $admin->id,
-            'employee_code' => 'NV'.fake()->unique()->numberBetween(1000, 999999),
-            'full_name' => 'Staff',
-            'department_id' => Department::query()->firstOrCreate(
-                ['code' => 'sales'],
-                ['name' => 'Kinh doanh', 'sort_order' => 4, 'is_active' => true]
-            )->id,
-            'employment_status' => StaffEmploymentStatus::Active,
-            'can_receive_customers' => true,
-        ]);
+        [$salesUser, $staff] = $this->makeV1SalesStaff('Nhân viên kinh doanh PDF');
 
         $service = Service::query()->create([
             'service_code' => 'SV-WEB',
@@ -117,6 +99,14 @@ class QuotationPdfWithoutCustomerTest extends TestCase
             'sort_order' => 1,
         ]);
 
+        PriceBookAccessRule::query()->create([
+            'price_book_id' => $priceBook->id,
+            'access_type' => 'department',
+            'department' => $staff->department->code,
+            'can_view' => true,
+            'can_create_quotation' => true,
+        ]);
+
         $opportunity = Opportunity::factory()
             ->qualified()
             ->assignedTo($staff)
@@ -124,7 +114,7 @@ class QuotationPdfWithoutCustomerTest extends TestCase
 
         return app(QuotationCreationService::class)->createForOpportunity(
             $opportunity,
-            $admin,
+            $salesUser,
             $priceBook,
             [[
                 'price_book_item_id' => $item->id,

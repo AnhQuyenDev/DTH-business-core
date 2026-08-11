@@ -20,12 +20,14 @@ class PaymentConversionIdempotencyTest extends TestCase
         Mail::fake();
 
         $flow = $this->buildFlow();
+        $finance = $this->makeV1Finance()[0];
+        $this->preparePendingPaymentNotice($flow['quotation']);
         $service = app(QuotationPaymentService::class);
 
         $service->updateStatus(
             quotation: $flow['quotation'],
             newStatus: PaymentStatus::Paid,
-            user: $flow['admin'],
+            user: $finance,
             note: 'Lần 1',
         );
 
@@ -37,7 +39,7 @@ class PaymentConversionIdempotencyTest extends TestCase
         $service->updateStatus(
             quotation: $flow['quotation']->fresh(),
             newStatus: PaymentStatus::Paid,
-            user: $flow['admin'],
+            user: $finance,
             note: 'Retry',
         );
 

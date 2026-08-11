@@ -29,10 +29,12 @@ use App\Services\Sales\QuotationMailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Tests\Support\MakesV1Actors;
 use Tests\TestCase;
 
 class QuotationMailWithoutCustomerTest extends TestCase
 {
+    use MakesV1Actors;
     use RefreshDatabase;
 
     private User $manager;
@@ -53,38 +55,11 @@ class QuotationMailWithoutCustomerTest extends TestCase
     {
         parent::setUp();
 
-        $salesDepartment = Department::query()->firstOrCreate(
-            ['code' => 'sales'],
-            [
-                'name' => 'Kinh doanh',
-                'function_key' => 'sales',
-                'sort_order' => 4,
-                'is_active' => true,
-            ]
-        );
+        config()->set('v1_workflow.quotation_approval.mode', 'always');
 
-        $this->manager = User::query()->create([
-            'name' => 'Sales Manager',
-            'email' => 'sales-manager-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
-            'password' => 'secret',
-            'role' => 'sales_manager',
-        ]);
-
-        $this->staffUser = User::query()->create([
-            'name' => 'Sales Staff',
-            'email' => 'sales-staff-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
-            'password' => 'secret',
-            'role' => 'sales_staff',
-        ]);
-
-        $this->staff = Staff::query()->create([
-            'user_id' => $this->staffUser->id,
-            'employee_code' => 'NV'.fake()->unique()->numberBetween(1000, 999999),
-            'full_name' => 'Sales Staff',
-            'department_id' => $salesDepartment->id,
-            'employment_status' => StaffEmploymentStatus::Active,
-            'can_receive_customers' => true,
-        ]);
+        [$this->manager] = $this->makeV1SalesManager('Mail Sales Manager');
+        [$this->staffUser, $this->staff] = $this->makeV1SalesStaff('Mail Sales Staff');
+        $salesDepartment = $this->staff->department;
 
         SendingAccount::query()->create([
             'name' => 'Sales SMTP',
@@ -143,7 +118,7 @@ class QuotationMailWithoutCustomerTest extends TestCase
         PriceBookAccessRule::query()->create([
             'price_book_id' => $this->priceBook->id,
             'access_type' => 'department',
-            'department' => 'sales',
+            'department' => $this->staff->department->code,
             'can_view' => true,
             'can_create_quotation' => true,
         ]);

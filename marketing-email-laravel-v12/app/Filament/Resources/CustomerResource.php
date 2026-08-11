@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Actions\QuickViewAction;
 use App\Enums\Crm\CustomerAssignmentReason;
 use App\Enums\Crm\CustomerConsentStatus;
 use App\Enums\Crm\CustomerLifecycleStage;
@@ -208,7 +209,7 @@ class CustomerResource extends Resource
                 SelectFilter::make('consent_status')->options(CustomerConsentStatus::options()),
             ])
             ->actions([ActionGroup::make([
-                Tables\Actions\ViewAction::make(),
+                QuickViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Action::make('assign_owner')
                     ->label(__('action.assign_staff'))

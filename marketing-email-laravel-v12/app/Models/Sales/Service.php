@@ -48,6 +48,11 @@ class Service extends Model
         ];
     }
 
+    public function products(): HasMany
+    {
+        return $this->hasMany(ServiceProduct::class);
+    }
+
     public function packages(): HasMany
     {
         return $this->hasMany(ServicePackage::class);

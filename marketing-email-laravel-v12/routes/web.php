@@ -11,6 +11,7 @@ use App\Http\Controllers\Marketing\Public\LandingPageController;
 use App\Http\Controllers\Marketing\Public\UnsubscribeController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Sales\QuotationPublicController;
+use App\Http\Controllers\Support\SupportInboundEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PageController::class, 'welcome']);
@@ -60,6 +61,11 @@ Route::prefix('q')->name('sales.quotation.public.')->group(function (): void {
     Route::post('/{quotationCode}/{token}/verify-otp', [QuotationPublicController::class, 'verifyOtp'])->name('verify-otp');
     Route::post('/{quotationCode}/{token}/notify-payment', [QuotationPublicController::class, 'notifyPayment'])->name('notify-payment');
 });
+
+// ─── Optional Support Inbound Email Adapter ─────────────────────────────────
+// Provider-agnostic webhook. Enable by setting V1_SUPPORT_INBOUND_WEBHOOK_SECRET.
+Route::post('/webhooks/support/inbound-email', SupportInboundEmailController::class)
+    ->name('support.inbound-email');
 
 // ─── Language Switch ───────────────────────────────────────────────────────
 Route::match(['get', 'post'], '/language/switch', [PageController::class, 'languageSwitch'])->name('language.switch');

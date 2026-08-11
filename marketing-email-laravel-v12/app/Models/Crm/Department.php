@@ -74,6 +74,19 @@ class Department extends Model
             'success' => __('color.success'),
             'warning' => __('color.warning'),
             'danger' => __('color.danger'),
+            'orange' => __('color.orange'),
+            'lime' => __('color.lime'),
+            'emerald' => __('color.emerald'),
+            'teal' => __('color.teal'),
+            'cyan' => __('color.cyan'),
+            'sky' => __('color.sky'),
+            'blue' => __('color.blue'),
+            'indigo' => __('color.indigo'),
+            'violet' => __('color.violet'),
+            'purple' => __('color.purple'),
+            'fuchsia' => __('color.fuchsia'),
+            'pink' => __('color.pink'),
+            'rose' => __('color.rose'),
         ];
     }
 

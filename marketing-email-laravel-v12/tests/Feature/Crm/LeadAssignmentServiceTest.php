@@ -16,28 +16,22 @@ use App\Services\Crm\CompanyOwnershipService;
 use App\Services\Crm\LeadAssignmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\MakesV1Actors;
 use Tests\TestCase;
 
 class LeadAssignmentServiceTest extends TestCase
 {
+    use MakesV1Actors;
     use RefreshDatabase;
 
     private int $leadSequence = 0;
 
     private function makeStaff(string $code): Staff
     {
-        $user = User::factory()->create([
-            'role' => 'customer_service_staff',
-        ]);
+        [, $staff] = $this->makeV1SalesStaff('Staff '.$code);
+        $staff->update(['employee_code' => $code]);
 
-        return Staff::query()->create([
-            'user_id' => $user->id,
-            'employee_code' => $code,
-            'full_name' => 'Staff '.$code,
-            'employment_status' => StaffEmploymentStatus::Active->value,
-            'can_receive_customers' => true,
-            'distribution_weight' => 1,
-        ]);
+        return $staff->fresh();
     }
 
     private function makeCompany(): Company
@@ -81,7 +75,7 @@ class LeadAssignmentServiceTest extends TestCase
 
     public function test_first_assignment_creates_company_owner(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $staff = $this->makeStaff('CS001');
         $company = $this->makeCompany();
         $lead = $this->makeLead($company);
@@ -118,7 +112,7 @@ class LeadAssignmentServiceTest extends TestCase
 
     public function test_company_lead_cannot_be_assigned_to_other_staff_without_force(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $owner = $this->makeStaff('CS001');
         $other = $this->makeStaff('CS002');
         $company = $this->makeCompany();
@@ -143,7 +137,7 @@ class LeadAssignmentServiceTest extends TestCase
 
     public function test_force_reassignment_does_not_change_company_owner_by_default(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $owner = $this->makeStaff('CS001');
         $other = $this->makeStaff('CS002');
         $company = $this->makeCompany();
@@ -177,7 +171,7 @@ class LeadAssignmentServiceTest extends TestCase
 
     public function test_force_reassignment_can_transfer_company_owner(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $owner = $this->makeStaff('CS001');
         $other = $this->makeStaff('CS002');
         $company = $this->makeCompany();
@@ -218,7 +212,7 @@ class LeadAssignmentServiceTest extends TestCase
 
     public function test_force_reassignment_requires_reason(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $first = $this->makeStaff('CS001');
         $second = $this->makeStaff('CS002');
         $lead = $this->makeLead();

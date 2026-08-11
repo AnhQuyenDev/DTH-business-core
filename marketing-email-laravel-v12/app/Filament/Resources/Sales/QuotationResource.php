@@ -392,22 +392,26 @@ class QuotationResource extends Resource
                 Repeater::make('items')
                     ->label(__('field.quotation_items'))
                     ->schema([
-                        Hidden::make('price_book_item_id'),
+                        Select::make('price_book_item_id')
+                            ->label(__('v1.catalog.product_or_package'))
+                            ->options(fn (Get $get): array => static::priceBookItemOptions((int) ($get('../../price_book_id') ?? 0)))
+                            ->searchable()->preload()->live()->required()
+                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                            ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                if (! $state) return;
+                                foreach (static::priceBookItemFormState((int) $state) as $key => $value) $set($key, $value);
+                            }),
                         Grid::make(4)->schema([
                             TextInput::make('service_name_snapshot')
                                 ->label(__('field.service_name'))
-                                ->required()
-                                ->disabled()
-                                ->dehydrated(),
+                                ->required()->disabled()->dehydrated(),
                             TextInput::make('package_name_snapshot')
-                                ->label(__('field.package_name'))
-                                ->disabled()
-                                ->dehydrated(),
+                                ->label(__('v1.catalog.item_name'))
+                                ->disabled()->dehydrated(),
                             TextInput::make('unit')
                                 ->label(__('field.unit'))
                                 ->default(__('field.package_unit.month'))
-                                ->disabled()
-                                ->dehydrated(),
+                                ->disabled()->dehydrated(),
                             TextInput::make('quantity')->label(__('field.quantity'))->numeric()->default(1)->required(),
                         ]),
                         Grid::make(4)->schema([
@@ -440,21 +444,13 @@ class QuotationResource extends Resource
                         Textarea::make('description_snapshot')->label(__('field.description'))->rows(2)->columnSpanFull(),
                     ])
                     ->columns(1)
-                    ->defaultItems(
-                        fn (): int => config(
-                            'business_flow.opportunity_quotation_enabled'
-                        ) ? 0 : 1
-                    )
+                    ->defaultItems(0)
+                    ->minItems(1)
                     ->addActionLabel(__('action.add_item'))
                     ->deleteAction(fn (\Filament\Forms\Components\Actions\Action $action) => $action->label(__('action.delete_item')))
-                    ->addable(
-                        fn (): bool =>
-                            ! config('business_flow.opportunity_quotation_enabled')
-                    )
-                    ->deletable(
-                        fn (): bool =>
-                            ! config('business_flow.opportunity_quotation_enabled')
-                    )
+                    ->addable()
+                    ->deletable()
+                    ->reorderable()
             ]),
         ]);
     }
@@ -679,70 +675,74 @@ class QuotationResource extends Resource
         int $priceBookId,
         ?int $opportunityId = null,
     ): array {
-        if ($priceBookId <= 0) {
-            return [];
-        }
+        if ($priceBookId <= 0) return [];
 
         $priceBook = PriceBook::find($priceBookId);
-        if (! $priceBook) {
-            return [];
-        }
+        if (! $priceBook) return [];
 
-        $items = app(PriceBookResolverService::class)
-            ->getItemsForPriceBook($priceBook);
-
+        $items = app(PriceBookResolverService::class)->getItemsForPriceBook($priceBook);
         if ($items->isEmpty()) {
-            Notification::make()
-                ->danger()
-                ->title(__('notification.price_book_no_items'))
-                ->send();
-
+            Notification::make()->danger()->title(__('notification.price_book_no_items'))->send();
             return [];
         }
 
+        // The Opportunity service interest is a recommendation only. It may
+        // preselect a matching Product/Package, but it never restricts what
+        // Sales can add after consulting the customer.
         if ($opportunityId !== null) {
-            $opportunity = Opportunity::query()->find($opportunityId);
-
-            if (
-                $opportunity !== null
-                && filled($opportunity->service_interest)
-            ) {
-                $serviceInterest = (string) $opportunity->service_interest;
-
-                $items = $items
-                    ->filter(
-                        fn (PriceBookItem $pbi): bool =>
-                            $pbi->servicePackage?->package_code
-                                === $serviceInterest
-                    )
-                    ->values();
-
-                if ($items->isEmpty()) {
-                    Notification::make()
-                        ->danger()
-                        ->title(__('notification.quotation_no_matching_packages'))
-                        ->body(
-                            __('helper.price_book_package_hint', ['package' => $serviceInterest])
-                        )
-                        ->send();
-
-                    return [];
-                }
+            $interest = trim((string) Opportunity::query()->whereKey($opportunityId)->value('service_interest'));
+            if ($interest !== '') {
+                $suggested = $items->first(fn (PriceBookItem $item): bool =>
+                    $item->servicePackage?->package_code === $interest
+                    || $item->serviceProduct?->product_code === $interest
+                );
+                return $suggested ? [static::priceBookItemFormState($suggested->id)] : [];
             }
         }
 
-        return $items->map(fn (PriceBookItem $pbi): array => [
+        return [];
+    }
+
+    /** @return array<int,string> */
+    public static function priceBookItemOptions(int $priceBookId): array
+    {
+        if ($priceBookId <= 0) return [];
+        $priceBook = PriceBook::query()->find($priceBookId);
+        if (! $priceBook) return [];
+
+        return app(PriceBookResolverService::class)->getItemsForPriceBook($priceBook)
+            ->mapWithKeys(function (PriceBookItem $item): array {
+                $type = $item->serviceProduct ? __('v1.catalog.product') : __('resource.service_package.singular');
+                $name = $item->serviceProduct?->name ?: $item->servicePackage?->name ?: __('common.not_available');
+                $service = $item->serviceProduct?->service?->name ?: $item->servicePackage?->service?->name;
+                return [$item->id => sprintf('%s · %s%s', $type, $name, $service ? ' — '.$service : '')];
+            })->all();
+    }
+
+    /** @return array<string,mixed> */
+    public static function priceBookItemFormState(int $priceBookItemId): array
+    {
+        $pbi = PriceBookItem::query()->with(['servicePackage.service','serviceProduct.service'])->find($priceBookItemId);
+        if (! $pbi) return [];
+
+        $sellable = $pbi->serviceProduct ?: $pbi->servicePackage;
+        $service = $pbi->serviceProduct?->service ?: $pbi->servicePackage?->service;
+
+        return [
             'price_book_item_id' => $pbi->id,
-            'service_name_snapshot' => $pbi->servicePackage?->service?->name ?? '',
-            'package_name_snapshot' => $pbi->servicePackage?->name ?? '',
-            'unit' => $pbi->servicePackage?->unit ?? __('field.package_unit.month'),
-            'quantity' => $pbi->servicePackage?->default_quantity ?? 1,
+            'service_name_snapshot' => $service?->name ?? '',
+            // Kept for backward-compatible quote templates; individual
+            // products use this display field as their commercial item name.
+            'package_name_snapshot' => $sellable?->name ?? '',
+            'product_name_snapshot' => $pbi->serviceProduct?->name,
+            'unit' => $sellable?->unit ?? __('field.package_unit.month'),
+            'quantity' => $sellable?->default_quantity ?? 1,
             'unit_price' => (float) $pbi->unit_price,
             'discount_type' => $pbi->default_discount_type?->value,
             'discount_value' => (float) ($pbi->default_discount_value ?? 0),
-            'vat_rate' => (float) ($pbi->vat_rate ?? 10),
+            'vat_rate' => (float) ($pbi->vat_rate ?? 0),
             'description_snapshot' => $pbi->description,
-        ])->all();
+        ];
     }
 
     public static function getEloquentQuery(): Builder

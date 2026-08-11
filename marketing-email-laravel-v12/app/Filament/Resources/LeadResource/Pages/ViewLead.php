@@ -358,9 +358,7 @@ class ViewLead extends ViewRecord
 
                     if (
                         $user === null
-                        || ! $user->hasRole(
-                            UserRole::CustomerServiceManager
-                        )
+                        || ! $user->isSalesStaff()
                     ) {
                         return false;
                     }
@@ -450,22 +448,24 @@ class ViewLead extends ViewRecord
 
                     Select::make('sales_staff_id')
                         ->label(__('field.sales_owner'))
-                        ->options(
-                            fn (): array => Staff::query()
-                                ->eligibleForOpportunityOwnership()
+                        ->options(function (): array {
+                            $query = Staff::query()->eligibleForOpportunityOwnership();
+
+                            if (! auth()->user()?->isSalesManager()) {
+                                $query->whereKey(auth()->user()?->staff?->id ?? 0);
+                            }
+
+                            return $query
                                 ->orderBy('full_name')
                                 ->get()
                                 ->mapWithKeys(
                                     fn (Staff $staff): array => [
-                                        $staff->id =>
-                                            $staff->full_name
-                                            .' ('
-                                            .$staff->employee_code
-                                            .')',
+                                        $staff->id => $staff->full_name.' ('.$staff->employee_code.')',
                                     ]
                                 )
-                                ->all()
-                        )
+                                ->all();
+                        })
+                        ->default(fn (): ?int => auth()->user()?->staff?->id)
                         ->searchable()
                         ->preload()
                         ->required(),

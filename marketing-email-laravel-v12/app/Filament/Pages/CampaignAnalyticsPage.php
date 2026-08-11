@@ -33,12 +33,7 @@ class CampaignAnalyticsPage extends Page
     {
         $user = auth()->user();
 
-        return $user !== null && (
-            $user->isAdmin()
-            || $user->canReadAcrossBusiness()
-            || $user->isMarketingManager()
-            || $user->isMarketingStaff()
-        );
+        return $user !== null && $user->can('marketing.view-reports');
     }
 
     protected function getViewData(): array

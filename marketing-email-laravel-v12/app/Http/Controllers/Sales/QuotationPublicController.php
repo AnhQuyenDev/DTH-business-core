@@ -8,6 +8,7 @@ use App\Jobs\Sales\SendQuotationRejectedNotificationJob;
 use App\Jobs\Sales\SendQuotationRevisionRequestedNotificationJob;
 use App\Mail\Sales\QuotationOtpMail;
 use App\Services\Marketing\SendingAccountMailerService;
+use App\Services\Business\WorkflowPolicyService;
 use App\Services\Sales\QuotationConfirmationService;
 use App\Services\Sales\QuotationPaymentNoticeService;
 use App\Services\Sales\QuotationPdfService;
@@ -23,6 +24,7 @@ class QuotationPublicController extends Controller
 {
     public function __construct(
         private readonly QuotationPublicAccessService $access,
+        private readonly WorkflowPolicyService $workflowPolicy,
     ) {
         $this->middleware('throttle:30,1');
     }
@@ -84,26 +86,31 @@ class QuotationPublicController extends Controller
             'signer_position' => 'nullable|string|max:255',
             'signer_email' => 'required|email|max:255',
             'signer_phone' => 'nullable|string|max:30',
-            'otp_email' => 'required|email|max:255',
+            'otp_email' => $this->usesOtpConfirmation() ? 'required|email|max:255' : 'nullable|email|max:255',
         ]);
 
-        [$verifiedEmail, $otpKey] = $this->assertVerifiedOtp(
+        [$verifiedEmail, $otpKey] = $this->resolvePublicConfirmation(
             $quotation,
             (string) $validated['signer_email'],
-            (string) $validated['otp_email'],
+            (string) ($validated['otp_email'] ?? ''),
         );
 
         $validated['signer_email'] = $verifiedEmail;
+        $validated['verification_method'] = $this->usesOtpConfirmation()
+            ? 'email_otp'
+            : 'public_link';
 
         $result = app(QuotationConfirmationService::class)->accept(
             $quotation,
             $validated,
-            $verifiedEmail,
+            $otpKey !== null ? $verifiedEmail : null,
         );
 
-        $this->access->consumeOtpVerification($otpKey);
+        if ($otpKey !== null) {
+            $this->access->consumeOtpVerification($otpKey);
+        }
 
-        SendQuotationAcceptedNotificationJob::dispatch($result);
+        SendQuotationAcceptedNotificationJob::dispatchSync($result);
 
         return $this->redirectToPublicQuotation(
             $quotationCode,
@@ -122,27 +129,32 @@ class QuotationPublicController extends Controller
         $validated = $request->validate([
             'signer_name' => 'required|string|max:255',
             'signer_email' => 'required|email|max:255',
-            'otp_email' => 'required|email|max:255',
+            'otp_email' => $this->usesOtpConfirmation() ? 'required|email|max:255' : 'nullable|email|max:255',
             'reason' => 'required|string|max:1000',
         ]);
 
-        [$verifiedEmail, $otpKey] = $this->assertVerifiedOtp(
+        [$verifiedEmail, $otpKey] = $this->resolvePublicConfirmation(
             $quotation,
             (string) $validated['signer_email'],
-            (string) $validated['otp_email'],
+            (string) ($validated['otp_email'] ?? ''),
         );
 
         $validated['signer_email'] = $verifiedEmail;
+        $validated['verification_method'] = $this->usesOtpConfirmation()
+            ? 'email_otp'
+            : 'public_link';
 
         $result = app(QuotationConfirmationService::class)->reject(
             $quotation,
             $validated,
-            $verifiedEmail,
+            $otpKey !== null ? $verifiedEmail : null,
         );
 
-        $this->access->consumeOtpVerification($otpKey);
+        if ($otpKey !== null) {
+            $this->access->consumeOtpVerification($otpKey);
+        }
 
-        SendQuotationRejectedNotificationJob::dispatch(
+        SendQuotationRejectedNotificationJob::dispatchSync(
             $result,
             (string) $validated['reason'],
         );
@@ -164,27 +176,32 @@ class QuotationPublicController extends Controller
         $validated = $request->validate([
             'signer_name' => 'required|string|max:255',
             'signer_email' => 'required|email|max:255',
-            'otp_email' => 'required|email|max:255',
+            'otp_email' => $this->usesOtpConfirmation() ? 'required|email|max:255' : 'nullable|email|max:255',
             'reason' => 'required|string|max:1000',
         ]);
 
-        [$verifiedEmail, $otpKey] = $this->assertVerifiedOtp(
+        [$verifiedEmail, $otpKey] = $this->resolvePublicConfirmation(
             $quotation,
             (string) $validated['signer_email'],
-            (string) $validated['otp_email'],
+            (string) ($validated['otp_email'] ?? ''),
         );
 
         $validated['signer_email'] = $verifiedEmail;
+        $validated['verification_method'] = $this->usesOtpConfirmation()
+            ? 'email_otp'
+            : 'public_link';
 
         $result = app(QuotationConfirmationService::class)->requestRevision(
             $quotation,
             $validated,
-            $verifiedEmail,
+            $otpKey !== null ? $verifiedEmail : null,
         );
 
-        $this->access->consumeOtpVerification($otpKey);
+        if ($otpKey !== null) {
+            $this->access->consumeOtpVerification($otpKey);
+        }
 
-        SendQuotationRevisionRequestedNotificationJob::dispatch(
+        SendQuotationRevisionRequestedNotificationJob::dispatchSync(
             $result,
             (string) $validated['reason'],
         );
@@ -203,6 +220,7 @@ class QuotationPublicController extends Controller
     ): JsonResponse {
         $quotation = $this->findOrFail($quotationCode, $token);
         $this->assertCanConfirm($quotation);
+        $this->assertOtpModeEnabled();
 
         $validated = $request->validate([
             'email' => 'required|email|max:255',
@@ -261,6 +279,7 @@ class QuotationPublicController extends Controller
     ): JsonResponse {
         $quotation = $this->findOrFail($quotationCode, $token);
         $this->assertCanConfirm($quotation);
+        $this->assertOtpModeEnabled();
 
         $validated = $request->validate([
             'email' => 'required|email|max:255',
@@ -296,8 +315,8 @@ class QuotationPublicController extends Controller
             'payer_email' => 'required|email|max:255',
             'declared_amount' => 'required|numeric|min:0.01',
             'transfer_reference' => 'nullable|string|max:255',
-            'proof_files' => 'required|array|min:1|max:'.max(1, (int) config('finance.evidence_max_files', 3)),
-            'proof_files.*' => 'required|file|mimes:'.implode(',', (array) config('finance.evidence_mimes', ['jpg', 'jpeg', 'png', 'webp', 'pdf'])).'|max:'.max(1, (int) config('finance.evidence_max_kb', 10240)),
+            'proof_files' => ($this->paymentEvidenceRequired() ? 'required' : 'nullable').'|array|max:'.max(1, (int) config('finance.evidence_max_files', 3)),
+            'proof_files.*' => 'nullable|file|mimes:'.implode(',', (array) config('finance.evidence_mimes', ['jpg', 'jpeg', 'png', 'webp', 'pdf'])).'|max:'.max(1, (int) config('finance.evidence_max_kb', 10240)),
             'note' => 'nullable|string|max:2000',
         ]);
 
@@ -352,13 +371,11 @@ class QuotationPublicController extends Controller
         }
     }
 
-    /**
-     * @return array{0:string,1:string}
-     */
-    private function assertVerifiedOtp(
+    /** @return array{0:string,1:?string} */
+    private function resolvePublicConfirmation(
         $quotation,
         string $signerEmail,
-        string $otpEmail,
+        string $otpEmail = '',
     ): array {
         $this->assertCanConfirm($quotation);
 
@@ -366,6 +383,20 @@ class QuotationPublicController extends Controller
             $quotation,
             $signerEmail,
         );
+
+        if (! $this->usesOtpConfirmation()) {
+            return [$signerEmail, null];
+        }
+
+        return $this->assertVerifiedOtp($quotation, $signerEmail, $otpEmail);
+    }
+
+    /** @return array{0:string,1:string} */
+    private function assertVerifiedOtp(
+        $quotation,
+        string $signerEmail,
+        string $otpEmail,
+    ): array {
         $otpEmail = $this->access->assertAuthorizedSignerEmail(
             $quotation,
             $otpEmail,
@@ -386,6 +417,23 @@ class QuotationPublicController extends Controller
         }
 
         return [$otpEmail, $key];
+    }
+
+    private function usesOtpConfirmation(): bool
+    {
+        return $this->workflowPolicy->usesOtpConfirmation();
+    }
+
+    private function assertOtpModeEnabled(): void
+    {
+        if (! $this->usesOtpConfirmation()) {
+            abort(404);
+        }
+    }
+
+    private function paymentEvidenceRequired(): bool
+    {
+        return $this->workflowPolicy->paymentEvidenceRequired();
     }
 
     private function redirectToPublicQuotation(

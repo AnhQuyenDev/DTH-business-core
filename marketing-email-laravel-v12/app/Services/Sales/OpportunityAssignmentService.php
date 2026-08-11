@@ -126,7 +126,7 @@ final class OpportunityAssignmentService
         if (
             $employmentStatus !== StaffEmploymentStatus::Active->value
             || ! $staff->can_receive_customers
-            || $staff->department?->function_key !== 'sales'
+            || ! $staff->hasBusinessFunction(\App\Enums\Crm\DepartmentFunction::Sales)
             || ! $staff->user?->is_active
             || ! $staff->user?->isSalesStaff()
             || $blockedByAvailability

@@ -2,7 +2,9 @@
 
 namespace App\Models\Crm;
 
+use App\Enums\Crm\DepartmentFunction;
 use App\Enums\Crm\LeadIntakeStatus;
+use App\Enums\Crm\PositionAuthority;
 use App\Enums\Crm\StaffEmploymentStatus;
 use App\Enums\UserRole;
 use App\Models\Marketing\AuditLog;
@@ -77,6 +79,171 @@ class Staff extends Model
         return $this->hasMany(StaffAvailability::class);
     }
 
+    public function businessFunctions(): HasMany
+    {
+        return $this->hasMany(StaffBusinessFunction::class);
+    }
+
+    public function primaryBusinessFunction(): ?DepartmentFunction
+    {
+        $this->loadMissing('businessFunctions');
+
+        // Once a Staff has explicit capability rows, those rows are the
+        // authoritative business-permission source. Department becomes
+        // organization/reporting only and must not silently re-grant a
+        // capability that an Admin intentionally removed or disabled.
+        if ($this->businessFunctions->isNotEmpty()) {
+            $assignment = $this->businessFunctions
+                ->where('is_active', true)
+                ->sortBy([
+                    ['is_primary', 'desc'],
+                    ['id', 'asc'],
+                ])
+                ->first();
+
+            if ($assignment?->function_key instanceof DepartmentFunction) {
+                return $assignment->function_key;
+            }
+
+            return $assignment?->function_key
+                ? DepartmentFunction::tryFrom((string) $assignment->function_key)
+                : null;
+        }
+
+        // Legacy compatibility only: rows created before the V1 migration or
+        // isolated tests without capability assignments may still resolve from
+        // their physical Department.
+        $this->loadMissing('department');
+
+        return $this->department?->function();
+    }
+
+    public function hasBusinessFunction(DepartmentFunction|string $function): bool
+    {
+        $resolved = $function instanceof DepartmentFunction
+            ? $function
+            : DepartmentFunction::tryFrom((string) $function);
+
+        if ($resolved === null) {
+            return false;
+        }
+
+        $this->loadMissing('businessFunctions');
+
+        if ($this->businessFunctions->isNotEmpty()) {
+            return $this->businessFunctions->contains(
+                fn (StaffBusinessFunction $assignment): bool =>
+                    $assignment->is_active
+                    && $assignment->function_key === $resolved
+            );
+        }
+
+        // Backward-compatible fallback for legacy rows and tests that have not
+        // created staff_business_functions yet.
+        $this->loadMissing(['department', 'user']);
+
+        if ($this->department?->function() === $resolved) {
+            return true;
+        }
+
+        $legacyRole = UserRole::tryFrom((string) $this->user?->role);
+
+        return match ($resolved) {
+            DepartmentFunction::Marketing => in_array($legacyRole, [UserRole::MarketingManager, UserRole::MarketingStaff], true),
+            DepartmentFunction::CustomerService => in_array($legacyRole, [UserRole::CustomerServiceManager, UserRole::CustomerServiceStaff], true),
+            DepartmentFunction::Sales => in_array($legacyRole, [UserRole::SalesManager, UserRole::SalesStaff], true),
+            DepartmentFunction::Finance => $legacyRole === UserRole::FinanceStaff,
+            default => false,
+        };
+    }
+
+    public function businessAuthorityFor(DepartmentFunction|string $function): ?PositionAuthority
+    {
+        $resolved = $function instanceof DepartmentFunction
+            ? $function
+            : DepartmentFunction::tryFrom((string) $function);
+
+        if ($resolved === null) {
+            return null;
+        }
+
+        $this->loadMissing('businessFunctions');
+
+        if ($this->businessFunctions->isNotEmpty()) {
+            $assignment = $this->businessFunctions->first(
+                fn (StaffBusinessFunction $assignment): bool =>
+                    $assignment->is_active
+                    && $assignment->function_key === $resolved
+            );
+
+            if ($assignment?->authority_level instanceof PositionAuthority) {
+                return $assignment->authority_level;
+            }
+
+            return $assignment?->authority_level
+                ? PositionAuthority::tryFrom((string) $assignment->authority_level)
+                : null;
+        }
+
+        $this->loadMissing(['department', 'position', 'user']);
+
+        if ($this->department?->function() === $resolved) {
+            return $this->position?->authority_level;
+        }
+
+        $legacyRole = UserRole::tryFrom((string) $this->user?->role);
+
+        return match ($resolved) {
+            DepartmentFunction::Marketing => match ($legacyRole) {
+                UserRole::MarketingManager => PositionAuthority::Manager,
+                UserRole::MarketingStaff => PositionAuthority::Member,
+                default => null,
+            },
+            DepartmentFunction::CustomerService => match ($legacyRole) {
+                UserRole::CustomerServiceManager => PositionAuthority::Manager,
+                UserRole::CustomerServiceStaff => PositionAuthority::Member,
+                default => null,
+            },
+            DepartmentFunction::Sales => match ($legacyRole) {
+                UserRole::SalesManager => PositionAuthority::Manager,
+                UserRole::SalesStaff => PositionAuthority::Member,
+                default => null,
+            },
+            DepartmentFunction::Finance => $legacyRole === UserRole::FinanceStaff
+                ? PositionAuthority::Member
+                : null,
+            default => null,
+        };
+    }
+
+    public function hasBusinessManagerAuthority(DepartmentFunction|string $function): bool
+    {
+        return $this->businessAuthorityFor($function)?->isDepartmentManager() ?? false;
+    }
+
+    public function scopeWithBusinessFunction(Builder $query, DepartmentFunction|string $function): Builder
+    {
+        $resolved = $function instanceof DepartmentFunction
+            ? $function
+            : DepartmentFunction::tryFrom((string) $function);
+
+        if ($resolved === null) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        return $query->where(function (Builder $query) use ($resolved): void {
+            $query->whereHas('businessFunctions', fn (Builder $assignment): Builder =>
+                $assignment->where('function_key', $resolved->value)
+                    ->where('is_active', true)
+            )->orWhere(function (Builder $legacy) use ($resolved): void {
+                $legacy->whereDoesntHave('businessFunctions')
+                    ->whereHas('department', fn (Builder $department): Builder =>
+                        $department->where('function_key', $resolved->value)
+                    );
+            });
+        });
+    }
+
     public function assignedLeads(): HasMany
     {
         return $this->hasMany(Lead::class, 'assigned_staff_id');
@@ -143,13 +310,7 @@ class Staff extends Model
     public function scopeEligibleForLeadDistribution(Builder $query): Builder
     {
         return $query
-            ->whereHas(
-                'department',
-                fn (Builder $query): Builder => $query->where(
-                    'code',
-                    self::CUSTOMER_SERVICE_DEPARTMENT_CODE
-                )
-            )
+            ->withBusinessFunction(DepartmentFunction::Sales)
             ->where(
                 'employment_status',
                 StaffEmploymentStatus::Active->value
@@ -202,8 +363,7 @@ class Staff extends Model
     public function canReceiveNewLeads(): bool
     {
         if (
-            $this->department?->code
-                !== self::CUSTOMER_SERVICE_DEPARTMENT_CODE
+            ! $this->hasBusinessFunction(DepartmentFunction::Sales)
             || $this->employment_status
                 !== StaffEmploymentStatus::Active
             || ! $this->can_receive_customers
@@ -230,13 +390,7 @@ class Staff extends Model
     public function scopeEligibleForCustomerOwnership(Builder $query): Builder
     {
         return $query
-            ->whereHas(
-                'department',
-                fn (Builder $query): Builder => $query->where(
-                    'function_key',
-                    'customer_service'
-                )
-            )
+            ->withBusinessFunction(DepartmentFunction::CustomerService)
             ->whereHas(
                 'user',
                 fn (Builder $query): Builder => $query->where('is_active', true)
@@ -258,7 +412,7 @@ class Staff extends Model
     {
         $this->loadMissing(['department', 'user']);
 
-        return $this->department?->function_key === 'customer_service'
+        return $this->hasBusinessFunction(DepartmentFunction::CustomerService)
             && $this->user?->is_active
             && $this->employment_status === StaffEmploymentStatus::Active
             && $this->can_receive_customers
@@ -273,13 +427,7 @@ class Staff extends Model
         Builder $query
     ): Builder {
         return $query
-            ->whereHas(
-                'department',
-                fn (Builder $query): Builder => $query->where(
-                    'code',
-                    'sales'
-                )
-            )
+            ->withBusinessFunction(DepartmentFunction::Sales)
             ->whereHas(
                 'user',
                 fn (Builder $query): Builder => $query

@@ -9,26 +9,29 @@ class BankAccountPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isAnyMarketingUser();
+        return $user->isAdmin()
+            || $user->canReadAcrossBusiness()
+            || $user->isSalesStaff()
+            || $user->isFinanceStaff();
     }
 
     public function view(User $user, BankAccount $bankAccount): bool
     {
-        return $user->isAnyMarketingUser();
+        return $this->viewAny($user);
     }
 
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin() || $user->isFinanceStaff();
     }
 
     public function update(User $user, BankAccount $bankAccount): bool
     {
-        return $user->isAdmin();
+        return $this->create($user);
     }
 
     public function delete(User $user, BankAccount $bankAccount): bool
     {
-        return $user->isAdmin();
+        return $this->create($user);
     }
 }

@@ -29,10 +29,13 @@ class ExistingBusinessCustomerReuseTest extends TestCase
             company: $first['company'],
         );
 
+        $finance = $this->makeV1Finance()[0];
+        $this->preparePendingPaymentNotice($second['quotation']);
+
         app(QuotationPaymentService::class)->updateStatus(
             quotation: $second['quotation'],
             newStatus: PaymentStatus::Paid,
-            user: $second['admin'],
+            user: $finance,
             note: 'Mua thêm lần hai.',
         );
 

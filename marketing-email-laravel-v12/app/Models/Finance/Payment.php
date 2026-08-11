@@ -34,6 +34,12 @@ class Payment extends Model
         'payment_method',
         'transfer_reference',
         'status',
+        'invoice_status',
+        'invoice_provider',
+        'external_invoice_id',
+        'invoice_number',
+        'invoice_url',
+        'invoice_issued_at',
         'paid_at',
         'verified_at',
         'verified_by_user_id',
@@ -49,6 +55,7 @@ class Payment extends Model
             'tax_amount' => 'decimal:2',
             'paid_at' => 'datetime',
             'verified_at' => 'datetime',
+            'invoice_issued_at' => 'datetime',
             'metadata' => 'array',
         ];
     }

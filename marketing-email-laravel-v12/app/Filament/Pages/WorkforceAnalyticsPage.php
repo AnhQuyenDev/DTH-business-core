@@ -28,14 +28,7 @@ class WorkforceAnalyticsPage extends Page
     {
         $user = auth()->user();
 
-        return $user !== null && (
-            $user->isAdmin()
-            || $user->canReadAcrossBusiness()
-            || $user->hasDepartmentManagerAuthority()
-            || $user->isMarketingManager()
-            || $user->isCustomerServiceManager()
-            || $user->isSalesManager()
-        );
+        return $user !== null && $user->can('system.view-workforce');
     }
 
     protected function getViewData(): array

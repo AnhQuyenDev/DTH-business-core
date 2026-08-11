@@ -13,13 +13,6 @@ enum CompanyContactDecisionRole: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::DecisionMaker => 'Người quyết định',
-            self::Influencer => 'Người ảnh hưởng',
-            self::TechnicalContact => 'Liên hệ kỹ thuật',
-            self::BillingContact => 'Liên hệ thanh toán',
-            self::EndUser => 'Người sử dụng',
-            self::Other => 'Khác',
-        };
+        return __('enum.company_contact_decision_role.'.$this->value);
     }
 }

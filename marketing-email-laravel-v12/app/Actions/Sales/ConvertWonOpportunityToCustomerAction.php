@@ -381,17 +381,7 @@ final class ConvertWonOpportunityToCustomerAction
             return $existing;
         }
 
-        $staff = null;
-
-        if ($opportunity->company?->account_owner_staff_id !== null) {
-            $candidate = Staff::query()->find(
-                $opportunity->company->account_owner_staff_id
-            );
-
-            if ($candidate?->canReceiveNewCustomers()) {
-                $staff = $candidate;
-            }
-        }
+        $staff = $this->resolveOwnerStaff($opportunity);
 
         if ($staff === null) {
             $staff = Staff::query()
@@ -431,6 +421,32 @@ final class ConvertWonOpportunityToCustomerAction
             'reason' => CustomerAssignmentReason::NewCustomer->value,
             'note' => 'Tạo từ Opportunity đã thanh toán',
         ]);
+    }
+
+    private function resolveOwnerStaff(Opportunity $opportunity): ?Staff
+    {
+        $accountOwner = $opportunity->company?->accountOwner;
+
+        if ($accountOwner !== null && $this->canBeAssignedNewCustomer($accountOwner)) {
+            return $accountOwner;
+        }
+
+        $opportunityOwner = $opportunity->assignedStaff;
+
+        if ($opportunityOwner !== null && $this->canBeAssignedNewCustomer($opportunityOwner)) {
+            return $opportunityOwner;
+        }
+
+        return null;
+    }
+
+    private function canBeAssignedNewCustomer(Staff $staff): bool
+    {
+        return $staff->isAvailable()
+            && ! $staff->availabilities()
+                ->active()
+                ->where('can_receive_new_customers', false)
+                ->exists();
     }
 
     private function ensureConversionInteraction(

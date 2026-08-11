@@ -116,8 +116,7 @@ class StaffObserver
         // End owner assignments and redistribute
         if ($ownerAssignments->isNotEmpty()) {
             $eligibleStaff = Staff::query()
-                ->where('employment_status', StaffEmploymentStatus::Active->value)
-                ->where('can_receive_customers', true)
+                ->eligibleForCustomerOwnership()
                 ->where('id', '!=', $staff->id)
                 ->pluck('id');
 
@@ -183,6 +182,14 @@ class StaffObserver
 
         if ($supportAssignments->isEmpty()) {
             Log::info('StaffObserver: no support assignments to restore', ['staff_id' => $staff->id]);
+
+            return;
+        }
+
+        if (! $staff->fresh()->canReceiveNewCustomers()) {
+            Log::warning('StaffObserver: reactivated staff is no longer eligible for Customer Care ownership', [
+                'staff_id' => $staff->id,
+            ]);
 
             return;
         }

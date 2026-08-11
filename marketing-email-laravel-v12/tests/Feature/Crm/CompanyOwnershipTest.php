@@ -9,28 +9,25 @@ use App\Models\User;
 use App\Services\Crm\CompanyOwnershipService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\MakesV1Actors;
 use Tests\TestCase;
 
 class CompanyOwnershipTest extends TestCase
 {
+    use MakesV1Actors;
     use RefreshDatabase;
 
     private function makeStaff(
         string $code,
         StaffEmploymentStatus $status = StaffEmploymentStatus::Active,
     ): Staff {
-        $user = User::factory()->create([
-            'role' => 'customer_service_staff',
+        [, $staff] = $this->makeV1SalesStaff('Staff '.$code);
+        $staff->update([
+            'employee_code' => $code,
+            'employment_status' => $status->value,
         ]);
 
-        return Staff::query()->create([
-            'user_id' => $user->id,
-            'employee_code' => $code,
-            'full_name' => 'Staff '.$code,
-            'employment_status' => $status->value,
-            'can_receive_customers' => true,
-            'distribution_weight' => 1,
-        ]);
+        return $staff->fresh();
     }
 
     private function makeCompany(): Company
@@ -44,7 +41,7 @@ class CompanyOwnershipTest extends TestCase
 
     public function test_transfer_ends_old_assignment_and_creates_new_one(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $first = $this->makeStaff('CS001');
         $second = $this->makeStaff('CS002');
         $company = $this->makeCompany();
@@ -84,7 +81,7 @@ class CompanyOwnershipTest extends TestCase
 
     public function test_assigning_same_owner_is_idempotent(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $staff = $this->makeStaff('CS001');
         $company = $this->makeCompany();
         $service = app(CompanyOwnershipService::class);
@@ -114,7 +111,7 @@ class CompanyOwnershipTest extends TestCase
 
     public function test_inactive_staff_cannot_become_owner(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $staff = $this->makeStaff(
             'CS001',
             StaffEmploymentStatus::Inactive,
@@ -133,7 +130,7 @@ class CompanyOwnershipTest extends TestCase
 
     public function test_owner_assignment_requires_reason(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $staff = $this->makeStaff('CS001');
         $company = $this->makeCompany();
 

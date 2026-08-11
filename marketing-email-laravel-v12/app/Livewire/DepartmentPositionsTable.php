@@ -41,12 +41,19 @@ class DepartmentPositionsTable extends Component implements HasForms, HasTable
             ])
             ->defaultSort('title')
             ->actions([ActionGroup::make([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->label(__('action.edit'))
+                    ->modalHeading(__('action.edit_position'))
+                    ->modalSubmitActionLabel(__('action.save')),
+                DeleteAction::make()
+                    ->label(__('action.delete'))
+                    ->modalHeading(__('action.delete_position')),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton()])
             ->headerActions([
                 CreateAction::make()
                     ->label(__('action.create_position'))
+                    ->modalHeading(__('action.create_position'))
+                    ->modalSubmitActionLabel(__('action.create'))
                     ->icon('heroicon-o-plus')
                     ->form([
                         TextInput::make('title')->label(__('field.title'))->required()->maxLength(255),

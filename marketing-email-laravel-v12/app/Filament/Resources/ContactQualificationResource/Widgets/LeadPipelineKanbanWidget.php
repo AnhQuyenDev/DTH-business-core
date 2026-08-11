@@ -17,7 +17,10 @@ class LeadPipelineKanbanWidget extends Widget
     {
         $user = auth()->user();
 
-        return ($user?->isAdmin() || $user?->isMarketingManager() || $user?->isCustomerServiceManager() || $user?->isCustomerServiceStaff()) ?? false;
+        return ($user?->isAdmin()
+            || $user?->canReadAcrossBusiness()
+            || $user?->isMarketingStaff()
+            || $user?->isSalesStaff()) ?? false;
     }
 
     public function getStages(): array

@@ -8,6 +8,7 @@ use App\Support\Ui\BadgePalette;
 enum UserRole: string
 {
     // Vai trò hệ thống được phép cấp mới.
+    case SuperAdmin = 'super_admin';
     case Admin = 'admin';
     case Executive = 'executive';
     case User = 'user';
@@ -31,6 +32,7 @@ enum UserRole: string
     public function color(): string
     {
         $fallback = match ($this) {
+            self::SuperAdmin => 'danger',
             self::Admin => 'danger',
             self::Executive => 'warning',
             self::User => 'info',
@@ -53,6 +55,7 @@ enum UserRole: string
     public function isAssignable(): bool
     {
         return in_array($this, [
+            self::SuperAdmin,
             self::Admin,
             self::Executive,
             self::User,
@@ -83,6 +86,7 @@ enum UserRole: string
 
             self::FinanceStaff => DepartmentFunction::Finance,
 
+            self::SuperAdmin,
             self::Admin,
             self::Executive,
             self::User,
@@ -103,6 +107,7 @@ enum UserRole: string
             self::SalesStaff,
             self::FinanceStaff => true,
 
+            self::SuperAdmin,
             self::Admin,
             self::Viewer => false,
         };

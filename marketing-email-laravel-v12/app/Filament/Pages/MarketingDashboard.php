@@ -38,7 +38,7 @@ class MarketingDashboard extends Page
     {
         $user = auth()->user();
 
-        return $user !== null && ($user->isMarketingManager() || $user->isMarketingStaff());
+        return $user !== null && $user->can('marketing.view-reports');
     }
 
     protected function getViewData(): array
@@ -48,7 +48,7 @@ class MarketingDashboard extends Page
         return [
             'isManager' => $user->isMarketingManager(),
             'analytics' => app(EnterpriseAnalyticsService::class)->marketing($user, $this->period),
-            'workforce' => $user->isMarketingManager() ? app(WorkforceAnalyticsService::class)->report($user, $this->period) : null,
+            'workforce' => $user->isMarketingManager() ? app(WorkforceAnalyticsService::class)->report($user, $this->period, \App\Enums\Crm\DepartmentFunction::Marketing) : null,
             'links' => [
                 'campaigns' => MarketingCampaignResource::canViewAny() ? MarketingCampaignResource::getUrl() : null,
                 'landing_pages' => LandingPageResource::canViewAny() ? LandingPageResource::getUrl() : null,

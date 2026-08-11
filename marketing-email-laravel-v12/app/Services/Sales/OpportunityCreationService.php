@@ -3,10 +3,12 @@
 namespace App\Services\Sales;
 
 use App\Enums\Crm\ContactQualificationStatus;
+use App\Enums\Crm\LeadIntakeStatus;
 use App\Enums\Sales\OpportunityStage;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
 use App\Models\Sales\Opportunity;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -35,6 +37,28 @@ final class OpportunityCreationService
                 ->whereKey($lead->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $actor = User::query()->with('staff')->findOrFail($actorUserId);
+
+            if (! $actor->isSalesStaff()) {
+                throw ValidationException::withMessages([
+                    'lead' => 'Chỉ nhân sự có chức năng Kinh doanh được tạo cơ hội từ Lead.',
+                ]);
+            }
+
+            if (! $actor->isSalesManager()) {
+                if ($actor->staff?->id !== $lockedLead->assigned_staff_id) {
+                    throw ValidationException::withMessages([
+                        'lead' => 'Nhân viên chỉ được chuyển đổi Lead đang được phân công cho chính mình.',
+                    ]);
+                }
+
+                if ($actor->staff?->id !== $salesOwner->id) {
+                    throw ValidationException::withMessages([
+                        'sales_owner' => 'Nhân viên chỉ được tạo cơ hội do chính mình phụ trách.',
+                    ]);
+                }
+            }
 
             $status = $lockedLead->qualification?->status;
 
@@ -91,7 +115,9 @@ final class OpportunityCreationService
 
                 'assigned_staff_id' => $salesOwner->id,
 
-                'title' => $data['title'],
+                'title' => filled($data['title'] ?? null)
+                    ? trim((string) $data['title'])
+                    : ($lockedLead->title ?: $lockedLead->lead_code),
 
                 /*
                  * Giữ mã kỹ thuật của service/package.
@@ -131,7 +157,7 @@ final class OpportunityCreationService
                         'handoff_by_user_id' =>
                             $actorUserId,
 
-                        'customer_service_staff_id' =>
+                        'lead_owner_staff_id' =>
                             $lockedLead->assigned_staff_id,
 
                         'sales_staff_id' =>
@@ -209,6 +235,7 @@ final class OpportunityCreationService
                 ]);
 
                 $lockedLead->forceFill([
+                    'intake_status' => LeadIntakeStatus::ConvertedToOpportunity->value,
                     'converted_to_opportunity_at' => now(),
                     'updated_by' => $actorUserId,
                 ])->save();  

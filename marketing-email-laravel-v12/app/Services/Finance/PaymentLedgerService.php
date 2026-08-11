@@ -88,10 +88,12 @@ final class PaymentLedgerService
                 'quotation_item_id' => $item->id,
                 'service_id' => $item->service_id,
                 'service_package_id' => $item->service_package_id,
+                'service_product_id' => $item->service_product_id,
                 'service_code_snapshot' => $item->service_code_snapshot,
                 'service_name_snapshot' => $item->service_name_snapshot,
                 'package_code_snapshot' => $item->package_code_snapshot,
                 'package_name_snapshot' => $item->package_name_snapshot,
+                'product_name_snapshot' => $item->product_name_snapshot,
                 'quantity' => $item->quantity,
                 'net_amount' => max(
                     0,

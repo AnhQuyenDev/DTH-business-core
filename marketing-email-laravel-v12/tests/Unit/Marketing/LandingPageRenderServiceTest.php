@@ -7,6 +7,7 @@ use App\Models\Marketing\FormField;
 use App\Models\Marketing\FormTemplate;
 use App\Models\Marketing\LandingPage;
 use App\Services\Marketing\LandingPageRenderService;
+use App\Services\Marketing\LandingPageServiceCatalogService;
 use App\Services\Marketing\LandingPageThemeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -22,7 +23,8 @@ class LandingPageRenderServiceTest extends TestCase
         parent::setUp();
 
         $this->service = new LandingPageRenderService(
-            new LandingPageThemeService
+            new LandingPageThemeService,
+            new LandingPageServiceCatalogService,
         );
     }
 

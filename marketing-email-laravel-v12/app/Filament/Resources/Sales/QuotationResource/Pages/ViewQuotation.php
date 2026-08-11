@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Sales\QuotationResource\Pages;
 
+use App\Enums\Sales\CustomerResponseChannel;
 use App\Enums\Sales\PaymentStatus;
 use App\Enums\Sales\QuotationStatus;
 use App\Jobs\Sales\SendQuotationAcceptedNotificationJob;
@@ -276,6 +277,13 @@ class ViewQuotation extends ViewRecord
                         ->live()
                         ->required(),
 
+                    Select::make('response_channel')
+                        ->label(__('v1.response_channel.label'))
+                        ->options(CustomerResponseChannel::assistedOptions())
+                        ->default(CustomerResponseChannel::Phone->value)
+                        ->native(false)
+                        ->required(),
+
                     Select::make('signer_email')
                         ->label(__('sales.confirmation.customer_responder'))
                         ->options(fn (): array => $this->customerResponderOptions($q))
@@ -288,7 +296,7 @@ class ViewQuotation extends ViewRecord
                         ->helperText(__('sales.confirmation.customer_responder_helper')),
 
                     DateTimePicker::make('call_at')
-                        ->label(__('sales.confirmation.call_at'))
+                        ->label(__('v1.response_channel.responded_at'))
                         ->seconds(false)
                         ->default(now())
                         ->required(),
@@ -333,19 +341,19 @@ class ViewQuotation extends ViewRecord
                     );
 
                     $result = app(QuotationConfirmationService::class)
-                        ->recordPhoneResponse(
+                        ->recordAssistedResponse(
                             $q,
                             $actor,
                             array_merge($data, $responder),
                         );
 
                     match ((string) $data['response_type']) {
-                        'accepted' => SendQuotationAcceptedNotificationJob::dispatch($result),
-                        'rejected' => SendQuotationRejectedNotificationJob::dispatch(
+                        'accepted' => SendQuotationAcceptedNotificationJob::dispatchSync($result),
+                        'rejected' => SendQuotationRejectedNotificationJob::dispatchSync(
                             $result,
                             (string) ($data['reason'] ?? ''),
                         ),
-                        'revision_requested' => SendQuotationRevisionRequestedNotificationJob::dispatch(
+                        'revision_requested' => SendQuotationRevisionRequestedNotificationJob::dispatchSync(
                             $result,
                             (string) ($data['reason'] ?? ''),
                         ),

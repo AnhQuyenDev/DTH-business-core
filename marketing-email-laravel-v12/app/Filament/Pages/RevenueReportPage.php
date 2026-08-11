@@ -48,13 +48,7 @@ class RevenueReportPage extends Page
     {
         $user = auth()->user();
 
-        return $user !== null && (
-            $user->isAdmin()
-            || $user->canReadAcrossBusiness()
-            || $user->isFinanceStaff()
-            || $user->isSalesManager()
-            || $user->isMarketingManager()
-        );
+        return $user !== null && $user->can('sales.view-revenue-reports');
     }
 
     public function resetFilters(): void
@@ -203,7 +197,7 @@ class RevenueReportPage extends Page
             'landing_pages' => LandingPage::query()->orderBy('name')->pluck('name', 'id')->all(),
             'services' => Service::query()->orderBy('name')->pluck('name', 'id')->all(),
             'packages' => ServicePackage::query()->orderBy('name')->pluck('name', 'id')->all(),
-            'sales_staff' => Staff::query()->whereHas('department', fn ($q) => $q->where('function_key', 'sales'))->orderBy('full_name')->pluck('full_name', 'id')->all(),
+            'sales_staff' => Staff::query()->withBusinessFunction(\App\Enums\Crm\DepartmentFunction::Sales)->orderBy('full_name')->pluck('full_name', 'id')->all(),
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\Crm\DepartmentFunction;
 use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\LeadResource;
 use App\Filament\Resources\Sales\PaymentTrackingResource;
@@ -48,12 +49,20 @@ class AdminDashboard extends BaseDashboard
             return;
         }
 
-        $target = match (true) {
-            $user->isFinanceStaff() => FinanceDashboard::class,
-            $user->isSalesManager(), $user->isSalesStaff() => SalesDashboard::class,
-            $user->isCustomerServiceManager(), $user->isCustomerServiceStaff() => CustomerServiceDashboard::class,
-            $user->isMarketingManager(), $user->isMarketingStaff() => MarketingDashboard::class,
-            default => StaffDashboard::class,
+        $primaryFunction = $user->primaryBusinessFunction();
+
+        $target = match ($primaryFunction) {
+            DepartmentFunction::Finance => FinanceDashboard::class,
+            DepartmentFunction::Sales => SalesDashboard::class,
+            DepartmentFunction::CustomerService => CustomerServiceDashboard::class,
+            DepartmentFunction::Marketing => MarketingDashboard::class,
+            default => match (true) {
+                $user->isFinanceStaff() => FinanceDashboard::class,
+                $user->isSalesStaff() => SalesDashboard::class,
+                $user->isCustomerServiceStaff() => CustomerServiceDashboard::class,
+                $user->isMarketingStaff() => MarketingDashboard::class,
+                default => StaffDashboard::class,
+            },
         };
 
         if ($target::canAccess()) {

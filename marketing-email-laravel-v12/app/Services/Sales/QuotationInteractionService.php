@@ -5,8 +5,8 @@ namespace App\Services\Sales;
 use App\Models\Crm\CustomerInteraction;
 use App\Models\Sales\OpportunityInteraction;
 use App\Models\Sales\Quotation;
+use App\Models\Sales\QuotationInteraction;
 use Illuminate\Database\Eloquent\Model;
-use LogicException;
 
 class QuotationInteractionService
 {
@@ -146,8 +146,24 @@ class QuotationInteractionService
             ]);
         }
 
-        throw new LogicException(
-            'Quotation has neither customer nor opportunity.'
-        );
+        // Báo giá chỉ có customer_snapshot (chưa có Customer hay
+        // Opportunity) vẫn phải ghi nhận tương tác công khai.
+        return QuotationInteraction::query()->create([
+            'quotation_id' => $quotation->id,
+            'staff_id' => $quotation->assigned_staff_id,
+            'interaction_type' => $type,
+            'subject' => sprintf(
+                '[%s] %s',
+                $quotation->quotation_code,
+                $quotation->title,
+            ),
+            'content' => $content,
+            'outcome' => null,
+            'interaction_at' => now(),
+            'metadata' => [
+                'quotation_id' => $quotation->id,
+                'quotation_code' => $quotation->quotation_code,
+            ],
+        ]);
     }
 }

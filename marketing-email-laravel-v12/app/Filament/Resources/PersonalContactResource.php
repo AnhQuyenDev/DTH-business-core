@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Actions\QuickViewAction;
 use App\Filament\Resources\PersonalContactResource\Pages;
 use App\Models\Crm\PersonalContactProfile;
 use App\Models\Marketing\Contact;
@@ -16,7 +17,6 @@ use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -96,7 +96,7 @@ class PersonalContactResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    ViewAction::make(),
+                    QuickViewAction::make(),
                     EditAction::make(),
                     DeleteAction::make(),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),

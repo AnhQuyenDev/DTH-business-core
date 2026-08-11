@@ -32,12 +32,27 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->brandName(fn (): string => company_name())
             ->brandLogo(fn () => view('filament.brand-logo'))
             ->brandLogoHeight('2rem')
             ->sidebarCollapsibleOnDesktop()
             ->colors([
                 'primary' => Color::Amber,
+                'orange' => Color::Orange,
+                'lime' => Color::Lime,
+                'emerald' => Color::Emerald,
+                'teal' => Color::Teal,
+                'cyan' => Color::Cyan,
+                'sky' => Color::Sky,
+                'blue' => Color::Blue,
+                'indigo' => Color::Indigo,
+                'violet' => Color::Violet,
+                'purple' => Color::Purple,
+                'fuchsia' => Color::Fuchsia,
+                'pink' => Color::Pink,
+                'rose' => Color::Rose,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -110,15 +125,15 @@ class AdminPanelProvider extends PanelProvider
         return meta ? meta.getAttribute('content') : '';
     }
 
-    function refreshPageComponent(fallbackUrl) {
-        var el = document.querySelector('[wire\\:id]');
-        if (el && typeof Alpine !== 'undefined') {
-            try {
-                Alpine.evaluate(el, '\$wire.\$refresh()');
-                return;
-            } catch(e) {}
+    function reloadLocalizedPage(fallbackUrl) {
+        // Locale affects navigation, page content, modals and validation text.
+        // A partial Livewire refresh can leave other components in the old
+        // locale, so always reload the whole document after switching.
+        try {
+            window.location.reload();
+        } catch (e) {
+            window.location.href = fallbackUrl;
         }
-        window.location.href = fallbackUrl;
     }
 
     document.addEventListener('click', function(e) {
@@ -143,7 +158,7 @@ class AdminPanelProvider extends PanelProvider
             },
         }).then(function(res) {
             if (res.ok) {
-                refreshPageComponent(link.href);
+                reloadLocalizedPage(link.href);
             } else {
                 window.location.href = link.href;
             }

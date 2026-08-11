@@ -3,10 +3,12 @@
 namespace App\Services\Sales;
 
 use App\Enums\Sales\ConfirmationType;
+use App\Enums\Sales\CustomerResponseChannel;
 use App\Enums\Sales\QuotationStatus;
 use App\Models\Sales\Quotation;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
+use App\Services\Security\BusinessNotificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,6 +19,7 @@ class QuotationConfirmationService
         private readonly AuditLogService $auditLog,
         private readonly QuotationInteractionService $interactions,
         private readonly QuotationOpportunitySyncService $opportunitySync,
+        private readonly BusinessNotificationService $notifications,
     ) {}
 
     public function accept(
@@ -66,6 +69,7 @@ class QuotationConfirmationService
 
             $this->opportunitySync->onAccepted($quotation);
             $this->auditLog->log('quotation.accepted', $quotation, [], $data);
+            DB::afterCommit(fn () => $this->notifyResponse($quotation, 'accepted', $data));
 
             return $quotation->fresh();
         });
@@ -117,6 +121,7 @@ class QuotationConfirmationService
 
             $this->opportunitySync->onRejected($quotation);
             $this->auditLog->log('quotation.rejected', $quotation, [], $data);
+            DB::afterCommit(fn () => $this->notifyResponse($quotation, 'rejected', $data));
 
             return $quotation->fresh();
         });
@@ -168,6 +173,7 @@ class QuotationConfirmationService
 
             $this->opportunitySync->onRevisionRequested($quotation);
             $this->auditLog->log('quotation.revision_requested', $quotation, [], $data);
+            DB::afterCommit(fn () => $this->notifyResponse($quotation, 'revision_requested', $data));
 
             return $quotation->fresh();
         });
@@ -180,7 +186,7 @@ class QuotationConfirmationService
      * This is deliberately not marked as OTP verification: Sales is recording
      * what the customer told them, not impersonating the customer.
      */
-    public function recordPhoneResponse(
+    public function recordAssistedResponse(
         Quotation $quotation,
         User $actor,
         array $data,
@@ -201,6 +207,10 @@ class QuotationConfirmationService
         }
 
         $responseType = (string) ($data['response_type'] ?? '');
+        $responseChannel = (string) ($data['response_channel'] ?? CustomerResponseChannel::Phone->value);
+        if (! array_key_exists($responseChannel, CustomerResponseChannel::assistedOptions())) {
+            throw ValidationException::withMessages(['response_channel' => 'Kênh phản hồi khách hàng không hợp lệ.']);
+        }
 
         if (! in_array($responseType, [
             ConfirmationType::Accepted->value,
@@ -268,8 +278,8 @@ class QuotationConfirmationService
             'signer_name' => $signerName,
             'signer_email' => $signerEmail,
             'reason' => $reason !== '' ? $reason : null,
-            'verification_method' => 'phone_recorded_by_sales',
-            'response_channel' => 'phone',
+            'verification_method' => 'assisted_recorded_by_staff',
+            'response_channel' => $responseChannel,
             'recorded_by_user_id' => $actor->id,
             'recorded_by_name' => $actor->name,
             'recorded_at' => now()->toIso8601String(),
@@ -289,6 +299,34 @@ class QuotationConfirmationService
                 $confirmationData,
             ),
         };
+    }
+
+    /** @deprecated Use recordAssistedResponse(). */
+    public function recordPhoneResponse(Quotation $quotation, User $actor, array $data): Quotation
+    {
+        $data['response_channel'] = $data['response_channel'] ?? CustomerResponseChannel::Phone->value;
+        return $this->recordAssistedResponse($quotation, $actor, $data);
+    }
+
+    private function notifyResponse(Quotation $quotation, string $type, array $data): void
+    {
+        $quotation->loadMissing('assignedStaff.user');
+        $reason = trim((string) ($data['reason'] ?? $data['conversation_note'] ?? ''));
+        $channel = (string) ($data['response_channel'] ?? CustomerResponseChannel::PublicLink->value);
+        $title = match ($type) {
+            'accepted' => __('v1.notification.quotation_accepted_title'),
+            'rejected' => __('v1.notification.quotation_rejected_title'),
+            default => __('v1.notification.quotation_revision_title'),
+        };
+        $body = __('v1.notification.quotation_response_body', [
+            'code' => $quotation->quotation_code,
+            'channel' => CustomerResponseChannel::tryFrom($channel)?->label() ?? $channel,
+            'detail' => $reason !== '' ? $reason : '—',
+        ]);
+        $this->notifications->send($quotation->assignedStaff?->user, $title, $body);
+        if ($type === 'revision_requested') {
+            $this->notifications->notifyPermission('sales.approve-quotations', $title, $body);
+        }
     }
 
     private function validateConfirmation(Quotation $quotation): void

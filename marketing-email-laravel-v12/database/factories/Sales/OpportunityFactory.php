@@ -27,8 +27,8 @@ class OpportunityFactory extends Factory
             'estimated_value' => null,
             'probability' => 50,
             'expected_close_date' => null,
-            'created_by' => 1,
-            'updated_by' => 1,
+            'created_by' => null,
+            'updated_by' => null,
         ];
     }
 

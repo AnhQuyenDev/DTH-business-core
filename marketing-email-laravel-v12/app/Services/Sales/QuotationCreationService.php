@@ -13,7 +13,6 @@ use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
 use App\Models\Sales\PriceBookItem;
 use App\Models\Sales\Quotation;
-use App\Models\Sales\ServicePackage;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Support\Facades\DB;
@@ -251,11 +250,15 @@ class QuotationCreationService
             $quotation->items()->create([
                 'service_id' => $item['service_id'] ?? null,
                 'service_package_id' => $item['service_package_id'] ?? null,
+                'service_product_id' => $item['service_product_id'] ?? null,
                 'price_book_item_id' => $item['price_book_item_id'] ?? null,
+                'item_type' => $item['item_type'] ?? (($item['service_product_id'] ?? null) ? 'product' : 'package'),
                 'service_code_snapshot' => $item['service_code_snapshot'] ?? '',
                 'service_name_snapshot' => $item['service_name_snapshot'] ?? '',
                 'package_code_snapshot' => $item['package_code_snapshot'] ?? null,
                 'package_name_snapshot' => $item['package_name_snapshot'] ?? '',
+                'product_code_snapshot' => $item['product_code_snapshot'] ?? null,
+                'product_name_snapshot' => $item['product_name_snapshot'] ?? null,
                 'description_snapshot' => $item['description_snapshot'] ?? null,
                 'scope_snapshot' => $item['scope_snapshot'] ?? null,
                 'terms_snapshot' => $item['terms_snapshot'] ?? null,
@@ -283,7 +286,7 @@ class QuotationCreationService
 
     private function validateAssignment(Customer $customer, User $user): void
     {
-        if ($user->isAdmin() || $user->isCustomerServiceManager()) {
+        if ($user->isAdmin() || $user->isSalesManager()) {
             return;
         }
 
@@ -318,18 +321,27 @@ class QuotationCreationService
         $result = [];
         foreach ($items as $item) {
             $pbi = isset($item['price_book_item_id'])
-                ? PriceBookItem::with(['servicePackage.service', 'priceBook'])
+                ? PriceBookItem::with(['servicePackage.service', 'serviceProduct.service', 'priceBook'])
                     ->find($item['price_book_item_id'])
                 : null;
 
-            if ($pbi !== null && (int) $pbi->price_book_id !== (int) $priceBook->id) {
+            // Every quotation line must come from the selected Price Book.
+            // This makes the server authoritative for the sellable, price,
+            // VAT and discount policy even if a crafted request bypasses UI.
+            if ($pbi === null) {
+                throw ValidationException::withMessages([
+                    'items' => 'Mỗi dòng báo giá phải chọn một Sản phẩm hoặc Gói dịch vụ có trong Bảng giá.',
+                ]);
+            }
+
+            if ((int) $pbi->price_book_id !== (int) $priceBook->id) {
                 throw ValidationException::withMessages([
                     'items' => 'Gói giá được chọn không thuộc Bảng giá của báo giá.',
                 ]);
             }
 
             $quantity = (int) ($item['quantity']
-                ?? ($pbi?->servicePackage?->default_quantity ?? 1));
+                ?? ($pbi?->serviceProduct?->default_quantity ?? $pbi?->servicePackage?->default_quantity ?? 1));
 
             if ($quantity < 1) {
                 throw ValidationException::withMessages([
@@ -342,20 +354,25 @@ class QuotationCreationService
             }
 
             $result[] = [
-                'service_id' => $pbi?->servicePackage?->service_id ?? $item['service_id'] ?? null,
+                'service_id' => $pbi?->serviceProduct?->service_id ?? $pbi?->servicePackage?->service_id ?? $item['service_id'] ?? null,
                 'service_package_id' => $pbi?->service_package_id ?? $item['service_package_id'] ?? null,
+                'service_product_id' => $pbi?->service_product_id ?? $item['service_product_id'] ?? null,
                 'price_book_item_id' => $pbi?->id,
-                'service_code_snapshot' => $pbi?->servicePackage?->service?->service_code ?? $item['service_code_snapshot'] ?? '',
-                'service_name_snapshot' => $pbi?->servicePackage?->service?->name ?? $item['service_name_snapshot'] ?? '',
+                'item_type' => $pbi?->service_product_id ? 'product' : 'package',
+                'service_code_snapshot' => $pbi?->serviceProduct?->service?->service_code ?? $pbi?->servicePackage?->service?->service_code ?? $item['service_code_snapshot'] ?? '',
+                'service_name_snapshot' => $pbi?->serviceProduct?->service?->name ?? $pbi?->servicePackage?->service?->name ?? $item['service_name_snapshot'] ?? '',
                 'package_code_snapshot' => $pbi?->servicePackage?->package_code ?? $item['package_code_snapshot'] ?? null,
-                'package_name_snapshot' => $pbi?->servicePackage?->name ?? $item['package_name_snapshot'] ?? '',
+                // package_name_snapshot remains a generic commercial-line display name for backward-compatible PDF/email templates.
+                'package_name_snapshot' => $pbi?->serviceProduct?->name ?? $pbi?->servicePackage?->name ?? $item['package_name_snapshot'] ?? '',
+                'product_code_snapshot' => $pbi?->serviceProduct?->product_code ?? $item['product_code_snapshot'] ?? null,
+                'product_name_snapshot' => $pbi?->serviceProduct?->name ?? $item['product_name_snapshot'] ?? null,
                 'description_snapshot' => $item['description_snapshot'] ?? $pbi?->description ?? null,
                 'scope_snapshot' => $pbi?->scope_override ?? $item['scope_snapshot'] ?? null,
                 'terms_snapshot' => $pbi?->terms_override ?? $item['terms_snapshot'] ?? null,
                 // Price-book-backed commercial fields are server-authoritative.
                 // Disabled UI controls are not a security boundary: crafted
                 // requests must not be able to override price/VAT/unit/type.
-                'unit' => $pbi?->servicePackage?->unit ?? $item['unit'] ?? 'gói',
+                'unit' => $pbi?->serviceProduct?->unit ?? $pbi?->servicePackage?->unit ?? $item['unit'] ?? 'đơn vị',
                 'quantity' => $quantity,
                 'unit_price' => $pbi !== null
                     ? (float) $pbi->unit_price
@@ -393,48 +410,28 @@ class QuotationCreationService
 
             throw ValidationException::withMessages([
                 'items' => 'Số lượng của gói '
-                    .($pbi->servicePackage?->name ?? 'dịch vụ đã chọn')
+                    .($pbi->serviceProduct?->name ?? $pbi->servicePackage?->name ?? 'sản phẩm/dịch vụ đã chọn')
                     ." phải nằm trong phạm vi {$range}.",
             ]);
         }
     }
 
     /**
-     * Opportunity v2 currently represents one selected service package.
-     * Enforce that invariant in the service layer so a crafted request cannot
-     * bypass the Filament Price Book filter and quote a different package.
+     * Validate commercial lines against the current Opportunity context.
+     * Customer needs can evolve during consultation, so service_interest is
+     * context only; the selected Price Book is the commercial source of truth.
      */
     private function validateOpportunityItems(
         Opportunity $opportunity,
         array $itemData,
     ): void {
-        $serviceInterest = trim((string) $opportunity->service_interest);
-
-        if ($serviceInterest === '') {
-            return;
-        }
-
-        // Legacy/factory opportunities may contain free-text interests. Only
-        // enforce the package invariant when the interest is a real catalog
-        // package code; CRM v2 creates opportunities with such a code.
-        if (! ServicePackage::query()->where('package_code', $serviceInterest)->exists()) {
-            return;
-        }
-
+        // Customer needs can evolve during consultation. service_interest is
+        // attribution/context only; it must never lock a quotation to one
+        // package. The commercial source of truth is the chosen Price Book.
         if ($itemData === []) {
             throw ValidationException::withMessages([
-                'items' => 'Báo giá phải có gói dịch vụ của cơ hội.',
+                'items' => 'Báo giá phải có ít nhất một sản phẩm hoặc gói dịch vụ.',
             ]);
-        }
-
-        foreach ($itemData as $line) {
-            if (($line['package_code_snapshot'] ?? null) !== $serviceInterest) {
-                throw ValidationException::withMessages([
-                    'items' => 'Báo giá chỉ được sử dụng gói '
-                        .$serviceInterest
-                        .' đã được xác nhận trên cơ hội kinh doanh.',
-                ]);
-            }
         }
     }
 
@@ -531,7 +528,6 @@ class QuotationCreationService
 
         if (
             ! $user->isSalesStaff()
-            || $user->isSalesManager()
             || $user->staff?->id === null
             || $opportunity->assigned_staff_id !== $user->staff->id
         ) {

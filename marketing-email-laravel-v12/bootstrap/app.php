@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             SetLocale::class,
         ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/support/inbound-email',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

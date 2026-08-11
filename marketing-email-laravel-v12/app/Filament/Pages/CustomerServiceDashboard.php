@@ -2,11 +2,12 @@
 
 namespace App\Filament\Pages;
 
-use App\Enums\Crm\ContactQualificationStatus;
-use App\Enums\Crm\LeadIntakeStatus;
-use App\Filament\Resources\LeadResource;
-use App\Models\Crm\Lead;
-use App\Services\Dashboard\DashboardScopeService;
+use App\Enums\Support\TicketStatus;
+use App\Filament\Resources\CustomerResource;
+use App\Filament\Resources\SupportTicketResource;
+use App\Models\Crm\Customer;
+use App\Models\Crm\CustomerInteraction;
+use App\Models\Support\SupportTicket;
 use App\Services\Dashboard\WorkforceAnalyticsService;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,7 +23,7 @@ class CustomerServiceDashboard extends Page
 
     public static function getNavigationGroup(): string
     {
-        return __('navigation.group.crm');
+        return __('navigation.group.customer_care');
     }
 
     public static function getNavigationLabel(): string
@@ -41,54 +42,74 @@ class CustomerServiceDashboard extends Page
     {
         $user = auth()->user();
 
-        return $user !== null && ($user->isCustomerServiceManager() || $user->isCustomerServiceStaff());
+        return $user !== null && $user->can('customer-care.view');
     }
 
     protected function getViewData(): array
     {
         $user = auth()->user();
-        $leads = app(DashboardScopeService::class)->leads($user);
         $range = app(\App\Services\Dashboard\AnalyticsPeriodService::class)->resolve($this->period);
 
-        $periodLeads = (clone $leads)->whereBetween('created_at', [$range['start'], $range['end']]);
-        $handled = (clone $leads)->whereNotNull('assigned_staff_id')->whereBetween('assigned_at', [$range['start'], $range['end']])->count();
-        $qualified = (clone $leads)->whereHas('qualification', fn (Builder $q): Builder => $q->whereBetween('qualified_at', [$range['start'], $range['end']]))->count();
+        $customers = Customer::query();
+        $tickets = SupportTicket::query();
+        $interactions = CustomerInteraction::query();
+
+        if (! $user->isCustomerServiceManager()) {
+            $staffId = $user->staff?->id ?? 0;
+
+            $customers->whereHas('assignments', fn (Builder $q): Builder => $q
+                ->where('staff_id', $staffId)
+                ->where('status', 'active'));
+            $tickets->where(function (Builder $q) use ($staffId): void {
+                $q->where('assigned_staff_id', $staffId)
+                    ->orWhereHas('customer.assignments', fn (Builder $assignment): Builder => $assignment
+                        ->where('staff_id', $staffId)
+                        ->where('status', 'active'));
+            });
+            $interactions->where('staff_id', $staffId);
+        }
+
+        $periodCustomers = (clone $customers)->whereBetween('converted_at', [$range['start'], $range['end']]);
+        $periodInteractions = (clone $interactions)->whereBetween('interaction_at', [$range['start'], $range['end']]);
+
         $summary = [
-            'new' => (clone $periodLeads)->where('intake_status', LeadIntakeStatus::New->value)->count(),
-            'handled' => $handled,
-            'qualified' => $qualified,
-            'qualification_rate' => $handled > 0 ? round(($qualified / $handled) * 100, 1) : 0,
-            'follow_up_today' => (clone $leads)->whereHas('qualification', fn (Builder $q): Builder => $q->whereDate('next_follow_up_at', today()))->count(),
-            'overdue' => (clone $leads)->whereHas('qualification', fn (Builder $q): Builder => $q
-                ->where('next_follow_up_at', '<', now())
-                ->whereIn('status', [ContactQualificationStatus::Assigned->value, ContactQualificationStatus::Contacting->value, ContactQualificationStatus::FollowUp->value]))->count(),
-            'unassigned' => (clone $leads)->whereNull('assigned_staff_id')->whereNotIn('intake_status', [LeadIntakeStatus::Closed->value, LeadIntakeStatus::Duplicate->value, LeadIntakeStatus::Spam->value])->count(),
+            'active_customers' => (clone $customers)->where('status', 'active')->count(),
+            'new_customers' => $periodCustomers->count(),
+            'customer_interactions' => $periodInteractions->count(),
+            'follow_up_today' => (clone $customers)->whereDate('next_follow_up_at', today())->count(),
+            'overdue' => (clone $customers)->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<', now())->count(),
+            'open_tickets' => (clone $tickets)->whereIn('status', [
+                TicketStatus::Open->value,
+                TicketStatus::InProgress->value,
+                TicketStatus::PendingCustomer->value,
+            ])->count(),
+            'unassigned' => $user->isCustomerServiceManager()
+                ? Customer::query()->whereDoesntHave('assignments', fn (Builder $q): Builder => $q->where('status', 'active'))->count()
+                : 0,
         ];
 
-        $statusRows = collect(ContactQualificationStatus::cases())
-            ->map(fn (ContactQualificationStatus $status): array => [
+        $statusRows = collect(TicketStatus::cases())
+            ->map(fn (TicketStatus $status): array => [
                 'label' => $status->label(),
-                'value' => (clone $leads)->whereHas('qualification', fn (Builder $q): Builder => $q->where('status', $status->value))->count(),
+                'value' => (clone $tickets)->where('status', $status->value)->count(),
             ])
             ->filter(fn (array $row): bool => $row['value'] > 0)
             ->values()
             ->all();
 
-        $priority = (clone $leads)
-            ->with(['contact:id,full_name,email', 'company:id,legal_name', 'qualification'])
-            ->whereHas('qualification', fn (Builder $q): Builder => $q
-                ->whereIn('status', [ContactQualificationStatus::Assigned->value, ContactQualificationStatus::Contacting->value, ContactQualificationStatus::FollowUp->value])
-                ->whereNotNull('next_follow_up_at'))
-            ->limit(30)
+        $priority = (clone $tickets)
+            ->with(['customer:id,display_name', 'assignedStaff:id,full_name'])
+            ->whereIn('status', [TicketStatus::Open->value, TicketStatus::InProgress->value])
+            ->orderByRaw("CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END")
+            ->orderBy('last_activity_at')
+            ->limit(8)
             ->get()
-            ->sortBy(fn (Lead $lead) => $lead->qualification?->next_follow_up_at?->timestamp ?? PHP_INT_MAX)
-            ->take(8)
-            ->values()
-            ->map(fn (Lead $lead): array => [
-                'id' => $lead->id,
-                'name' => $lead->company?->legal_name ?: $lead->contact?->full_name ?: $lead->title,
-                'follow_up_at' => $lead->qualification?->next_follow_up_at,
-                'status' => $lead->qualification?->status?->label() ?: '—',
+            ->map(fn (SupportTicket $ticket): array => [
+                'id' => $ticket->id,
+                'name' => $ticket->customer?->display_name ?: $ticket->requester_name,
+                'subject' => $ticket->subject,
+                'status' => $ticket->status?->label() ?: '—',
+                'last_activity_at' => $ticket->last_activity_at,
             ])
             ->all();
 
@@ -97,8 +118,15 @@ class CustomerServiceDashboard extends Page
             'summary' => $summary,
             'statusRows' => $statusRows,
             'priority' => $priority,
-            'workforce' => $user->isCustomerServiceManager() ? app(WorkforceAnalyticsService::class)->report($user, $this->period) : null,
-            'leadUrl' => LeadResource::canViewAny() ? LeadResource::getUrl() : null,
+            'workforce' => $user->isCustomerServiceManager()
+                ? app(WorkforceAnalyticsService::class)->report(
+                    $user,
+                    $this->period,
+                    \App\Enums\Crm\DepartmentFunction::CustomerService,
+                )
+                : null,
+            'customerUrl' => CustomerResource::canViewAny() ? CustomerResource::getUrl() : null,
+            'ticketUrl' => SupportTicketResource::canViewAny() ? SupportTicketResource::getUrl() : null,
             'workforceUrl' => WorkforceAnalyticsPage::canAccess() ? WorkforceAnalyticsPage::getUrl() : null,
         ];
     }
@@ -106,14 +134,23 @@ class CustomerServiceDashboard extends Page
     public function exportCsv(): StreamedResponse
     {
         $data = $this->getViewData();
-        $filename = 'customer-service-performance-'.now()->format('Ymd-His').'.csv';
+        $filename = 'customer-care-performance-'.now()->format('Ymd-His').'.csv';
+        $labels = [
+            'active_customers' => __('v1.analytics.active_customers'),
+            'new_customers' => __('v1.analytics.new_customers'),
+            'customer_interactions' => __('analytics.customer_interactions'),
+            'follow_up_today' => __('analytics.follow_up_today'),
+            'overdue' => __('analytics.overdue'),
+            'open_tickets' => __('v1.analytics.open_tickets'),
+            'unassigned' => __('v1.analytics.unassigned_customers'),
+        ];
 
-        return response()->streamDownload(function () use ($data): void {
+        return response()->streamDownload(function () use ($data, $labels): void {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
             fputcsv($out, [__('uiux.dashboard.customer_service.title')]);
             foreach ($data['summary'] as $key => $value) {
-                fputcsv($out, [__('analytics.'.$key), $value]);
+                fputcsv($out, [$labels[$key] ?? $key, $value]);
             }
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);

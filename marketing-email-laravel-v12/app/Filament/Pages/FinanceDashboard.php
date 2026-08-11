@@ -35,7 +35,7 @@ class FinanceDashboard extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isFinanceStaff() ?? false;
+        return auth()->user()?->can('sales.view-payments') ?? false;
     }
 
     protected function getViewData(): array

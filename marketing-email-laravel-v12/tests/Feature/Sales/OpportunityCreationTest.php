@@ -7,16 +7,16 @@ use App\Enums\Crm\LeadIntakeStatus;
 use App\Models\Crm\Company;
 use App\Models\Crm\ContactQualification;
 use App\Models\Crm\Lead;
-use App\Models\Crm\Staff;
 use App\Models\Sales\Opportunity;
-use App\Models\User;
 use App\Services\Sales\OpportunityCreationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\MakesV1Actors;
 use Tests\TestCase;
 
 class OpportunityCreationTest extends TestCase
 {
+    use MakesV1Actors;
     use RefreshDatabase;
 
     private function makeLeadWithStatus(string $status, array $overrides = []): Lead
@@ -47,16 +47,18 @@ class OpportunityCreationTest extends TestCase
 
     public function test_unqualified_lead_cannot_create_opportunity(): void
     {
+        [$user, $staff] = $this->makeV1SalesStaff();
+
         $lead = $this->makeLeadWithStatus(
             ContactQualificationStatus::Contacting->value,
+            ['assigned_staff_id' => $staff->id],
         );
-
-        $user = User::factory()->create();
 
         $this->expectException(ValidationException::class);
 
         $this->service()->createFromQualifiedLead(
             $lead,
+            $staff,
             [],
             $user->id,
         );
@@ -64,11 +66,12 @@ class OpportunityCreationTest extends TestCase
 
     public function test_qualified_lead_creates_opportunity_in_qualified_stage(): void
     {
-        $lead = $this->makeQualifiedLead();
-        $user = User::factory()->create();
+        [$user, $staff] = $this->makeV1SalesStaff();
+        $lead = $this->makeQualifiedLead(['assigned_staff_id' => $staff->id]);
 
         $opportunity = $this->service()->createFromQualifiedLead(
             $lead,
+            $staff,
             [],
             $user->id,
         );
@@ -93,11 +96,17 @@ class OpportunityCreationTest extends TestCase
 
     public function test_same_lead_only_creates_one_opportunity(): void
     {
-        $lead = $this->makeQualifiedLead();
-        $user = User::factory()->create();
+        [$user, $staff] = $this->makeV1SalesStaff();
+        $lead = $this->makeQualifiedLead(['assigned_staff_id' => $staff->id]);
 
-        $this->service()->createFromQualifiedLead($lead, [], $user->id);
-        $this->service()->createFromQualifiedLead($lead, [], $user->id);
+        $this->service()->createFromQualifiedLead($lead, $staff, [], $user->id);
+
+        try {
+            $this->service()->createFromQualifiedLead($lead, $staff, [], $user->id);
+            $this->fail('Second conversion should be rejected.');
+        } catch (ValidationException) {
+            // Expected: Lead already has an opportunity.
+        }
 
         $this->assertSame(1, Opportunity::query()->count());
         $this->assertSame(
@@ -108,11 +117,12 @@ class OpportunityCreationTest extends TestCase
 
     public function test_primary_contact_is_synced_to_opportunity_contacts(): void
     {
-        $lead = $this->makeQualifiedLead();
-        $user = User::factory()->create();
+        [$user, $staff] = $this->makeV1SalesStaff();
+        $lead = $this->makeQualifiedLead(['assigned_staff_id' => $staff->id]);
 
         $opportunity = $this->service()->createFromQualifiedLead(
             $lead,
+            $staff,
             [],
             $user->id,
         );
@@ -132,11 +142,15 @@ class OpportunityCreationTest extends TestCase
             'legal_name' => 'Công ty TNHH ABC',
         ]);
 
-        $lead = $this->makeQualifiedLead(['company_id' => $company->id]);
-        $user = User::factory()->create();
+        [$user, $staff] = $this->makeV1SalesStaff();
+        $lead = $this->makeQualifiedLead([
+            'company_id' => $company->id,
+            'assigned_staff_id' => $staff->id,
+        ]);
 
         $opportunity = $this->service()->createFromQualifiedLead(
             $lead,
+            $staff,
             [],
             $user->id,
         );
@@ -146,32 +160,35 @@ class OpportunityCreationTest extends TestCase
 
     public function test_data_overrides_are_applied(): void
     {
-        $lead = $this->makeQualifiedLead();
-        $user = User::factory()->create();
+        [$user, $staff] = $this->makeV1SalesStaff();
+        $lead = $this->makeQualifiedLead([
+            'estimated_value' => 10000000,
+            'assigned_staff_id' => $staff->id,
+        ]);
 
         $opportunity = $this->service()->createFromQualifiedLead(
             $lead,
+            $staff,
             [
                 'title' => 'Cơ hội Email Marketing',
-                'estimated_value' => 25000000,
                 'probability' => 80,
             ],
             $user->id,
         );
 
         $this->assertSame('Cơ hội Email Marketing', $opportunity->title);
-        $this->assertSame('25000000.00', $opportunity->estimated_value);
+        $this->assertSame('10000000.00', $opportunity->estimated_value);
         $this->assertSame(80, $opportunity->probability);
     }
 
     public function test_opportunity_owner_defaults_to_lead_owner(): void
     {
-        $staff = Staff::factory()->create();
+        [$user, $staff] = $this->makeV1SalesStaff();
         $lead = $this->makeQualifiedLead(['assigned_staff_id' => $staff->id]);
-        $user = User::factory()->create();
 
         $opportunity = $this->service()->createFromQualifiedLead(
             $lead,
+            $staff,
             [],
             $user->id,
         );

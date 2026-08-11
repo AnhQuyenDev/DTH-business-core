@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Enums\Crm\StaffEmploymentStatus;
 use App\Filament\Resources\StaffResource\Pages;
 use App\Filament\Resources\StaffResource\RelationManagers\AvailabilitiesRelationManager;
+use App\Filament\Resources\StaffResource\RelationManagers\BusinessFunctionsRelationManager;
 use App\Filament\Resources\StaffResource\RelationManagers\InteractionsRelationManager;
 use App\Filament\Resources\StaffResource\RelationManagers\ScheduleRelationManager;
 use App\Filament\Resources\StaffResource\RelationManagers\WorkScheduleRelationManager;
@@ -45,7 +46,7 @@ class StaffResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('crm.manage-staff') ?? false;
     }
 
     public static function getNavigationGroup(): string
@@ -70,22 +71,22 @@ class StaffResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('crm.manage-staff') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('crm.manage-staff') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('crm.manage-staff') ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('crm.manage-staff') ?? false;
     }
 
     public static function form(Form $form): Form
@@ -338,6 +339,7 @@ class StaffResource extends Resource
     public static function getRelations(): array
     {
         return [
+            BusinessFunctionsRelationManager::class,
             AvailabilitiesRelationManager::class,
             InteractionsRelationManager::class,
             ScheduleRelationManager::class,

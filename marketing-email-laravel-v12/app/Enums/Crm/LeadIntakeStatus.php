@@ -15,14 +15,7 @@ enum LeadIntakeStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::New => 'Mới',
-            self::Active => 'Đang xử lý',
-            self::Duplicate => 'Trùng lặp',
-            self::Spam => 'Spam',
-            self::Closed => 'Đã đóng',
-            self::ConvertedToOpportunity => 'Đã tạo cơ hội',
-        };
+        return __('enum.lead_intake_status.'.$this->value);
     }
 
     public function color(): string

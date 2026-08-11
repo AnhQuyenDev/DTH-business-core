@@ -13,6 +13,11 @@ class RolePermissionMatrix extends Page
 
     protected static ?int $navigationSort = 60;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');
@@ -30,7 +35,7 @@ class RolePermissionMatrix extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('system.manage-rbac') ?? false;
     }
 
     protected function getViewData(): array

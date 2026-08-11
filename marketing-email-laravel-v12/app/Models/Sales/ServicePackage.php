@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ServicePackage extends Model
@@ -43,6 +44,12 @@ class ServicePackage extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function products(): BelongsToMany
+    {
+        return $this->belongsToMany(ServiceProduct::class, 'service_package_products')
+            ->withPivot('quantity')->withTimestamps();
     }
 
     public function createdBy(): BelongsTo

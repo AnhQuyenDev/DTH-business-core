@@ -19,10 +19,12 @@ use App\Models\User;
 use App\Services\Sales\QuotationCreationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\MakesV1Actors;
 use Tests\TestCase;
 
 class QuotationPriceBookIntegrityTest extends TestCase
 {
+    use MakesV1Actors;
     use RefreshDatabase;
 
     private User $staffUser;
@@ -41,29 +43,7 @@ class QuotationPriceBookIntegrityTest extends TestCase
     {
         parent::setUp();
 
-        $department = Department::query()->create([
-            'code' => 'sales',
-            'name' => 'Kinh doanh',
-            'function_key' => 'sales',
-            'sort_order' => 4,
-            'is_active' => true,
-        ]);
-
-        $this->staffUser = User::query()->create([
-            'name' => 'Sales Staff',
-            'email' => 'sales-staff@example.test',
-            'password' => 'secret',
-            'role' => 'sales_staff',
-        ]);
-
-        $this->staff = Staff::query()->create([
-            'user_id' => $this->staffUser->id,
-            'employee_code' => 'EMP-TEST-01',
-            'full_name' => 'Sales Staff',
-            'department_id' => $department->id,
-            'employment_status' => StaffEmploymentStatus::Active,
-            'can_receive_customers' => true,
-        ]);
+        [$this->staffUser, $this->staff] = $this->makeV1SalesStaff('Price Book Sales Staff');
 
         $service = Service::query()->create([
             'service_code' => 'HOSTING',
@@ -108,7 +88,7 @@ class QuotationPriceBookIntegrityTest extends TestCase
         PriceBookAccessRule::query()->create([
             'price_book_id' => $this->priceBook->id,
             'access_type' => 'department',
-            'department' => 'sales',
+            'department' => $this->staff->department->code,
             'can_view' => true,
             'can_create_quotation' => true,
         ]);
@@ -184,7 +164,7 @@ class QuotationPriceBookIntegrityTest extends TestCase
         );
     }
 
-    public function test_different_package_cannot_be_injected_into_opportunity_quotation(): void
+    public function test_opportunity_quotation_uses_price_book_authority_over_opportunity_interest(): void
     {
         $otherPackage = ServicePackage::query()->create([
             'service_id' => $this->package->service_id,
@@ -203,9 +183,9 @@ class QuotationPriceBookIntegrityTest extends TestCase
             'vat_rate' => 10,
         ]);
 
-        $this->expectException(ValidationException::class);
-
-        app(QuotationCreationService::class)->createForOpportunity(
+        // service_interest chỉ là attribution/context; bảng giá đã chọn là
+        // nguồn thương mại duy nhất, nên gói khác vẫn được báo giá hợp lệ.
+        $quotation = app(QuotationCreationService::class)->createForOpportunity(
             $this->opportunity,
             $this->staffUser,
             $this->priceBook,
@@ -214,5 +194,8 @@ class QuotationPriceBookIntegrityTest extends TestCase
                 'quantity' => 1,
             ]],
         );
+
+        $line = $quotation->items()->firstOrFail();
+        $this->assertSame('PPH03', $line->package_code_snapshot);
     }
 }

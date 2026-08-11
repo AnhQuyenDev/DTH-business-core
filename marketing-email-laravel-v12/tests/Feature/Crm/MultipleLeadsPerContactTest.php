@@ -106,6 +106,10 @@ class MultipleLeadsPerContactTest extends TestCase
             'personal_email' => 'a@example.com',
         ]);
 
+        // Hai lần gửi hợp lệ cách nhau ngoài cửa sổ 60 giây chống
+        // double-submit (xem LeadIntakeHardeningTest).
+        $this->travel(61)->seconds();
+
         $this->submit($page, 'personal', [
             'full_name' => 'Nguyễn Văn A',
             'personal_email' => 'a@example.com',
@@ -169,6 +173,10 @@ class MultipleLeadsPerContactTest extends TestCase
             'full_name' => 'Nguyễn Văn A',
             'personal_email' => 'submission-relation@example.com',
         ]);
+
+        // Ngoài cửa sổ 60 giây chống double-submit, lần gửi sau vẫn tạo
+        // submission và lead riêng cho cùng contact.
+        $this->travel(61)->seconds();
 
         $this->submit($page, 'personal', [
             'full_name' => 'Nguyễn Văn A',

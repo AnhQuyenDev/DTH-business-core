@@ -15,11 +15,15 @@ class QuotationItem extends Model
         'quotation_id',
         'service_id',
         'service_package_id',
+        'service_product_id',
         'price_book_item_id',
+        'item_type',
         'service_code_snapshot',
         'service_name_snapshot',
         'package_code_snapshot',
         'package_name_snapshot',
+        'product_code_snapshot',
+        'product_name_snapshot',
         'description_snapshot',
         'scope_snapshot',
         'terms_snapshot',
@@ -64,5 +68,10 @@ class QuotationItem extends Model
     public function servicePackage(): BelongsTo
     {
         return $this->belongsTo(ServicePackage::class);
+    }
+
+    public function serviceProduct(): BelongsTo
+    {
+        return $this->belongsTo(ServiceProduct::class);
     }
 }

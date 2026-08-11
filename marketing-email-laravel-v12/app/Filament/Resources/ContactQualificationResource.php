@@ -63,7 +63,10 @@ class ContactQualificationResource extends Resource
     {
         $user = auth()->user();
 
-        return ($user?->isAdmin() || $user?->isMarketingManager() || $user?->isCustomerServiceManager() || $user?->isCustomerServiceStaff()) ?? false;
+        return ($user?->isAdmin()
+            || $user?->canReadAcrossBusiness()
+            || $user?->isMarketingStaff()
+            || $user?->isSalesStaff()) ?? false;
     }
 
     public static function canCreate(): bool
@@ -75,7 +78,7 @@ class ContactQualificationResource extends Resource
     {
         $user = auth()->user();
 
-        return ($user?->isAdmin() || $user?->isCustomerServiceManager() || $user?->isCustomerServiceStaff()) ?? false;
+        return ($user?->isSalesStaff()) ?? false;
     }
 
     public static function form(Form $form): Form
@@ -95,7 +98,7 @@ class ContactQualificationResource extends Resource
                             'assignedStaff',
                             'full_name',
                             modifyQueryUsing: fn ($query) => $query
-                                ->whereHas('department', fn ($q) => $q->where('function_key', 'customer_service'))
+                                ->withBusinessFunction(\App\Enums\Crm\DepartmentFunction::Sales)
                                 ->whereHas('user', fn ($q) => $q->where('is_active', true)),
                         )
                         ->searchable()
@@ -203,14 +206,15 @@ class ContactQualificationResource extends Resource
                     ->label(__('action.start_contacting'))
                     ->icon('heroicon-o-phone-arrow-up-right')
                     ->color('info')
-                    ->visible(fn (ContactQualification $record): bool => in_array(
-                        (string) ($record->status?->value ?? $record->status),
-                        [
-                            ContactQualificationStatus::Assigned->value,
-                            ContactQualificationStatus::FollowUp->value,
-                        ],
-                        true,
-                    ))
+                    ->visible(fn (ContactQualification $record): bool => (auth()->user()?->isSalesStaff() ?? false)
+                        && in_array(
+                            (string) ($record->status?->value ?? $record->status),
+                            [
+                                ContactQualificationStatus::Assigned->value,
+                                ContactQualificationStatus::FollowUp->value,
+                            ],
+                            true,
+                        ))
                     ->action(function (ContactQualification $record): void {
                         app(ContactQualificationWorkflowService::class)->transition(
                             qualification: $record,
@@ -223,7 +227,8 @@ class ContactQualificationResource extends Resource
                     ->label(__('action.process_lead'))
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
-                    ->visible(fn (ContactQualification $record): bool => ! config('business_flow.v2_enabled')
+                    ->visible(fn (ContactQualification $record): bool => (auth()->user()?->isSalesStaff() ?? false)
+                            && ! config('business_flow.v2_enabled')
                             && blank($record->last_contacted_at)
                     )
                     ->form([
@@ -263,7 +268,8 @@ class ContactQualificationResource extends Resource
                     ->label(__('action.convert_to_customer'))
                     ->icon('heroicon-o-arrow-path')
                     ->color('success')
-                    ->visible(fn (ContactQualification $record): bool => ! config('business_flow.v2_enabled')
+                    ->visible(fn (ContactQualification $record): bool => (auth()->user()?->isSalesStaff() ?? false)
+                            && ! config('business_flow.v2_enabled')
                             && $record->isConvertible()
                     )
                     ->form([

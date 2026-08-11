@@ -12,11 +12,7 @@ enum PaymentNoticeStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Pending => 'Chờ đối soát',
-            self::Verified => 'Đã xác minh',
-            self::Rejected => 'Không khớp',
-        };
+        return __('enum.sales.payment_notice_status.'.$this->value);
     }
 
     public function color(): string

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Crm\DepartmentFunction;
+use App\Enums\Crm\PositionAuthority;
 use App\Enums\UserRole;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\AuditLog;
@@ -14,11 +15,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
+use App\Services\Security\RbacSyncService;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasRoles;
+
+
+    protected static function booted(): void
+    {
+        static::saved(function (self $user): void {
+            try {
+                app(RbacSyncService::class)->syncUserCanonicalRoles($user);
+            } catch (\Throwable) {
+                // Permission tables may not exist during initial migration/bootstrap.
+            }
+        });
+    }
 
     protected $fillable = [
         'name',
@@ -57,7 +72,7 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(AuditLog::class, 'user_id');
     }
 
-    public function hasRole(UserRole|string $role): bool
+    public function hasLegacyRole(UserRole|string $role): bool
     {
         $resolved = $role instanceof UserRole
             ? $role
@@ -103,10 +118,10 @@ class User extends Authenticatable implements FilamentUser
     /**
      * @param  array<int, UserRole|string>  $roles
      */
-    public function hasAnyRole(array $roles): bool
+    public function hasAnyLegacyRole(array $roles): bool
     {
         foreach ($roles as $role) {
-            if ($this->hasRole($role)) {
+            if ($this->hasLegacyRole($role)) {
                 return true;
             }
         }
@@ -114,9 +129,25 @@ class User extends Authenticatable implements FilamentUser
         return false;
     }
 
+    public function isSuperAdmin(): bool
+    {
+        if ($this->role === UserRole::SuperAdmin->value) {
+            return true;
+        }
+
+        try {
+            return $this->hasRole('super_admin');
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::Admin->value;
+        // Backward-compatible system-admin check: Super Admin must pass all
+        // legacy Admin-only infrastructure guards while remaining separately
+        // identifiable through isSuperAdmin().
+        return $this->isSuperAdmin() || $this->role === UserRole::Admin->value;
     }
 
     public function isExecutive(): bool
@@ -126,7 +157,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function isSystemUser(): bool
     {
-        return $this->hasRole(UserRole::User);
+        return $this->hasLegacyRole(UserRole::User);
     }
 
     public function isViewer(): bool
@@ -136,7 +167,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canReadAcrossBusiness(): bool
     {
-        return $this->isExecutive() || $this->isViewer();
+        return $this->isSuperAdmin() || $this->isExecutive() || $this->isViewer();
     }
 
     public function departmentFunction(): ?DepartmentFunction
@@ -146,9 +177,60 @@ class User extends Authenticatable implements FilamentUser
         return $this->staff?->department?->function();
     }
 
+    public function primaryBusinessFunction(): ?DepartmentFunction
+    {
+        $this->loadMissing('staff');
+
+        return $this->staff?->primaryBusinessFunction();
+    }
+
+    public function hasBusinessFunction(DepartmentFunction|string $function): bool
+    {
+        $this->loadMissing('staff');
+
+        return $this->staff?->hasBusinessFunction($function) ?? false;
+    }
+
+    public function businessAuthorityFor(DepartmentFunction|string $function): ?PositionAuthority
+    {
+        $this->loadMissing('staff');
+
+        return $this->staff?->businessAuthorityFor($function);
+    }
+
+    public function hasBusinessManagerAuthority(DepartmentFunction|string $function): bool
+    {
+        $this->loadMissing('staff');
+
+        return $this->staff?->hasBusinessManagerAuthority($function) ?? false;
+    }
+
+    /** @return array<int, DepartmentFunction> */
+    public function managedBusinessFunctions(): array
+    {
+        $this->loadMissing('staff.businessFunctions');
+
+        if (! $this->staff) {
+            return [];
+        }
+
+        return collect(DepartmentFunction::cases())
+            ->filter(fn (DepartmentFunction $function): bool =>
+                ! in_array($function, [DepartmentFunction::Admin, DepartmentFunction::Other], true)
+                && $this->staff->hasBusinessManagerAuthority($function)
+            )
+            ->values()
+            ->all();
+    }
+
+    public function isBusinessManager(): bool
+    {
+        return $this->managedBusinessFunctions() !== [];
+    }
+
     public function belongsToDepartmentFunction(DepartmentFunction $function): bool
     {
-        return $this->departmentFunction() === $function;
+        return $this->hasBusinessFunction($function);
     }
 
     public function hasDepartmentManagerAuthority(): bool
@@ -161,66 +243,69 @@ class User extends Authenticatable implements FilamentUser
 
     public function isMarketingManager(): bool
     {
-        return $this->hasRole(UserRole::MarketingManager);
+        return $this->isSuperAdmin() || $this->hasLegacyRole(UserRole::MarketingManager);
     }
 
     public function isMarketingStaff(): bool
     {
-        return $this->hasRole(UserRole::MarketingStaff);
+        return $this->isSuperAdmin() || $this->hasLegacyRole(UserRole::MarketingStaff);
     }
 
     public function isCustomerServiceManager(): bool
     {
-        return $this->hasRole(UserRole::CustomerServiceManager);
+        return $this->isSuperAdmin() || $this->hasLegacyRole(UserRole::CustomerServiceManager);
     }
 
     public function isCustomerServiceStaff(): bool
     {
-        return $this->hasRole(UserRole::CustomerServiceStaff);
+        return $this->isSuperAdmin() || $this->hasLegacyRole(UserRole::CustomerServiceStaff);
     }
 
     public function isSalesManager(): bool
     {
-        return $this->hasRole(UserRole::SalesManager);
+        return $this->isSuperAdmin() || $this->hasLegacyRole(UserRole::SalesManager);
     }
 
     public function isSalesStaff(): bool
     {
-        return $this->hasRole(UserRole::SalesStaff);
+        return $this->isSuperAdmin() || $this->hasLegacyRole(UserRole::SalesStaff);
     }
 
     public function isFinanceStaff(): bool
     {
-        return $this->hasRole(UserRole::FinanceStaff);
+        return $this->isSuperAdmin() || $this->hasLegacyRole(UserRole::FinanceStaff);
     }
 
     public function canViewMarketingModule(): bool
     {
-        return $this->isAdmin()
+        return $this->isSuperAdmin()
+            || $this->isAdmin()
             || $this->canReadAcrossBusiness()
             || $this->isMarketingStaff();
     }
 
     public function canViewCrmModule(): bool
     {
-        return $this->isAdmin()
+        return $this->isSuperAdmin()
+            || $this->isAdmin()
             || $this->canReadAcrossBusiness()
             || $this->isMarketingStaff()
-            || $this->isCustomerServiceStaff();
+            || $this->isSalesStaff();
     }
 
     public function canViewSalesModule(): bool
     {
-        return $this->isAdmin()
+        return $this->isSuperAdmin()
+            || $this->isAdmin()
             || $this->canReadAcrossBusiness()
-            || $this->isCustomerServiceManager()
             || $this->isSalesStaff()
             || $this->isFinanceStaff();
     }
 
     public function canViewCustomerCareModule(): bool
     {
-        return $this->isAdmin()
+        return $this->isSuperAdmin()
+            || $this->isAdmin()
             || $this->canReadAcrossBusiness()
             || $this->isCustomerServiceStaff();
     }
@@ -252,7 +337,7 @@ class User extends Authenticatable implements FilamentUser
                 UserRole::SalesStaff,
                 UserRole::FinanceStaff,
             ] as $legacyRole) {
-                if ($this->hasRole($legacyRole)) {
+                if ($this->hasLegacyRole($legacyRole)) {
                     $keys[] = $legacyRole->value;
                 }
             }
@@ -266,8 +351,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function isAnyMarketingUser(): bool
     {
-        return $this->canViewMarketingModule()
-            || $this->isCustomerServiceStaff();
+        return $this->canViewMarketingModule();
     }
 
     private function matchesLegacyBusinessAlias(UserRole $role): bool
@@ -275,7 +359,7 @@ class User extends Authenticatable implements FilamentUser
         // System Admin is infrastructure/configuration authority, not an
         // implicit business-role holder. Business workflow permissions must
         // come from the employee's Department + Position authority.
-        if ($this->isAdmin() || $this->canReadAcrossBusiness()) {
+        if ($this->isSuperAdmin() || $this->isAdmin() || $this->canReadAcrossBusiness()) {
             return false;
         }
 
@@ -285,28 +369,28 @@ class User extends Authenticatable implements FilamentUser
 
         return match ($role) {
             UserRole::MarketingManager =>
-                $this->belongsToDepartmentFunction(DepartmentFunction::Marketing)
-                && $this->hasDepartmentManagerAuthority(),
+                $this->hasBusinessFunction(DepartmentFunction::Marketing)
+                && $this->hasBusinessManagerAuthority(DepartmentFunction::Marketing),
 
             UserRole::MarketingStaff =>
-                $this->belongsToDepartmentFunction(DepartmentFunction::Marketing),
+                $this->hasBusinessFunction(DepartmentFunction::Marketing),
 
             UserRole::CustomerServiceManager =>
-                $this->belongsToDepartmentFunction(DepartmentFunction::CustomerService)
-                && $this->hasDepartmentManagerAuthority(),
+                $this->hasBusinessFunction(DepartmentFunction::CustomerService)
+                && $this->hasBusinessManagerAuthority(DepartmentFunction::CustomerService),
 
             UserRole::CustomerServiceStaff =>
-                $this->belongsToDepartmentFunction(DepartmentFunction::CustomerService),
+                $this->hasBusinessFunction(DepartmentFunction::CustomerService),
 
             UserRole::SalesManager =>
-                $this->belongsToDepartmentFunction(DepartmentFunction::Sales)
-                && $this->hasDepartmentManagerAuthority(),
+                $this->hasBusinessFunction(DepartmentFunction::Sales)
+                && $this->hasBusinessManagerAuthority(DepartmentFunction::Sales),
 
             UserRole::SalesStaff =>
-                $this->belongsToDepartmentFunction(DepartmentFunction::Sales),
+                $this->hasBusinessFunction(DepartmentFunction::Sales),
 
             UserRole::FinanceStaff =>
-                $this->belongsToDepartmentFunction(DepartmentFunction::Finance),
+                $this->hasBusinessFunction(DepartmentFunction::Finance),
 
             default => false,
         };

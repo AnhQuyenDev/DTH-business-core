@@ -13,6 +13,7 @@ use App\Models\Marketing\SuppressionEntry;
 use App\Models\Marketing\Tag;
 use App\Models\Sales\Opportunity;
 use App\Models\Sales\Quotation;
+use App\Models\Support\SupportTicket;
 use App\Services\Marketing\AuditLogService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -206,6 +207,11 @@ class Customer extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function supportTickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
     }
 
     public function emailEvents(): HasMany

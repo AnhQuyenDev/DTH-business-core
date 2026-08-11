@@ -3,6 +3,7 @@
 namespace App\Services\Dashboard;
 
 use App\Enums\Crm\ContactQualificationStatus;
+use App\Enums\Crm\DepartmentFunction;
 use App\Enums\Crm\StaffEmploymentStatus;
 use App\Models\Crm\ContactQualification;
 use App\Models\Crm\Customer;
@@ -16,6 +17,7 @@ use App\Models\Marketing\LandingPage;
 use App\Models\Marketing\LandingPageSubmission;
 use App\Models\Marketing\MarketingCampaign;
 use App\Models\Sales\Quotation;
+use App\Models\Support\SupportTicket;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,30 +30,56 @@ final class WorkforceAnalyticsService
     }
 
     /** @return array<string, mixed> */
-    public function report(User $viewer, string $period = '30d'): array
-    {
+    public function report(
+        User $viewer,
+        string $period = '30d',
+        DepartmentFunction|string|null $function = null,
+    ): array {
         $range = $this->periods->resolve($period);
+        $resolvedFunction = $function instanceof DepartmentFunction
+            ? $function
+            : (is_string($function) ? DepartmentFunction::tryFrom($function) : null);
+
         $staffQuery = Staff::query()
-            ->with(['user:id,name,email,is_active', 'department:id,name,function_key,color', 'position:id,title'])
+            ->with([
+                'user:id,name,email,is_active',
+                'department:id,name,function_key,color',
+                'position:id,title',
+                'businessFunctions',
+            ])
             ->where('employment_status', StaffEmploymentStatus::Active->value)
             ->whereHas('user', fn (Builder $q): Builder => $q->where('is_active', true));
 
-        if (! ($viewer->isAdmin() || $viewer->canReadAcrossBusiness())) {
-            $departmentId = $viewer->staff?->department_id;
-            $isManager = $viewer->hasDepartmentManagerAuthority()
-                || $viewer->isMarketingManager()
-                || $viewer->isCustomerServiceManager()
-                || $viewer->isSalesManager();
+        if ($resolvedFunction !== null) {
+            $staffQuery->withBusinessFunction($resolvedFunction);
 
-            if ($departmentId === null || ! $isManager) {
+            if (! ($viewer->isAdmin() || $viewer->canReadAcrossBusiness())) {
+                if (! $viewer->hasBusinessManagerAuthority($resolvedFunction)) {
+                    $staffQuery->whereRaw('1 = 0');
+                }
+            }
+        } elseif (! ($viewer->isAdmin() || $viewer->canReadAcrossBusiness())) {
+            $managedFunctions = $viewer->managedBusinessFunctions();
+
+            if ($managedFunctions === []) {
                 $staffQuery->whereRaw('1 = 0');
             } else {
-                $staffQuery->where('department_id', $departmentId);
+                $staffQuery->where(function (Builder $query) use ($managedFunctions): void {
+                    foreach ($managedFunctions as $function) {
+                        $query->orWhere(fn (Builder $subQuery): Builder =>
+                            $subQuery->withBusinessFunction($function)
+                        );
+                    }
+                });
             }
         }
 
         $staff = $staffQuery->orderBy('department_id')->orderBy('full_name')->get();
-        $rows = $staff->map(fn (Staff $member): array => $this->staffMetrics($member, $range))->values();
+        $rows = $staff->map(fn (Staff $member): array => $this->staffMetrics(
+            $member,
+            $range,
+            $resolvedFunction,
+        ))->values();
         $rows = $this->withActivityIndex($rows);
 
         $departments = $rows
@@ -87,9 +115,14 @@ final class WorkforceAnalyticsService
     }
 
     /** @return array<string, mixed> */
-    private function staffMetrics(Staff $staff, array $range): array
-    {
-        $function = $staff->department?->function_key ?: 'other';
+    private function staffMetrics(
+        Staff $staff,
+        array $range,
+        ?DepartmentFunction $businessFunction = null,
+    ): array {
+        $function = $businessFunction?->value
+            ?: ($staff->primaryBusinessFunction()?->value
+                ?: ($staff->department?->function_key ?: 'other'));
 
         return match ($function) {
             'marketing' => $this->marketingMetrics($staff, $range),
@@ -176,31 +209,30 @@ final class WorkforceAnalyticsService
     private function customerServiceMetrics(Staff $staff, array $range): array
     {
         $row = $this->base($staff, 'customer_service');
-        $handled = Lead::query()
-            ->where('assigned_staff_id', $staff->id)
-            ->where(function (Builder $q) use ($range): void {
-                $q->whereBetween('assigned_at', [$range['start'], $range['end']])
-                    ->orWhereBetween('created_at', [$range['start'], $range['end']]);
-            })
-            ->count();
-        $qualified = ContactQualification::query()
-            ->where('qualified_by_staff_id', $staff->id)
-            ->whereBetween('qualified_at', [$range['start'], $range['end']])
-            ->count();
+
         $interactions = CustomerInteraction::query()
             ->where('staff_id', $staff->id)
             ->whereBetween('interaction_at', [$range['start'], $range['end']]);
         $interactionCount = (clone $interactions)->count();
         $customers = (clone $interactions)->distinct('customer_id')->count('customer_id');
-        $overdue = ContactQualification::query()
-            ->where('assigned_staff_id', $staff->id)
-            ->where('next_follow_up_at', '<', now())
-            ->whereIn('status', [
-                ContactQualificationStatus::Assigned->value,
-                ContactQualificationStatus::Contacting->value,
-                ContactQualificationStatus::FollowUp->value,
-            ])
+
+        $tickets = SupportTicket::query()->where('assigned_staff_id', $staff->id);
+        $ticketActivity = (clone $tickets)
+            ->whereBetween('last_activity_at', [$range['start'], $range['end']])
             ->count();
+        $resolved = (clone $tickets)
+            ->whereNotNull('resolved_at')
+            ->whereBetween('resolved_at', [$range['start'], $range['end']])
+            ->count();
+
+        $overdue = Customer::query()
+            ->whereHas('assignments', fn (Builder $q): Builder => $q
+                ->where('staff_id', $staff->id)
+                ->where('status', 'active'))
+            ->whereNotNull('next_follow_up_at')
+            ->where('next_follow_up_at', '<', now())
+            ->count();
+
         $customerNames = Customer::query()
             ->whereHas('interactions', fn (Builder $q): Builder => $q
                 ->where('staff_id', $staff->id)
@@ -212,21 +244,23 @@ final class WorkforceAnalyticsService
             ->implode(', ');
 
         return array_merge($row, [
-            'activity_count' => $handled + $interactionCount,
+            'activity_count' => $interactionCount + $ticketActivity,
             'customers' => $customers,
-            'impact_value' => (float) $qualified,
-            'metric_1_label' => __('analytics.leads_handled'),
-            'metric_1_value' => $handled,
-            'metric_2_label' => __('analytics.qualified_leads'),
-            'metric_2_value' => $qualified,
-            'metric_3_label' => __('analytics.customer_interactions'),
-            'metric_3_value' => $interactionCount,
-            'highlight' => $customerNames !== '' ? __('analytics.workforce_customer_highlight', ['customers' => $customerNames]) : __('analytics.no_customer_activity'),
+            'impact_value' => (float) $resolved,
+            'metric_1_label' => __('analytics.customer_interactions'),
+            'metric_1_value' => $interactionCount,
+            'metric_2_label' => __('v1.analytics.customers_cared'),
+            'metric_2_value' => $customers,
+            'metric_3_label' => __('v1.analytics.tickets_resolved'),
+            'metric_3_value' => $resolved,
+            'highlight' => $customerNames !== ''
+                ? __('analytics.workforce_customer_highlight', ['customers' => $customerNames])
+                : __('analytics.no_customer_activity'),
             'overdue' => $overdue,
-            '_score_a' => $qualified,
-            '_score_b' => $interactionCount,
+            '_score_a' => $interactionCount,
+            '_score_b' => $resolved,
             '_score_c' => $customers,
-            '_score_d' => $handled,
+            '_score_d' => $ticketActivity,
         ]);
     }
 

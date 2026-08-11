@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Actions\QuickViewAction;
 use App\Filament\Resources\MarketingCampaignResource\Pages;
 use App\Models\Marketing\MarketingCampaign;
 use App\Services\Marketing\MarketingCampaignServiceScopeService;
@@ -20,7 +21,6 @@ use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -242,7 +242,7 @@ class MarketingCampaignResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    ViewAction::make(),
+                    QuickViewAction::make(),
                     EditAction::make(),
                     DeleteAction::make(),
                 ])

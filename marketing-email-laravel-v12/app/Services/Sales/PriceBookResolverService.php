@@ -22,7 +22,7 @@ class PriceBookResolverService
 
     public function getItemsForPriceBook(PriceBook $priceBook): Collection
     {
-        return $priceBook->items()->with('servicePackage.service')->orderBy('sort_order')->get();
+        return $priceBook->items()->with(['servicePackage.service', 'serviceProduct.service'])->orderBy('sort_order')->get();
     }
 
     public function resolveItem(PriceBook $priceBook, int $itemId): ?PriceBookItem

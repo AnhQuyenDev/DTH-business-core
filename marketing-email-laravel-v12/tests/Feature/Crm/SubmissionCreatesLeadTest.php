@@ -173,26 +173,6 @@ class SubmissionCreatesLeadTest extends TestCase
         );
     }
 
-    public function test_v2_disabled_falls_back_to_legacy_qualification(): void
-    {
-        config()->set('business_flow.v2_enabled', false);
-
-        $page = $this->createPersonalLandingPage();
-
-        $response = $this->post('/lp/'.$page->slug.'/submit', [
-            '_token' => csrf_token(),
-            'submission_type' => 'personal',
-            'full_name' => 'Nguyễn Văn A',
-            'personal_email' => 'a@example.com',
-        ]);
-
-        $submission = LandingPageSubmission::query()->firstOrFail();
-
-        $this->assertSame(0, Lead::query()->count());
-        $this->assertSame(1, ContactQualification::query()->count());
-        $this->assertSame($submission->contact_id, ContactQualification::query()->firstOrFail()->contact_id);
-    }
-
     public function test_phone_is_normalized_and_reused_for_contact_deduplication(): void
     {
         $page = $this->createPersonalLandingPage();

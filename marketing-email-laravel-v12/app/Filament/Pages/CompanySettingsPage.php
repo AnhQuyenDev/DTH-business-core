@@ -5,6 +5,8 @@ namespace App\Filament\Pages;
 use App\Models\CompanySetting;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -55,7 +57,7 @@ class CompanySettingsPage extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('system.manage-company-settings') ?? false;
     }
 
     public function form(Form $form): Form
@@ -78,6 +80,42 @@ class CompanySettingsPage extends Page implements HasForms
                         ->imagePreviewHeight('96')
                         ->maxSize(2048)
                         ->helperText(__('helper.company_logo')),
+                ])->columns(['default' => 1, 'md' => 2]),
+                Section::make(__('v1.workflow.section'))->schema([
+                    Select::make('quotation_approval_mode')
+                        ->label(__('v1.workflow.approval_mode'))
+                        ->options([
+                            'none' => __('v1.workflow.approval.none'),
+                            'always' => __('v1.workflow.approval.always'),
+                            'amount_threshold' => __('v1.workflow.approval.amount_threshold'),
+                            'discount_threshold' => __('v1.workflow.approval.discount_threshold'),
+                            'amount_or_discount' => __('v1.workflow.approval.amount_or_discount'),
+                        ])
+                        ->required(),
+                    TextInput::make('quotation_approval_amount_threshold')
+                        ->label(__('v1.workflow.approval_amount'))
+                        ->numeric()
+                        ->minValue(0)
+                        ->prefix('VND'),
+                    TextInput::make('quotation_approval_discount_threshold_percent')
+                        ->label(__('v1.workflow.approval_discount'))
+                        ->numeric()
+                        ->minValue(0)
+                        ->maxValue(100)
+                        ->suffix('%'),
+                    Select::make('quotation_confirmation_mode')
+                        ->label(__('v1.workflow.confirmation_mode'))
+                        ->options([
+                            'click' => __('v1.workflow.confirmation.click'),
+                            'otp' => __('v1.workflow.confirmation.otp'),
+                        ])
+                        ->required(),
+                    Toggle::make('payment_evidence_required')
+                        ->label(__('v1.workflow.payment_evidence_required'))
+                        ->helperText(__('v1.workflow.payment_evidence_help')),
+                    Toggle::make('support_tickets_enabled')
+                        ->label(__('v1.workflow.support_tickets'))
+                        ->helperText(__('v1.workflow.support_tickets_help')),
                 ])->columns(['default' => 1, 'md' => 2]),
                 Section::make(__('section.vietqr'))->schema([
                     TextInput::make('vietqr_client_id')

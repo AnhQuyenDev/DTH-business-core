@@ -40,7 +40,10 @@ final class OpportunityContactService
                             'Liên hệ này không thuộc công ty của cơ hội kinh doanh.',
                     ]);
                 }
-            } elseif ($locked->primary_contact_id !== $contactId) {
+            } elseif (
+                $locked->primary_contact_id !== $contactId
+                && ! $isPrimary
+            ) {
                 throw ValidationException::withMessages([
                     'contact_id' =>
                         'Liên hệ này không thuộc cơ hội kinh doanh cá nhân.',

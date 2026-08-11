@@ -18,6 +18,7 @@ class SystemRoleOrganizationTest extends TestCase
     public function test_only_generic_system_roles_are_assignable(): void
     {
         $this->assertSame([
+            'super_admin',
             'admin',
             'executive',
             'user',
@@ -25,7 +26,7 @@ class SystemRoleOrganizationTest extends TestCase
         ], array_keys(UserRole::options()));
     }
 
-    public function test_business_permissions_come_from_department_and_position_authority(): void
+    public function test_legacy_physical_department_fallback_remains_compatible_when_no_business_function_rows_exist(): void
     {
         $sales = Department::query()->create([
             'code' => 'sales_test_new_model',

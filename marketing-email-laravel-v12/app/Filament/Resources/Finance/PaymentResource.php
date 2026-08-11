@@ -44,13 +44,7 @@ class PaymentResource extends Resource
     {
         $user = auth()->user();
 
-        return $user !== null && (
-            $user->isAdmin()
-            || $user->canReadAcrossBusiness()
-            || $user->isFinanceStaff()
-            || $user->isSalesManager()
-            || $user->isMarketingManager()
-        );
+        return $user !== null && $user->can('sales.view-payments');
     }
 
     public static function canCreate(): bool { return false; }

@@ -4,6 +4,7 @@ namespace Tests\Feature\Finance;
 
 use App\Enums\Sales\PaymentNoticeStatus;
 use App\Enums\Sales\PaymentStatus;
+use App\Models\CompanySetting;
 use App\Services\Sales\QuotationPaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -23,15 +24,41 @@ class PaymentEvidenceVerificationTest extends TestCase
         config()->set('business_flow.customer_on_paid_only', true);
     }
 
-    public function test_finance_cannot_mark_paid_when_pending_notice_has_no_evidence(): void
+    public function test_v1_default_allows_finance_to_verify_payment_without_uploaded_evidence(): void
     {
-        $flow = $this->buildFlow();
-        $finance = $this->makeUser('finance_staff');
+        CompanySetting::firstOrCreateDefault()->update(['payment_evidence_required' => false]);
 
+        $flow = $this->buildFlow();
+        $finance = $this->makeV1Finance()[0];
         $quotation = $flow['quotation'];
-        $quotation->update([
-            'payment_status' => PaymentStatus::PendingVerification->value,
+        $quotation->update(['payment_status' => PaymentStatus::PendingVerification->value]);
+
+        $quotation->paymentNotices()->create([
+            'status' => PaymentNoticeStatus::Pending->value,
+            'payer_name' => 'Nguyễn Minh Khoa',
+            'payer_email' => $quotation->party_email,
+            'declared_amount' => $quotation->grand_total,
+            'submitted_at' => now(),
         ]);
+
+        $result = app(QuotationPaymentService::class)->updateStatus(
+            $quotation->fresh(),
+            PaymentStatus::Paid,
+            $finance,
+            'Đã đối soát thủ công',
+        );
+
+        $this->assertSame(PaymentStatus::Paid, $result->payment_status);
+    }
+
+    public function test_finance_cannot_mark_paid_without_evidence_when_policy_requires_it(): void
+    {
+        CompanySetting::firstOrCreateDefault()->update(['payment_evidence_required' => true]);
+
+        $flow = $this->buildFlow();
+        $finance = $this->makeV1Finance()[0];
+        $quotation = $flow['quotation'];
+        $quotation->update(['payment_status' => PaymentStatus::PendingVerification->value]);
 
         $quotation->paymentNotices()->create([
             'status' => PaymentNoticeStatus::Pending->value,

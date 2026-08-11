@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Actions\QuickViewAction;
 use App\Enums\Crm\PositionAuthority;
 use App\Filament\Resources\PositionResource\Pages;
 use App\Models\Crm\Department;
@@ -18,7 +19,6 @@ use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -35,7 +35,7 @@ class PositionResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('system.manage-organization') ?? false;
     }
 
     public static function getNavigationGroup(): string
@@ -60,22 +60,22 @@ class PositionResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('system.manage-organization') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('system.manage-organization') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('system.manage-organization') ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('system.manage-organization') ?? false;
     }
 
     public static function form(Form $form): Form
@@ -138,7 +138,7 @@ class PositionResource extends Resource
         ])
             ->defaultSort('title')
             ->actions([ActionGroup::make([
-                ViewAction::make(),
+                QuickViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),
             ])->icon('heroicon-o-ellipsis-vertical')->iconButton()])

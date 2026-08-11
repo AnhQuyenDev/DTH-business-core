@@ -1,5 +1,8 @@
 @php
     $interactive = (bool) ($interactive ?? false);
+    $workflowPolicy = app(\App\Services\Business\WorkflowPolicyService::class);
+    $confirmationMode = $workflowPolicy->quotationConfirmationMode();
+    $paymentEvidenceRequired = $workflowPolicy->paymentEvidenceRequired();
 
     $formatDate = static function ($value): string {
         if (blank($value)) {
@@ -368,13 +371,13 @@
         <div class="qdoc-interactive bg-blue-50 border border-blue-200 rounded-lg p-4 no-print">
             <h3 class="font-semibold text-blue-800 mb-3">{{ __('sales.public.confirm_quotation') }}</h3>
             <p class="text-sm text-blue-700 mb-3">
-                {{ __('sales.public.otp_protected_notice') }}
+                {{ $confirmationMode === 'otp' ? __('sales.public.otp_protected_notice') : __('v1.public.simple_confirmation_notice') }}
                 <strong>{{ $quotation->authorized_signer_email }}</strong>.
             </p>
             <div class="flex flex-wrap gap-2">
-                <button onclick="openOtpModal('accept')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{{ __('sales.public.confirm_electronic') }}</button>
-                <button onclick="openOtpModal('reject')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">{{ __('action.reject') }}</button>
-                <button onclick="openOtpModal('revision')" class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600">{{ __('sales.public.request_revision') }}</button>
+                <button onclick="openConfirmationModal('accept')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{{ __('sales.public.confirm_electronic') }}</button>
+                <button onclick="openConfirmationModal('reject')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">{{ __('action.reject') }}</button>
+                <button onclick="openConfirmationModal('revision')" class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600">{{ __('sales.public.request_revision') }}</button>
             </div>
         </div>
     @endif
@@ -416,9 +419,9 @@
                         <input name="transfer_reference" value="{{ old('transfer_reference') }}" class="w-full border rounded px-3 py-2 text-sm">
                     </div>
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-medium">Chứng từ chuyển khoản <span class="text-red-600">*</span></label>
-                        <input name="proof_files[]" type="file" multiple required accept="image/jpeg,image/png,image/webp,application/pdf" class="w-full border rounded px-3 py-2 text-sm bg-white">
-                        <p class="text-xs text-amber-700 mt-1">Bắt buộc 1-3 file JPG, PNG, WEBP hoặc PDF; tối đa 10 MB/file. Chứng từ được lưu riêng tư và chỉ người có quyền đối soát mới xem được.</p>
+                        <label class="block text-sm font-medium">Chứng từ chuyển khoản @if($paymentEvidenceRequired) <span class="text-red-600">*</span> @else <span class="text-gray-500">({{ __('v1.public.optional') }})</span> @endif</label>
+                        <input name="proof_files[]" type="file" multiple @if($paymentEvidenceRequired) required @endif accept="image/jpeg,image/png,image/webp,application/pdf" class="w-full border rounded px-3 py-2 text-sm bg-white">
+                        <p class="text-xs text-amber-700 mt-1">{{ $paymentEvidenceRequired ? __('v1.public.evidence_required_help') : __('v1.public.evidence_optional_help') }}</p>
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium">{{ __('field.notes') }}</label>

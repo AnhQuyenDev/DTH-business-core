@@ -31,7 +31,7 @@ class SalesDashboard extends Page
     {
         $user = auth()->user();
 
-        return $user !== null && ($user->isSalesManager() || $user->isSalesStaff());
+        return $user !== null && $user->can('sales.view-quotations');
     }
 
     public function getTitle(): string
@@ -48,7 +48,7 @@ class SalesDashboard extends Page
         return [
             'isManager' => $user->isSalesManager(),
             'analytics' => app(EnterpriseAnalyticsService::class)->sales($user, $this->period),
-            'workforce' => $user->isSalesManager() ? app(WorkforceAnalyticsService::class)->report($user, $this->period) : null,
+            'workforce' => $user->isSalesManager() ? app(WorkforceAnalyticsService::class)->report($user, $this->period, \App\Enums\Crm\DepartmentFunction::Sales) : null,
             'links' => [
                 'quotations' => QuotationResource::canViewAny() ? QuotationResource::getUrl() : null,
                 'approvals' => QuotationApprovalResource::canViewAny() ? QuotationApprovalResource::getUrl() : null,

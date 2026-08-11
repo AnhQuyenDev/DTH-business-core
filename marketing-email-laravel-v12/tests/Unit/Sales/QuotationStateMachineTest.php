@@ -5,7 +5,8 @@ namespace Tests\Unit\Sales;
 use App\Enums\Sales\QuotationStatus;
 use App\Services\Sales\QuotationStateMachine;
 use Illuminate\Validation\ValidationException;
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\TestCase;
 
 class QuotationStateMachineTest extends TestCase
 {
@@ -14,124 +15,69 @@ class QuotationStateMachineTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->stateMachine = new QuotationStateMachine;
+        $this->stateMachine = new QuotationStateMachine();
     }
 
-    public function test_draft_can_transition_to_pending_approval(): void
+    public static function allowedTransitionsProvider(): array
     {
-        $this->assertTrue(
-            $this->stateMachine->canTransition(QuotationStatus::Draft, QuotationStatus::PendingApproval)
-        );
+        return [
+            'draft -> pending approval' => [QuotationStatus::Draft, QuotationStatus::PendingApproval],
+            'draft -> approved by policy' => [QuotationStatus::Draft, QuotationStatus::Approved],
+            'draft -> cancelled' => [QuotationStatus::Draft, QuotationStatus::Cancelled],
+            'pending -> approved' => [QuotationStatus::PendingApproval, QuotationStatus::Approved],
+            'pending -> draft after rejection' => [QuotationStatus::PendingApproval, QuotationStatus::Draft],
+            'pending -> cancelled' => [QuotationStatus::PendingApproval, QuotationStatus::Cancelled],
+            'approved -> sent' => [QuotationStatus::Approved, QuotationStatus::Sent],
+            'approved -> cancelled' => [QuotationStatus::Approved, QuotationStatus::Cancelled],
+            'sent -> viewed' => [QuotationStatus::Sent, QuotationStatus::Viewed],
+            'sent -> accepted' => [QuotationStatus::Sent, QuotationStatus::Accepted],
+            'sent -> rejected' => [QuotationStatus::Sent, QuotationStatus::Rejected],
+            'sent -> revision' => [QuotationStatus::Sent, QuotationStatus::RevisionRequested],
+            'viewed -> accepted' => [QuotationStatus::Viewed, QuotationStatus::Accepted],
+            'viewed -> rejected' => [QuotationStatus::Viewed, QuotationStatus::Rejected],
+            'viewed -> revision' => [QuotationStatus::Viewed, QuotationStatus::RevisionRequested],
+            'revision -> superseded' => [QuotationStatus::RevisionRequested, QuotationStatus::Superseded],
+        ];
     }
 
-    public function test_draft_cannot_bypass_approval(): void
+    #[DataProvider('allowedTransitionsProvider')]
+    public function test_allowed_transition_matrix(QuotationStatus $from, QuotationStatus $to): void
     {
-        $this->assertFalse(
-            $this->stateMachine->canTransition(QuotationStatus::Draft, QuotationStatus::Approved)
-        );
+        $this->assertTrue($this->stateMachine->canTransition($from, $to));
+        $this->stateMachine->validateTransition($from, $to);
+        $this->addToAssertionCount(1);
     }
 
-    public function test_draft_can_transition_to_cancelled(): void
+    public static function forbiddenTransitionsProvider(): array
     {
-        $this->assertTrue(
-            $this->stateMachine->canTransition(QuotationStatus::Draft, QuotationStatus::Cancelled)
-        );
+        return [
+            'draft cannot send directly' => [QuotationStatus::Draft, QuotationStatus::Sent],
+            'approved cannot become accepted directly' => [QuotationStatus::Approved, QuotationStatus::Accepted],
+            'accepted is terminal' => [QuotationStatus::Accepted, QuotationStatus::Sent],
+            'rejected is terminal' => [QuotationStatus::Rejected, QuotationStatus::Draft],
+            'cancelled is terminal' => [QuotationStatus::Cancelled, QuotationStatus::Draft],
+            'superseded is terminal' => [QuotationStatus::Superseded, QuotationStatus::Draft],
+            'expired is terminal' => [QuotationStatus::Expired, QuotationStatus::Sent],
+        ];
     }
 
-    public function test_draft_cannot_transition_to_sent(): void
+    #[DataProvider('forbiddenTransitionsProvider')]
+    public function test_forbidden_transition_matrix(QuotationStatus $from, QuotationStatus $to): void
     {
-        $this->assertFalse(
-            $this->stateMachine->canTransition(QuotationStatus::Draft, QuotationStatus::Sent)
-        );
+        $this->assertFalse($this->stateMachine->canTransition($from, $to));
+        $this->expectException(ValidationException::class);
+        $this->stateMachine->validateTransition($from, $to);
     }
 
-    public function test_approved_can_transition_to_sent(): void
-    {
-        $this->assertTrue(
-            $this->stateMachine->canTransition(QuotationStatus::Approved, QuotationStatus::Sent)
-        );
-    }
-
-    public function test_sent_can_transition_to_viewed(): void
-    {
-        $this->assertTrue(
-            $this->stateMachine->canTransition(QuotationStatus::Sent, QuotationStatus::Viewed)
-        );
-    }
-
-    public function test_viewed_can_transition_to_accepted(): void
-    {
-        $this->assertTrue(
-            $this->stateMachine->canTransition(QuotationStatus::Viewed, QuotationStatus::Accepted)
-        );
-    }
-
-
-
-    public function test_revision_requested_can_be_superseded_by_new_revision(): void
-    {
-        $this->assertTrue(
-            $this->stateMachine->canTransition(
-                QuotationStatus::RevisionRequested,
-                QuotationStatus::Superseded,
-            )
-        );
-    }
-
-    public function test_accepted_is_terminal(): void
-    {
-        $this->assertTrue(QuotationStatus::Accepted->isTerminal());
-    }
-
-    public function test_draft_is_editable(): void
+    public function test_status_capabilities_match_v1_contract(): void
     {
         $this->assertTrue(QuotationStatus::Draft->isEditable());
-    }
-
-    public function test_sent_is_not_editable(): void
-    {
+        $this->assertTrue(QuotationStatus::PendingApproval->isEditable());
+        $this->assertTrue(QuotationStatus::RevisionRequested->isEditable());
         $this->assertFalse(QuotationStatus::Sent->isEditable());
-    }
-
-    public function test_approved_can_send(): void
-    {
         $this->assertTrue(QuotationStatus::Approved->canSend());
-    }
-
-    public function test_sent_can_confirm(): void
-    {
         $this->assertTrue(QuotationStatus::Sent->canConfirm());
-    }
-
-    public function test_viewed_can_confirm(): void
-    {
         $this->assertTrue(QuotationStatus::Viewed->canConfirm());
-    }
-
-    public function test_invalid_transition_throws(): void
-    {
-        $this->expectException(ValidationException::class);
-        $this->stateMachine->validateTransition(QuotationStatus::Draft, QuotationStatus::Sent);
-    }
-
-    public function test_draft_cannot_confirm(): void
-    {
         $this->assertFalse(QuotationStatus::Draft->canConfirm());
-    }
-
-    public function test_all_terminal_statuses(): void
-    {
-        $this->assertTrue(QuotationStatus::Accepted->isTerminal());
-        $this->assertTrue(QuotationStatus::Rejected->isTerminal());
-        $this->assertTrue(QuotationStatus::Cancelled->isTerminal());
-        $this->assertTrue(QuotationStatus::Superseded->isTerminal());
-        $this->assertTrue(QuotationStatus::Expired->isTerminal());
-    }
-
-    public function test_non_terminal_statuses(): void
-    {
-        $this->assertFalse(QuotationStatus::Draft->isTerminal());
-        $this->assertFalse(QuotationStatus::Sent->isTerminal());
-        $this->assertFalse(QuotationStatus::Viewed->isTerminal());
     }
 }

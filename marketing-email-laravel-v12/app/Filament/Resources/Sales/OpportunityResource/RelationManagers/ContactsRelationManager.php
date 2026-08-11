@@ -106,8 +106,10 @@ class ContactsRelationManager extends RelationManager
                         );
                     })
                     ->visible(
-                        fn (): bool => auth()->user()?->isAdmin()
-                            || auth()->user()?->isCustomerServiceManager()
+                        fn (): bool => auth()->user()?->can(
+                            'process',
+                            $this->getOwnerRecord(),
+                        ) ?? false
                     ),
             ])
             ->actions([
@@ -162,8 +164,10 @@ class ContactsRelationManager extends RelationManager
                         }
                     )
                     ->visible(
-                        fn (): bool => auth()->user()?->isAdmin()
-                            || auth()->user()?->isCustomerServiceManager()
+                        fn (): bool => auth()->user()?->can(
+                            'process',
+                            $this->getOwnerRecord(),
+                        ) ?? false
                     ),
 
                 Action::make('remove_contact')
@@ -184,8 +188,10 @@ class ContactsRelationManager extends RelationManager
                         );
                     })
                     ->visible(
-                        fn (): bool => auth()->user()?->isAdmin()
-                            || auth()->user()?->isCustomerServiceManager()
+                        fn (): bool => auth()->user()?->can(
+                            'process',
+                            $this->getOwnerRecord(),
+                        ) ?? false
                     ),
                 ])
                     ->label(__('action.actions'))

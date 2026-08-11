@@ -10,12 +10,14 @@ use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Services\Security\BusinessNotificationService;
 
 final class LeadAssignmentService
 {
     public function __construct(
         private readonly CompanyOwnershipService $companyOwnershipService,
         private readonly ContactQualificationWorkflowService $workflowService,
+        private readonly BusinessNotificationService $notifications,
     ) {}
 
     public function assign(
@@ -153,6 +155,13 @@ final class LeadAssignmentService
                     forced: $force,
                     companyOwnerTransferred: $companyOwnerTransferred,
                 );
+
+                $lockedStaff->loadMissing('user');
+                $this->notifications->send(
+                    $lockedStaff->user,
+                    __('v1.notification.lead_assigned_title'),
+                    __('v1.notification.lead_assigned_body', ['code' => $lockedLead->lead_code]),
+                );
             });
 
             return $lockedLead->fresh([
@@ -193,13 +202,12 @@ final class LeadAssignmentService
 
     private function assertStaffCanReceiveLead(Staff $staff): void
     {
-        $staff->loadMissing(['department', 'user']);
+        $staff->loadMissing(['businessFunctions', 'department', 'user']);
 
         if (
             ! $staff->canReceiveNewLeads()
-            || $staff->department?->function_key !== 'customer_service'
             || ! $staff->user?->is_active
-            || ! $staff->user?->isCustomerServiceStaff()
+            || ! $staff->user?->isSalesStaff()
         ) {
             throw ValidationException::withMessages([
                 'staff_id' => __('validation.staff_cannot_receive_leads'),

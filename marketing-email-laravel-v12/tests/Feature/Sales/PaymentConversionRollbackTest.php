@@ -22,6 +22,8 @@ class PaymentConversionRollbackTest extends TestCase
         Mail::fake();
 
         $flow = $this->buildFlow();
+        $finance = $this->makeV1Finance()[0];
+        $this->preparePendingPaymentNotice($flow['quotation']);
 
         $this->mock(AuditLogService::class, function (Mockery\MockInterface $mock): void {
             $mock->shouldReceive('log')
@@ -36,7 +38,7 @@ class PaymentConversionRollbackTest extends TestCase
             app(QuotationPaymentService::class)->updateStatus(
                 quotation: $flow['quotation'],
                 newStatus: PaymentStatus::Paid,
-                user: $flow['admin'],
+                user: $finance,
                 note: 'Xác minh.',
             );
             $this->fail('Expected RuntimeException to be thrown.');

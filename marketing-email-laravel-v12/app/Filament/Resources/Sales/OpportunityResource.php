@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Sales;
 
-use App\Enums\Crm\StaffEmploymentStatus;
+use App\Filament\Actions\QuickViewAction;
 use App\Enums\Sales\OpportunityStage;
 use App\Filament\Resources\Sales\OpportunityResource\Pages;
 use App\Filament\Resources\Sales\OpportunityResource\RelationManagers\ContactsRelationManager;
@@ -31,7 +31,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
@@ -134,35 +133,8 @@ class OpportunityResource extends Resource
                 ->label(__('field.new_sales_owner'))
                 ->options(function () use ($record): array {
                     return Staff::query()
-                        ->where(
-                            'employment_status',
-                            StaffEmploymentStatus::Active->value
-                        )
-                        ->where('can_receive_customers', true)
+                        ->eligibleForOpportunityOwnership()
                         ->where('id', '!=', $record->assigned_staff_id)
-                        ->whereHas(
-                            'department',
-                            fn (Builder $query): Builder => $query->where(
-                                'function_key',
-                                'sales'
-                            )
-                        )
-                        ->whereHas(
-                            'user',
-                            fn (Builder $query): Builder => $query->where(
-                                'is_active',
-                                true
-                            )
-                        )
-                        ->whereDoesntHave(
-                            'availabilities',
-                            fn (Builder $query): Builder => $query
-                                ->active()
-                                ->where(
-                                    'can_receive_new_customers',
-                                    false
-                                )
-                        )
                         ->orderBy('full_name')
                         ->get()
                         ->mapWithKeys(
@@ -364,7 +336,7 @@ class OpportunityResource extends Resource
                     Select::make('assigned_staff_id')
                         ->label(__('field.assigned_staff'))
                         ->relationship('assignedStaff', 'full_name', modifyQueryUsing: fn ($query) => $query
-                            ->whereHas('department', fn ($q) => $q->where('function_key', 'sales'))
+                            ->withBusinessFunction(\App\Enums\Crm\DepartmentFunction::Sales)
                             ->whereHas('user', fn ($q) => $q->where('is_active', true)))
                         ->searchable()->preload(),
                     TextInput::make('service_interest')->label(__('field.service_interest'))->maxLength(255),
@@ -581,7 +553,7 @@ class OpportunityResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    ViewAction::make(),
+                    QuickViewAction::make(),
 
                     Action::make('create_quotation')
                         ->label(__('action.create_quotation'))
@@ -790,7 +762,6 @@ class OpportunityResource extends Resource
         if (
             $user->isAdmin()
             || $user->canReadAcrossBusiness()
-            || $user->isCustomerServiceManager()
             || $user->isSalesManager()
         ) {
             return $query;
@@ -811,12 +782,19 @@ class OpportunityResource extends Resource
 
     public static function qualifiedLeadOptions(): array
     {
-        return Lead::query()
+        $query = Lead::query()
             ->whereHas(
                 'qualification',
                 fn (Builder $query) => $query->where('status', 'qualified')
             )
-            ->whereDoesntHave('opportunity')
+            ->whereDoesntHave('opportunity');
+
+        $user = auth()->user();
+        if ($user?->isSalesStaff() && ! $user->isSalesManager()) {
+            $query->where('assigned_staff_id', $user->staff?->id ?? 0);
+        }
+
+        return $query
             ->with(['contact', 'company'])
             ->orderByDesc('id')
             ->get()

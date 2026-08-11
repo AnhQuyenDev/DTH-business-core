@@ -46,22 +46,22 @@ class EmailTemplateCategoryResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('marketing.view-templates') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('marketing.manage-templates') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('marketing.manage-templates') ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->can('marketing.manage-templates') ?? false;
     }
 
     public static function form(Form $form): Form

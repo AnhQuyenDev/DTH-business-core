@@ -8,6 +8,7 @@ use App\Models\Sales\Quotation;
 use App\Models\Sales\QuotationApproval;
 use App\Models\User;
 use App\Services\Marketing\AuditLogService;
+use App\Services\Security\BusinessNotificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -16,6 +17,8 @@ class QuotationApprovalService
     public function __construct(
         private readonly QuotationStateMachine $stateMachine,
         private readonly AuditLogService $auditLog,
+        private readonly QuotationApprovalPolicyService $approvalPolicy,
+        private readonly BusinessNotificationService $notifications,
     ) {}
 
     public function submitForApproval(Quotation $quotation, User $user): Quotation
@@ -27,12 +30,18 @@ class QuotationApprovalService
         }
 
         $this->assertCommercialDocumentComplete($quotation);
+        $decision = $this->approvalPolicy->evaluate($quotation);
+
+        if (! $decision['required']) {
+            return $this->approveByPolicy($quotation, $user, $decision);
+        }
+
         $this->stateMachine->validateTransition(
             $quotation->status,
             QuotationStatus::PendingApproval
         );
 
-        DB::transaction(function () use ($quotation, $user): void {
+        DB::transaction(function () use ($quotation, $user, $decision): void {
             $quotation->update([
                 'status' => QuotationStatus::PendingApproval,
                 'updated_by' => $user->id,
@@ -63,9 +72,16 @@ class QuotationApprovalService
                 [
                     'status' => QuotationStatus::PendingApproval->value,
                     'requested_by_user_id' => $user->id,
+                    'approval_policy' => $decision,
                 ],
             );
         });
+
+        $this->notifications->notifyPermission(
+            'sales.approve-quotations',
+            __('v1.notification.quotation_approval_title'),
+            __('v1.notification.quotation_approval_body', ['code' => $quotation->quotation_code, 'amount' => number_format((float) $quotation->grand_total, 0, ',', '.')]),
+        );
 
         return $quotation->fresh();
     }
@@ -200,6 +216,57 @@ class QuotationApprovalService
 
             $this->auditLog->log('quotation.approval_rejected', $quotation, [], [
                 'reason' => $reason,
+            ]);
+        });
+
+        return $quotation->fresh();
+    }
+
+    /**
+     * Auto-approve a quotation that is inside the configured V1 approval
+     * policy. This is an explicit policy waiver, not a manager approval.
+     */
+    private function approveByPolicy(Quotation $quotation, User $user, array $decision): Quotation
+    {
+        $this->stateMachine->validateTransition(
+            $quotation->status,
+            QuotationStatus::Approved,
+        );
+
+        DB::transaction(function () use ($quotation, $user, $decision): void {
+            $quotation->approvals()
+                ->where('status', ApprovalStatus::Pending->value)
+                ->update([
+                    'status' => ApprovalStatus::Cancelled->value,
+                    'reason' => 'Superseded by policy evaluation.',
+                    'reviewed_at' => now(),
+                ]);
+
+            QuotationApproval::query()->create([
+                'quotation_id' => $quotation->id,
+                'step' => ((int) $quotation->approvals()->max('step')) + 1,
+                'approver_user_id' => null,
+                'approver_role' => 'approval_policy',
+                'status' => ApprovalStatus::Approved,
+                'reason' => $decision['reason'],
+                'requested_at' => now(),
+                'reviewed_at' => now(),
+            ]);
+
+            $quotation->update([
+                'status' => QuotationStatus::Approved,
+                'approved_by' => null,
+                'approved_at' => now(),
+                'updated_by' => $user->id,
+                'metadata' => array_replace_recursive(
+                    $quotation->metadata ?? [],
+                    ['approval_policy_snapshot' => $decision],
+                ),
+            ]);
+
+            $this->auditLog->log('quotation.approval_waived_by_policy', $quotation, [], [
+                'requested_by_user_id' => $user->id,
+                'approval_policy' => $decision,
             ]);
         });
 

@@ -20,34 +20,17 @@ use App\Models\User;
 use App\Services\Sales\QuotationCreationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\Support\MakesV1Actors;
 use Tests\TestCase;
 
 class CreateQuotationForOpportunityTest extends TestCase
 {
+    use MakesV1Actors;
     use RefreshDatabase;
 
     private function makeAssignedUser(): User
     {
-        $user = User::query()->create([
-            'name' => 'Staff',
-            'email' => 'staff-'.fake()->unique()->numberBetween(1, 999999).'@example.test',
-            'password' => 'secret',
-            'role' => 'customer_service_staff',
-        ]);
-
-        Staff::query()->create([
-            'user_id' => $user->id,
-            'employee_code' => 'NV'.fake()->unique()->numberBetween(1000, 999999),
-            'full_name' => 'Staff',
-            'department_id' => Department::query()->firstOrCreate(
-                ['code' => 'sales'],
-                ['name' => 'Kinh doanh', 'sort_order' => 4, 'is_active' => true]
-            )->id,
-            'employment_status' => StaffEmploymentStatus::Active,
-            'can_receive_customers' => true,
-        ]);
-
-        return $user->fresh();
+        return $this->makeV1SalesStaff('Quotation Sales Staff')[0];
     }
 
     private function makeQualifiedOpportunity(Staff $staff): Opportunity
@@ -101,7 +84,7 @@ class CreateQuotationForOpportunityTest extends TestCase
         PriceBookAccessRule::query()->create([
             'price_book_id' => $priceBook->id,
             'access_type' => 'department',
-            'department' => 'sales',
+            'department' => $user->staff->department->code,
             'can_view' => true,
             'can_create_quotation' => true,
         ]);

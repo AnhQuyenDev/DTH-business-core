@@ -1,3 +1,7 @@
+@php
+    $workflowPolicy = app(\App\Services\Business\WorkflowPolicyService::class);
+    $confirmationMode = $workflowPolicy->quotationConfirmationMode();
+@endphp
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}">
 <head>
@@ -19,7 +23,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-wrap items-center gap-2">
                 @if($quotation->status->canConfirm())
-                    <button onclick="openOtpModal('accept')" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition">
+                    <button onclick="openConfirmationModal('accept')" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition">
                         {{ __('sales.public.confirm_electronic') }}
                     </button>
                 @endif
@@ -70,7 +74,7 @@
     <div id="otpModal" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center hidden no-print z-50">
         <div class="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 class="text-lg font-bold mb-1" id="otpModalTitle">{{ __('sales.public.confirm_electronic') }}</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ __('sales.public.otp_modal_notice') }}</p>
+            <p class="text-sm text-gray-500 mb-4">{{ $confirmationMode === 'otp' ? __('sales.public.otp_modal_notice') : __('v1.public.simple_confirmation_modal_notice') }}</p>
             <form id="otpForm" onsubmit="return false">
                 @csrf
                 <div class="space-y-3">
@@ -87,7 +91,7 @@
                                 <textarea id="otpReason" rows="3" class="w-full border rounded px-3 py-2 text-sm"></textarea>
                             </div>
                         </div>
-                        <button onclick="sendOtp()" id="sendOtpBtn" class="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm">{{ __('sales.public.otp_send') }}</button>
+                        <button onclick="sendOtp()" id="sendOtpBtn" class="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm">{{ $confirmationMode === 'otp' ? __('sales.public.otp_send') : __('v1.public.submit_response') }}</button>
                     </div>
                     <div id="step2" class="hidden space-y-3">
                         <p class="text-sm text-gray-600">{{ __('sales.public.otp_enter', ['email' => '']) }} <strong id="otpEmailShown"></strong></p>
@@ -109,6 +113,7 @@
     <script>
         var publicUrl = '{{ route("sales.quotation.public.show", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
         var csrfUrl = '{{ route("sales.quotation.public.csrf-token", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
+        var confirmationMode = @json($confirmationMode);
         var otpAction = 'accept';
         var otpVerifiedEmail = null;
 
@@ -192,6 +197,26 @@
             } else { copyText(publicUrl); }
         }
 
+        function openConfirmationModal(action) {
+            if (confirmationMode === 'otp') {
+                openOtpModal(action);
+                return;
+            }
+
+            otpAction = action || 'accept';
+            resetOtpForm();
+            var title = document.getElementById('otpModalTitle');
+            title.textContent = otpAction === 'accept'
+                ? '{{ __("sales.public.confirm_electronic") }}'
+                : (otpAction === 'reject' ? '{{ __("sales.public.reject_quotation") }}' : '{{ __("sales.public.request_revision") }}');
+            document.getElementById('acceptFields').classList.toggle('hidden', otpAction !== 'accept');
+            document.getElementById('otpReasonField').classList.toggle('hidden', otpAction === 'accept');
+            document.getElementById('otpReason').required = otpAction !== 'accept';
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('otpModal').classList.add('flex');
+            document.getElementById('otpModal').classList.remove('hidden');
+        }
+
         function openOtpModal(action) {
             otpAction = action || 'accept';
             resetOtpForm();
@@ -229,6 +254,16 @@
 
         async function sendOtp() {
             var email = document.getElementById('otpEmail').value.trim();
+            if (confirmationMode !== 'otp') {
+                var name = document.getElementById('otpSignerName').value.trim();
+                var reason = document.getElementById('otpReason').value.trim();
+                if (!email || !name || (otpAction !== 'accept' && !reason)) {
+                    showOtpError('{{ __("sales.public.otp_fill_form") }}');
+                    return;
+                }
+                await submitElectronicAction();
+                return;
+            }
             var name = document.getElementById('otpSignerName').value.trim();
             var reason = document.getElementById('otpReason').value.trim();
             if (!email || !name || (otpAction !== 'accept' && !reason)) {
@@ -315,9 +350,11 @@
                 var fields = {
                     signer_name: document.getElementById('otpSignerName').value.trim(),
                     signer_email: document.getElementById('otpEmail').value.trim(),
-                    otp_email: otpVerifiedEmail,
                     _token: csrf
                 };
+                if (confirmationMode === 'otp') {
+                    fields.otp_email = otpVerifiedEmail;
+                }
                 if (otpAction === 'accept') {
                     fields.signer_position = document.getElementById('otpPosition').value.trim();
                     fields.signer_phone = document.getElementById('otpPhone').value.trim();

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\CompanyResource\RelationManagers;
 
-use App\Enums\Crm\StaffEmploymentStatus;
 use App\Models\Crm\CompanyAssignment;
 use App\Models\Crm\Staff;
 use App\Services\Crm\CompanyOwnershipService;
@@ -64,20 +63,7 @@ class AssignmentsRelationManager extends RelationManager
                             ->label(__('field.staff'))
                             ->options(
                                 fn (): array => Staff::query()
-                                    ->where(
-                                        'employment_status',
-                                        StaffEmploymentStatus::Active->value
-                                    )
-                                    ->where('can_receive_customers', true)
-                                    ->whereDoesntHave(
-                                        'availabilities',
-                                        fn ($query) => $query
-                                            ->active()
-                                            ->where(
-                                                'can_receive_new_customers',
-                                                false
-                                            )
-                                    )
+                                    ->eligibleForLeadDistribution()
                                     ->orderBy('full_name')
                                     ->get()
                                     ->mapWithKeys(fn (Staff $staff): array => [

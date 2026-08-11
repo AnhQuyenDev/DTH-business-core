@@ -77,8 +77,7 @@ class EditStaff extends EditRecord
         ]);
 
         $eligibleStaff = Staff::query()
-            ->where('employment_status', StaffEmploymentStatus::Active->value)
-            ->where('can_receive_customers', true)
+            ->eligibleForCustomerOwnership()
             ->where('id', '!=', $staff->id)
             ->pluck('id');
 
@@ -121,6 +120,10 @@ class EditStaff extends EditRecord
         }
 
         $customerIds = $supportAssignments->pluck('customer_id');
+
+        if (! $staff->fresh()->canReceiveNewCustomers()) {
+            return;
+        }
 
         foreach ($supportAssignments as $assignment) {
             $assignment->update([

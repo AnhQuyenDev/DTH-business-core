@@ -19,28 +19,22 @@ use App\Services\Crm\CompanyOwnershipService;
 use App\Services\Crm\LeadAssignmentService;
 use App\Services\Crm\LeadDistributionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\MakesV1Actors;
 use Tests\TestCase;
 
 class LeadDistributionTest extends TestCase
 {
+    use MakesV1Actors;
     use RefreshDatabase;
 
     private int $leadSequence = 0;
 
     private function makeStaff(string $code): Staff
     {
-        $user = User::factory()->create([
-            'role' => 'customer_service_staff',
-        ]);
+        [, $staff] = $this->makeV1SalesStaff('Staff '.$code);
+        $staff->update(['employee_code' => $code]);
 
-        return Staff::query()->create([
-            'user_id' => $user->id,
-            'employee_code' => $code,
-            'full_name' => 'Staff '.$code,
-            'employment_status' => StaffEmploymentStatus::Active->value,
-            'can_receive_customers' => true,
-            'distribution_weight' => 1,
-        ]);
+        return $staff->fresh();
     }
 
     private function makeLead(
@@ -65,12 +59,14 @@ class LeadDistributionTest extends TestCase
             'company_id' => $company?->id,
             'source' => 'manual',
             'title' => 'Distribution test',
+            // LeadObserver::saving tự tính intake_ready từ trạng thái model:
+            // service_interest trống => missing_service_interest => không ready.
+            'service_interest' => $intakeReady
+                ? 'Tư vấn phần mềm CRM'
+                : null,
             'intake_status' => $status->value,
             'metadata' => [
-                'intake_ready' => $intakeReady,
-                'intake_issues' => $intakeReady
-                    ? []
-                    : ['missing_service_interest'],
+                'submission_type' => 'personal',
             ],
         ]);
 
@@ -95,7 +91,7 @@ class LeadDistributionTest extends TestCase
 
     public function test_company_owner_receives_new_company_lead(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $owner = $this->makeStaff('CS001');
         $other = $this->makeStaff('CS002');
         $company = $this->makeCompany();
@@ -127,7 +123,7 @@ class LeadDistributionTest extends TestCase
 
     public function test_least_loaded_strategy_uses_lead_load(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $staffA = $this->makeStaff('CS001');
         $staffB = $this->makeStaff('CS002');
 
@@ -155,7 +151,7 @@ class LeadDistributionTest extends TestCase
 
     public function test_unavailable_company_owner_causes_skip(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $owner = $this->makeStaff('CS001');
         $other = $this->makeStaff('CS002');
         $company = $this->makeCompany();
@@ -196,7 +192,7 @@ class LeadDistributionTest extends TestCase
 
     public function test_terminal_leads_are_not_distributed(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $staff = $this->makeStaff('CS001');
 
         $spamLead = $this->makeLead(
@@ -218,7 +214,7 @@ class LeadDistributionTest extends TestCase
     }
     public function test_not_ready_leads_are_not_automatically_distributed(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->makeV1SystemAdmin();
         $staff = $this->makeStaff('CS001');
         $notReady = $this->makeLead(intakeReady: false);
         $ready = $this->makeLead(intakeReady: true);

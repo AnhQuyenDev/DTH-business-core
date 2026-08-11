@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Actions\QuickViewAction;
 use App\Enums\Crm\CompanyLifecycleStage;
 use App\Filament\Resources\CompanyResource\Pages;
 use App\Filament\Resources\CompanyResource\RelationManagers\AssignmentsRelationManager;
@@ -20,7 +21,6 @@ use Filament\Tables;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -143,7 +143,7 @@ class CompanyResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    ViewAction::make(),
+                    QuickViewAction::make(),
                     EditAction::make(),
                     DeleteAction::make(),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
@@ -218,7 +218,6 @@ class CompanyResource extends Resource
         if (
             $user->isAdmin()
             || $user->canReadAcrossBusiness()
-            || $user->isCustomerServiceManager()
             || $user->isMarketingManager()
             || $user->isSalesManager()
         ) {
@@ -231,24 +230,20 @@ class CompanyResource extends Resource
             return $query->whereRaw('0 = 1');
         }
 
-        if ($user->isCustomerServiceStaff()) {
+        if ($user->isSalesStaff()) {
             return $query->where(function (Builder $query) use ($staffId): void {
-                $query
-                    ->where('account_owner_staff_id', $staffId)
+                $query->where('account_owner_staff_id', $staffId)
                     ->orWhereHas(
                         'leads',
                         fn (Builder $leadQuery): Builder => $leadQuery
                             ->where('assigned_staff_id', $staffId)
+                    )
+                    ->orWhereHas(
+                        'opportunities',
+                        fn (Builder $opportunityQuery): Builder => $opportunityQuery
+                            ->where('assigned_staff_id', $staffId)
                     );
             });
-        }
-
-        if ($user->isSalesStaff()) {
-            return $query->whereHas(
-                'opportunities',
-                fn (Builder $opportunityQuery): Builder => $opportunityQuery
-                    ->where('assigned_staff_id', $staffId)
-            );
         }
 
         return $query->whereRaw('0 = 1');

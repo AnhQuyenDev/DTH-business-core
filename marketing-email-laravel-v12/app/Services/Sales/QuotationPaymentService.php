@@ -15,7 +15,10 @@ use App\Models\Sales\Quotation;
 use App\Models\User;
 use App\Services\Finance\PaymentLedgerService;
 use App\Services\Finance\PaymentReceiptService;
+use App\Services\Business\WorkflowPolicyService;
+use App\Services\Billing\ElectronicInvoiceService;
 use App\Services\Marketing\AuditLogService;
+use App\Services\Security\BusinessNotificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -25,7 +28,7 @@ final class QuotationPaymentService
         'not_required' => ['unpaid'],
         'unpaid' => [
             'pending_verification',
-            'paid', // legacy; V2 blocks direct Paid without evidence below.
+            'paid', // legacy; V2 still requires a customer payment notice before Paid.
             'cancelled',
         ],
         'pending_verification' => [
@@ -48,6 +51,9 @@ final class QuotationPaymentService
         private readonly ConvertWonOpportunityToCustomerAction $converter,
         private readonly PaymentLedgerService $ledger,
         private readonly PaymentReceiptService $receiptService,
+        private readonly WorkflowPolicyService $workflowPolicy,
+        private readonly ElectronicInvoiceService $electronicInvoice,
+        private readonly BusinessNotificationService $notifications,
     ) {}
 
     public function updateStatus(
@@ -115,9 +121,12 @@ final class QuotationPaymentService
                     ]);
                 }
 
-                if ($pendingNotice->files->isEmpty()) {
+                if (
+                    $this->workflowPolicy->paymentEvidenceRequired()
+                    && $pendingNotice->files->isEmpty()
+                ) {
                     throw ValidationException::withMessages([
-                        'payment_status' => 'Thông báo thanh toán chưa có chứng từ chuyển khoản. Không thể xác nhận Paid.',
+                        'payment_status' => 'Chính sách hiện tại yêu cầu chứng từ chuyển khoản trước khi xác nhận Paid.',
                     ]);
                 }
             }
@@ -194,6 +203,14 @@ final class QuotationPaymentService
                     // be generated later by the backfill/repair command.
                     report($e);
                 }
+
+                try {
+                    $this->electronicInvoice->issueIfEnabled($payment);
+                } catch (\Throwable $e) {
+                    // E-invoice is an optional provider extension in V1. A vendor outage
+                    // must never roll back an already verified customer payment.
+                    report($e);
+                }
             }
 
             // Payment confirmation is a user-facing transactional email. Send it
@@ -203,6 +220,13 @@ final class QuotationPaymentService
                 SendPaymentConfirmedNotificationJob::dispatchSync($result['quotation_id']);
             } catch (\Throwable $e) {
                 report($e);
+            }
+
+            $paidQuotation = Quotation::query()->with('assignedStaff.user')->find($result['quotation_id']);
+            if ($paidQuotation) {
+                $body = __('v1.notification.payment_paid_body', ['code' => $paidQuotation->quotation_code, 'amount' => number_format((float) $paidQuotation->grand_total, 0, ',', '.')]);
+                $this->notifications->send($paidQuotation->assignedStaff?->user, __('v1.notification.payment_paid_title'), $body);
+                $this->notifications->notifyPermission('customer-care.manage-assignments', __('v1.notification.customer_handover_title'), $body);
             }
         }
 

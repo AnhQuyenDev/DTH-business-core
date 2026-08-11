@@ -8,6 +8,8 @@ use App\Enums\Sales\QuotationStatus;
 use App\Models\Sales\Quotation;
 use App\Models\Sales\QuotationPaymentNotice;
 use App\Services\Marketing\AuditLogService;
+use App\Services\Business\WorkflowPolicyService;
+use App\Services\Security\BusinessNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +22,8 @@ final class QuotationPaymentNoticeService
     public function __construct(
         private readonly QuotationPublicAccessService $publicAccess,
         private readonly AuditLogService $auditLog,
+        private readonly WorkflowPolicyService $workflowPolicy,
+        private readonly BusinessNotificationService $notifications,
     ) {}
 
     public function submit(
@@ -43,7 +47,10 @@ final class QuotationPaymentNoticeService
             ->filter(fn (mixed $file): bool => $file instanceof UploadedFile)
             ->values();
 
-        if ($files->isEmpty()) {
+        if (
+            $this->workflowPolicy->paymentEvidenceRequired()
+            && $files->isEmpty()
+        ) {
             throw ValidationException::withMessages([
                 'proof_files' => 'Vui lòng tải lên ít nhất một ảnh hoặc PDF chứng từ chuyển khoản.',
             ]);
@@ -148,6 +155,12 @@ final class QuotationPaymentNoticeService
                         'evidence_sha256' => $notice->files()->pluck('sha256')->all(),
                     ],
                 );
+
+                DB::afterCommit(fn () => $this->notifications->notifyPermission(
+                    'sales.verify-payments',
+                    __('v1.notification.payment_notice_title'),
+                    __('v1.notification.payment_notice_body', ['code' => $quotation->quotation_code, 'amount' => number_format($declaredAmount, 0, ',', '.')]),
+                ));
 
                 return $notice->fresh('files');
             });

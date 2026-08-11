@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Actions\QuickViewAction;
 use App\Enums\Crm\ContactQualificationStatus;
 use App\Enums\Crm\ContactType;
 use App\Enums\Crm\LeadIntakeStatus;
@@ -27,7 +28,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
@@ -106,13 +106,13 @@ class LeadResource extends Resource
             || $user->canReadAcrossBusiness()
             || $user->isMarketingManager()
             || $user->isMarketingStaff()
-            || $user->isCustomerServiceManager()
+            || $user->isSalesManager()
         ) {
             return $query;
         }
 
         if (
-            ! $user->isCustomerServiceStaff()
+            ! $user->isSalesStaff()
             || $user->staff?->id === null
         ) {
             return $query->whereRaw('0 = 1');
@@ -329,7 +329,7 @@ class LeadResource extends Resource
                     Select::make('assigned_staff_id')
                         ->label(__('field.assigned_staff'))
                         ->relationship('assignedStaff', 'full_name', modifyQueryUsing: fn ($query) => $query
-                            ->whereHas('department', fn ($q) => $q->where('function_key', 'customer_service'))
+                            ->withBusinessFunction(\App\Enums\Crm\DepartmentFunction::Sales)
                             ->whereHas('user', fn ($q) => $q->where('is_active', true)))
                         ->searchable()->preload(),
                     TextInput::make('source')->label(__('field.source'))->maxLength(100),
@@ -351,9 +351,7 @@ class LeadResource extends Resource
                             StaffEmploymentStatus::Active->value
                         )
                         ->where('can_receive_customers', true)
-                        ->whereHas('department', function ($query): void {
-                            $query->where('function_key', 'customer_service');
-                        })
+                        ->withBusinessFunction(\App\Enums\Crm\DepartmentFunction::Sales)
                         ->whereHas('user', function ($query): void {
                             $query->where('is_active', true);
                         })
@@ -424,11 +422,11 @@ class LeadResource extends Resource
             return false;
         }
 
-        if ($user->isCustomerServiceManager()) {
+        if ($user->isSalesManager()) {
             return true;
         }
 
-        return $user->isCustomerServiceStaff()
+        return $user->isSalesStaff()
             && $user->staff?->id !== null
             && $lead->assigned_staff_id === $user->staff->id;
     }
@@ -560,7 +558,7 @@ class LeadResource extends Resource
             ])
             ->actions([
                 ActionGroup::make([
-                    ViewAction::make(),
+                    QuickViewAction::make(),
 
                     Action::make('assign')
                         ->label(__('action.assign_lead'))

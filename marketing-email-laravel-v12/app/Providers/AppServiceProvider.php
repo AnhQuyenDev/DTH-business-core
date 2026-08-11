@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\Billing\ElectronicInvoiceProvider;
 use App\Contracts\Tax\TaxCodeVerificationProvider;
-use App\Enums\UserRole;
 use App\Events\Crm\ContactQualificationTransitioned;
 use App\Events\Crm\LeadAssigned;
 use App\Listeners\Crm\RecordContactQualificationTransitionAudit;
@@ -15,28 +15,31 @@ use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\CustomerInteraction;
 use App\Models\Crm\Lead;
 use App\Models\Crm\Staff;
+use App\Models\Marketing\LandingPageSubmission;
 use App\Models\Sales\Opportunity;
 use App\Models\Sales\PriceBook;
+use App\Models\Sales\Quotation;
 use App\Models\Sales\Service;
 use App\Models\Sales\ServicePackage;
-use App\Models\Sales\Quotation;
 use App\Models\User;
-use App\Models\Marketing\LandingPageSubmission;
 use App\Observers\Crm\CustomerAssignmentObserver;
-use App\Observers\Crm\StaffObserver;
 use App\Observers\Crm\LeadObserver;
+use App\Observers\Crm\StaffObserver;
 use App\Observers\Marketing\LandingPageSubmissionObserver;
 use App\Policies\CompanyPolicy;
-use App\Policies\CustomerPolicy;
 use App\Policies\CustomerAssignmentPolicy;
 use App\Policies\CustomerInteractionPolicy;
+use App\Policies\CustomerPolicy;
 use App\Policies\LeadPolicy;
 use App\Policies\Sales\OpportunityPolicy;
 use App\Policies\Sales\PriceBookPolicy;
+use App\Policies\Sales\QuotationPolicy;
 use App\Policies\Sales\ServicePackagePolicy;
 use App\Policies\Sales\ServicePolicy;
-use App\Policies\Sales\QuotationPolicy;
+use App\Services\Billing\NullElectronicInvoiceProvider;
 use App\Services\Crm\FakeTaxVerificationProvider;
+use App\Services\Security\RbacAuthorizationService;
+use App\Services\Security\RbacDefinition;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -47,24 +50,20 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(TaxCodeVerificationProvider::class, FakeTaxVerificationProvider::class);
+        $this->app->bind(ElectronicInvoiceProvider::class, NullElectronicInvoiceProvider::class);
     }
 
     public function boot(): void
     {
-        // ─── Observers ──────────────────────────────────────────────────
         Staff::observe(StaffObserver::class);
         CustomerAssignment::observe(CustomerAssignmentObserver::class);
-        LandingPageSubmission::observe(
-            LandingPageSubmissionObserver::class
-        );
+        LandingPageSubmission::observe(LandingPageSubmissionObserver::class);
         Lead::observe(LeadObserver::class);
 
-        // ─── Event Listeners ────────────────────────────────────────────
         Event::listen(Login::class, LogSuccessfulLogin::class);
         Event::listen(LeadAssigned::class, RecordLeadAssignmentAudit::class);
         Event::listen(ContactQualificationTransitioned::class, RecordContactQualificationTransitionAudit::class);
 
-        // ─── Policy Registration ──────────────────────────────────────────
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(Lead::class, LeadPolicy::class);
         Gate::policy(Opportunity::class, OpportunityPolicy::class);
@@ -76,258 +75,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(CustomerAssignment::class, CustomerAssignmentPolicy::class);
         Gate::policy(CustomerInteraction::class, CustomerInteractionPolicy::class);
 
-        // ─── Marketing View Gates ─────────────────────────────────────────
-        Gate::define('marketing.view-contacts', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.view-tags', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.view-lists', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.view-segments', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.view-custom-fields', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.view-templates', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.view-campaigns', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define(
-            'marketing.view-reports',
-            fn (User $user): bool => $user->canViewMarketingModule()
-                || $user->isViewer()
-        );
-        Gate::define('marketing.view-audit', fn (User $user) => $user->isAdmin());
+        // Super Admin is the only unconditional business/system bypass.
+        Gate::before(fn (User $user): ?bool => $user->isSuperAdmin() ? true : null);
 
-        // ─── Marketing Manage Gates ─────────────────────────────────────
-        Gate::define('marketing.manage-contacts', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
-        Gate::define('marketing.manage-tags', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
-        Gate::define('marketing.manage-lists', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
-        Gate::define('marketing.manage-segments', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
-        Gate::define('marketing.manage-custom-fields', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
-        Gate::define('marketing.manage-templates', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
-        Gate::define('marketing.manage-campaigns', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
-        Gate::define('marketing.send-campaigns', fn (User $user) => $user->isAdmin() || $user->isMarketingManager());
-        Gate::define('marketing.manage-sending', fn (User $user) => $user->isAdmin());
-        Gate::define('marketing.view-suppression', fn (User $user) => $user->isAdmin() || $user->isMarketingManager());
-        Gate::define('marketing.manage-suppression', fn (User $user) => $user->isAdmin() || $user->isMarketingManager());
-        Gate::define('marketing.export-data', fn (User $user) => $user->isMarketingManager());
-
-        // ─── Landing Page Gates ─────────────────────────────────────────
-        Gate::define('marketing.view-landing-pages', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.manage-landing-pages', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
-        Gate::define('marketing.view-landing-page-submissions', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.view-landing-form-templates', fn (User $user) => $user->canViewMarketingModule());
-        Gate::define('marketing.manage-landing-form-templates', fn (User $user) => $user->isAdmin() || $user->isMarketingStaff());
-
-        // ─── CRM Gates ──────────────────────────────────────────────────
-        Gate::define(
-            'crm.view-companies',
-            fn (User $user): bool => $user->canViewCrmModule()
-                || $user->canViewSalesModule()
-        );
-        Gate::define('crm.view-leads', fn (User $user) => $user->canViewCrmModule());
-        Gate::define('crm.assign-lead', fn (User $user) => $user->isCustomerServiceManager());
-        Gate::define('crm.reassign-lead', fn (User $user) => $user->isCustomerServiceManager());
-        Gate::define('crm.manage-company-owner', fn (User $user) => $user->isCustomerServiceManager());
-        Gate::define('crm.process-lead', fn (User $user) => $user->isCustomerServiceStaff());
-        Gate::define('crm.archive-lead', fn (User $user) => $user->isCustomerServiceManager());
-        Gate::define('crm.manage-staff', fn (User $user) => $user->isAdmin());
-        Gate::define('crm.manage-staff-availability', fn (User $user) => $user->isAdmin());
-
-        // ─── Sales / Catalog & Bank Account Gates ─────────────────
-
-        Gate::define(
-            'sales.view-services',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::Executive,
-                UserRole::Viewer,
-                UserRole::MarketingManager,
-                UserRole::MarketingStaff,
-                UserRole::CustomerServiceManager,
-                UserRole::CustomerServiceStaff,
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-            ])
-        );
-
-        Gate::define(
-            'sales.manage-services',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::SalesManager,
-            ])
-        );
-
-        Gate::define(
-            'sales.view-service-packages',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::Executive,
-                UserRole::Viewer,
-                UserRole::MarketingManager,
-                UserRole::MarketingStaff,
-                UserRole::CustomerServiceManager,
-                UserRole::CustomerServiceStaff,
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-            ])
-        );
-
-        Gate::define(
-            'sales.manage-service-packages',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::SalesManager,
-            ])
-        );
-
-        Gate::define(
-            'sales.view-bank-accounts',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::Executive,
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-                UserRole::FinanceStaff,
-            ])
-        );
-
-        Gate::define(
-            'sales.manage-bank-accounts',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::FinanceStaff,
-            ])
-        );
-
-        // ─── Sales / Price Book Gates ───────────────────────────
-
-        Gate::define(
-            'sales.view-price-books',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::Executive,
-                UserRole::Viewer,
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-                UserRole::FinanceStaff,
-            ])
-        );
-
-        Gate::define(
-            'sales.manage-price-books',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::SalesManager,
-            ])
-        );
-
-        Gate::define(
-            'sales.approve-price-books',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::SalesManager,
-            ])
-        );
-
-        // ─── Sales / Quotation Gates ────────────────────────────
-
-        Gate::define(
-            'sales.view-quotations',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::Executive,
-                UserRole::Viewer,
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-                UserRole::FinanceStaff,
-                UserRole::CustomerServiceManager,
-            ])
-        );
-
-        Gate::define(
-            'sales.create-quotations',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-            ])
-        );
-
-        Gate::define(
-            'sales.send-quotations',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-            ])
-        );
-
-        Gate::define(
-            'sales.approve-quotations',
-            fn (User $user): bool => $user->hasRole(
-                UserRole::SalesManager
-            )
-        );
-
-        Gate::define(
-            'sales.revise-quotations',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-            ])
-        );
-
-        Gate::define(
-            'sales.cancel-quotations',
-            fn (User $user): bool => $user->hasRole(
-                UserRole::SalesManager
-            )
-        );
-
-        Gate::define(
-            'sales.export-quotations',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-                UserRole::FinanceStaff,
-            ])
-        );
-
-        // ─── Sales / Opportunity Gates ──────────────────────────
-
-        Gate::define(
-            'sales.view-opportunities',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::Admin,
-                UserRole::Executive,
-                UserRole::Viewer,
-                UserRole::CustomerServiceManager,
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-            ])
-        );
-
-        Gate::define(
-            'sales.create-opportunities',
-            fn (User $user): bool => $user->hasRole(
-                UserRole::CustomerServiceManager
-            )
-        );
-
-        Gate::define(
-            'sales.process-opportunities',
-            fn (User $user): bool => $user->hasAnyRole([
-                UserRole::SalesManager,
-                UserRole::SalesStaff,
-            ])
-        );
-
-        Gate::define(
-            'sales.verify-payments',
-            fn (User $user): bool => $user->hasRole(
-                UserRole::FinanceStaff
-            )
-        );
-
-        // ─── Customer Care Gates ────────────────────────────────────────
-        Gate::define('customer-care.view', fn (User $user) => $user->canViewCustomerCareModule());
-        Gate::define('customer-care.interact', fn (User $user) => $user->isCustomerServiceStaff());
-        Gate::define('customer-care.manage-assignments', fn (User $user) => $user->isCustomerServiceManager());
-        Gate::define('customer-care.distribute', fn (User $user) => $user->isCustomerServiceManager());
-        Gate::define('customer-care.rebalance', fn (User $user) => $user->isCustomerServiceManager());
+        // Named capabilities are stored in DB through Spatie Permission. The
+        // fallback keeps the V1 app usable during the first migration/sync.
+        foreach (array_keys(RbacDefinition::permissions()) as $permission) {
+            Gate::define($permission, fn (User $user): bool => app(RbacAuthorizationService::class)->allows($user, $permission));
+        }
     }
 }

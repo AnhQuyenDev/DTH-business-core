@@ -19,7 +19,7 @@ class PaymentLedgerAttributionTest extends TestCase
     public function test_verified_payment_snapshots_product_and_lead_origin_attribution(): void
     {
         $flow = $this->buildFlow();
-        $finance = $this->makeUser('finance_staff');
+        $finance = $this->makeV1Finance()[0];
 
         $flow['lead']->update([
             'source' => 'landing_page',

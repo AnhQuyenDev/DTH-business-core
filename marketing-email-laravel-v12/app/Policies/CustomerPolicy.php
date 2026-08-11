@@ -1,93 +1,19 @@
 <?php
-
 namespace App\Policies;
-
-use App\Enums\UserRole;
-use App\Models\Crm\Customer;
-use App\Models\User;
-
+use App\Models\Crm\Customer; use App\Models\User;
 class CustomerPolicy
 {
-    public function before(User $user, string $ability): ?bool
-    {
-        // Admin/Executive/Viewer may inspect Customer Care for audit, but they
-        // must not impersonate operational CSKH users.
-        if (
-            ($user->isAdmin() || $user->canReadAcrossBusiness())
-            && in_array($ability, ['viewAny', 'view'], true)
-        ) {
-            return true;
-        }
-
-        return null;
-    }
-
-    public function viewAny(User $user): bool
-    {
-        return $user->hasAnyRole([
-            UserRole::CustomerServiceManager,
-            UserRole::CustomerServiceStaff,
-        ]);
-    }
-
+    public function viewAny(User $user): bool { return $user->can('customer-care.view'); }
     public function view(User $user, Customer $customer): bool
     {
-        if ($user->isCustomerServiceManager()) {
-            return true;
-        }
-
-        return $this->hasActiveAssignment($user, $customer);
+        if (! $user->can('customer-care.view')) return false;
+        if ($user->isAdmin() || $user->canReadAcrossBusiness() || $user->can('customer-care.manage-assignments')) return true;
+        return $this->hasActiveAssignment($user,$customer);
     }
-
-    public function create(User $user): bool
-    {
-        if (
-            config('business_flow.v2_enabled')
-            && config('business_flow.customer_on_paid_only')
-        ) {
-            return false;
-        }
-
-        return false;
-    }
-
-    public function update(User $user, Customer $customer): bool
-    {
-        return $user->isCustomerServiceManager()
-            || $this->hasActiveAssignment($user, $customer);
-    }
-
-    public function delete(User $user, Customer $customer): bool
-    {
-        return false;
-    }
-
-    public function interact(User $user, Customer $customer): bool
-    {
-        return $user->isCustomerServiceManager()
-            || $this->hasActiveAssignment($user, $customer);
-    }
-
-    public function manageAssignments(
-        User $user,
-        Customer $customer,
-    ): bool {
-        return $user->isCustomerServiceManager();
-    }
-
-    private function hasActiveAssignment(
-        User $user,
-        Customer $customer,
-    ): bool {
-        $staffId = $user->staff?->id;
-
-        if ($staffId === null) {
-            return false;
-        }
-
-        return $customer->assignments()
-            ->where('staff_id', $staffId)
-            ->where('status', 'active')
-            ->exists();
-    }
+    public function create(User $user): bool { return false; }
+    public function update(User $user, Customer $customer): bool { return $user->can('customer-care.interact') && ($user->can('customer-care.manage-assignments') || $this->hasActiveAssignment($user,$customer)); }
+    public function delete(User $user, Customer $customer): bool { return false; }
+    public function interact(User $user, Customer $customer): bool { return $this->update($user,$customer); }
+    public function manageAssignments(User $user, Customer $customer): bool { return $user->can('customer-care.manage-assignments'); }
+    private function hasActiveAssignment(User $user, Customer $customer): bool { $staffId=$user->staff?->id; return $staffId!==null && $customer->assignments()->where('staff_id',$staffId)->where('status','active')->exists(); }
 }

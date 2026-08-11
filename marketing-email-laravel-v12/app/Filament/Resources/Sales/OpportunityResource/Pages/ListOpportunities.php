@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Sales\OpportunityResource\Pages;
 use App\Enums\Sales\OpportunityStage;
 use App\Filament\Resources\Sales\OpportunityResource;
 use App\Models\Crm\Lead;
+use App\Models\Crm\Staff;
 use App\Services\Sales\OpportunityCreationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -38,6 +39,24 @@ class ListOpportunities extends ListRecords
                         ->options(OpportunityResource::qualifiedLeadOptions())
                         ->searchable()
                         ->required(),
+                    Select::make('sales_staff_id')
+                        ->label(__('field.sales_owner'))
+                        ->options(function (): array {
+                            $query = Staff::query()->eligibleForOpportunityOwnership();
+
+                            if (! auth()->user()?->isSalesManager()) {
+                                $query->whereKey(auth()->user()?->staff?->id ?? 0);
+                            }
+
+                            return $query->orderBy('full_name')->get()
+                                ->mapWithKeys(fn (Staff $staff): array => [
+                                    $staff->id => $staff->full_name.' ('.$staff->employee_code.')',
+                                ])->all();
+                        })
+                        ->default(fn (): ?int => auth()->user()?->staff?->id)
+                        ->searchable()
+                        ->preload()
+                        ->required(),
                     TextInput::make('title')
                         ->label(__('field.title'))
                         ->maxLength(255),
@@ -62,8 +81,9 @@ class ListOpportunities extends ListRecords
                     $opportunity = app(OpportunityCreationService::class)
                         ->createFromQualifiedLead(
                             lead: $lead,
+                            salesOwner: Staff::query()->findOrFail($data['sales_staff_id']),
                             data: $data,
-                            createdByUserId: auth()->id(),
+                            actorUserId: (int) auth()->id(),
                         );
 
                     Notification::make()

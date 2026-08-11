@@ -38,13 +38,9 @@ final class CustomerDistributionService
             $initiatedByUserId, $sourceStaffId, $note, $originalOwnerMap,
         ) {
             $customers = Customer::whereIn('id', $customerIds)->lockForUpdate()->get();
-            $staffList = Staff::whereIn('id', $staffIds)
-                ->where('employment_status', 'active')
-                ->where('can_receive_customers', true)
-                ->whereDoesntHave('availabilities', fn ($q) => $q
-                    ->active()
-                    ->where('can_receive_new_customers', false)
-                )
+            $staffList = Staff::query()
+                ->whereIn('id', $staffIds)
+                ->eligibleForCustomerOwnership()
                 ->get()
                 ->filter(fn (Staff $s) => $s->hasCapacity())
                 ->values();
@@ -153,6 +149,10 @@ final class CustomerDistributionService
     {
         return match ($strategy) {
             DistributionStrategy::RoundRobin => function (int $index, Customer $customer, Collection $staff, Collection $loads) {
+                if ($staff->isEmpty()) {
+                    return null;
+                }
+
                 return $staff->get($index % $staff->count());
             },
             DistributionStrategy::LeastLoaded => function (int $index, Customer $customer, Collection $staff, Collection $loads) {
