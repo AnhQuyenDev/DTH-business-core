@@ -140,7 +140,7 @@ class UiBadgeStyleResource extends Resource
 
                 IconColumn::make('color')
                     ->label(__('configuration.appearance.color'))
-                    ->icon('heroicon-s-circle')
+                    ->icon('app-circle')
                     ->color(fn (UiBadgeStyle $record): string => SystemColorPalette::normalize($record->color))
                     ->tooltip(fn (UiBadgeStyle $record): string => SystemColorPalette::options()[$record->color] ?? $record->color),
 
