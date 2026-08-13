@@ -347,12 +347,12 @@ return [
     ],
 
     'appearance' => [
-        'navigation' => 'Shared Badge Colors',
+        'navigation' => 'System Label Management',
         'singular' => 'Badge color rule',
         'list_subheading' => 'Manage shared badge colors with one consistent system palette.',
         'create_subheading' => 'Create a color rule for a customizable badge category.',
         'edit_subheading' => 'Update display color without changing business meaning.',
-        'plural' => 'Shared Badge Colors',
+        'plural' => 'System Label Directory',
         'description' => 'Manage colors for Roles, Business Functions, and Audience types. Business statuses use the fixed semantic palette.',
         'category' => 'Applies to',
         'key' => 'Value',

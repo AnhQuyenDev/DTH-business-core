@@ -49,21 +49,39 @@ class DepartmentUiHardeningTest extends TestCase
         $this->assertStringNotContainsString('DeleteBulkAction::make', $source);
     }
 
-    public function test_navigation_separates_organization_access_and_appearance(): void
+    public function test_configuration_navigation_is_flat_and_appearance_hub_is_hidden(): void
     {
-        foreach (['DepartmentResource.php', 'PositionResource.php', 'StaffResource.php'] as $resource) {
-            $source = File::get(app_path('Filament/Resources/'.$resource));
-            $this->assertStringContainsString('OrganizationAccessPage::getNavigationLabel()', $source);
-        }
-
-        foreach (['UserResource.php', 'Security/RbacRoleResource.php'] as $resource) {
-            $source = File::get(app_path('Filament/Resources/'.$resource));
-            $this->assertStringContainsString('AccessControlPage::getNavigationLabel()', $source);
-        }
+        $appearancePage = File::get(
+            app_path('Filament/Pages/AppearanceSettingsPage.php')
+        );
 
         $this->assertStringContainsString(
-            'AppearanceSettingsPage::getNavigationLabel()',
-            File::get(app_path('Filament/Resources/UiBadgeStyleResource.php')),
+            'public static function shouldRegisterNavigation(): bool',
+            $appearancePage,
+        );
+
+        $this->assertStringContainsString(
+            'return false;',
+            $appearancePage,
+        );
+
+        $badgeResource = File::get(
+            app_path('Filament/Resources/UiBadgeStyleResource.php')
+        );
+
+        $this->assertStringNotContainsString(
+            'getNavigationParentItem',
+            $badgeResource,
+        );
+
+        $this->assertStringContainsString(
+            'dth-shared-color-swatch',
+            $badgeResource,
+        );
+
+        $this->assertStringNotContainsString(
+            'hiddenButtonLabels',
+            $badgeResource,
         );
     }
 

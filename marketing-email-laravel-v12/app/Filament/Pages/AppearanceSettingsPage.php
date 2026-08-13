@@ -17,6 +17,11 @@ class AppearanceSettingsPage extends Page
 
     protected static string $view = 'filament.pages.appearance-settings';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function getNavigationGroup(): string
     {
         return __('navigation.group.configuration');

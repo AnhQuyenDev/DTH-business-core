@@ -230,17 +230,18 @@ HTML;
     {
         return $table
             ->columns([
+                
+                TextColumn::make('code')
+                    ->label(__('configuration.department.code'))
+                    ->searchable()
+                    ->sortable(),
+                    
                 TextColumn::make('name')
                     ->label(__('configuration.department.name'))
                     ->searchable()
                     ->sortable()
                     ->badge()
                     ->color(fn (Department $record): string => SystemColorPalette::normalize($record->color)),
-
-                TextColumn::make('code')
-                    ->label(__('configuration.department.code'))
-                    ->searchable()
-                    ->sortable(),
 
                 TextColumn::make('staff_count')
                     ->label(__('configuration.department.staff_count'))
