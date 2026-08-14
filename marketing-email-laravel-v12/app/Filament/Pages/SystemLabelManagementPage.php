@@ -162,13 +162,17 @@ class SystemLabelManagementPage extends Page
                 $validated['changeReason'] ?? null,
             );
 
-        Notification::make()
-            ->color($changed ? 'success' : 'gray')
-            ->icon($changed ? 'heroicon-o-check-circle' : 'heroicon-o-information-circle')
-            ->title($changed
-                ? __('configuration.system_labels.notifications.saved')
-                : __('configuration.system_labels.notifications.no_change'))
-            ->send();
+        if ($changed) {
+            Notification::make()
+                ->success()
+                ->title(__('configuration.system_labels.notifications.saved'))
+                ->send();
+        } else {
+            Notification::make()
+                ->warning()
+                ->title(__('configuration.system_labels.notifications.no_change'))
+                ->send();
+        }
 
         $this->dispatch('close-modal', id: 'system-label-color-editor');
         $this->editingIdentifier = null;

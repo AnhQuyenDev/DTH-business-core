@@ -338,8 +338,20 @@ class UserResource extends Resource
 
                             $deleteable->each(fn (User $user): bool => (bool) $user->delete());
 
+                            if ($blocked > 0) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title(__('configuration.account.bulk_delete_result', [
+                                        'deleted' => $deleteable->count(),
+                                        'blocked' => $blocked,
+                                    ]))
+                                    ->send();
+
+                                return;
+                            }
+
                             Notification::make()
-                                ->color($blocked > 0 ? 'warning' : 'success')
+                                ->success()
                                 ->title(__('configuration.account.bulk_delete_result', [
                                     'deleted' => $deleteable->count(),
                                     'blocked' => $blocked,

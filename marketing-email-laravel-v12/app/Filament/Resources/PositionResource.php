@@ -278,8 +278,20 @@ class PositionResource extends Resource
                                 $deleted++;
                             }
 
+                            if ($blocked > 0) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title(__('configuration.common.bulk_delete_result', [
+                                        'deleted' => $deleted,
+                                        'blocked' => $blocked,
+                                    ]))
+                                    ->send();
+
+                                return;
+                            }
+
                             Notification::make()
-                                ->color($blocked > 0 ? 'warning' : 'success')
+                                ->success()
                                 ->title(__('configuration.common.bulk_delete_result', [
                                     'deleted' => $deleted,
                                     'blocked' => $blocked,
