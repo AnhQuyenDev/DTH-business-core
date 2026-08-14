@@ -21,11 +21,14 @@ class DashboardCustomerOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $totalCustomers = Customer::count();
+        $statusCounts = Customer::query()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')->pluck('aggregate', 'status');
+        $totalCustomers = (int) $statusCounts->sum();
         $newThisMonth = Customer::where('created_at', '>=', now()->startOfMonth())->count();
-        $active = Customer::where('status', CustomerStatus::Active->value)->count();
-        $potential = Customer::where('status', CustomerStatus::Potential->value)->count();
-        $churned = Customer::where('status', CustomerStatus::Churned->value)->count();
+        $active = (int) $statusCounts->get(CustomerStatus::Active->value, 0);
+        $potential = (int) $statusCounts->get(CustomerStatus::Potential->value, 0);
+        $churned = (int) $statusCounts->get(CustomerStatus::Churned->value, 0);
         $totalContacts = Contact::count();
 
         return [

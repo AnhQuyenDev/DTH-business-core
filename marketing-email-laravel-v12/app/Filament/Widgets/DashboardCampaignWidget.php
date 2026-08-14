@@ -20,17 +20,19 @@ class DashboardCampaignWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $totalCampaigns = Campaign::count();
-        $draftCampaigns = Campaign::where('status', 'draft')->count();
-        $sending = Campaign::whereIn('status', ['sending', 'scheduled'])->count();
-        $sent = Campaign::where('status', 'sent')->count();
+        $campaignCounts = Campaign::query()->selectRaw('status, COUNT(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
+        $totalCampaigns = (int) $campaignCounts->sum();
+        $draftCampaigns = (int) $campaignCounts->get('draft', 0);
+        $sending = (int) $campaignCounts->get('sending', 0) + (int) $campaignCounts->get('scheduled', 0);
+        $sent = (int) $campaignCounts->get('sent', 0);
 
-        $totalRecipients = CampaignRecipient::count();
-        $sentCount = CampaignRecipient::whereIn('status', ['sent', 'delivered', 'opened', 'clicked'])->count();
-        $opened = CampaignRecipient::where('status', 'opened')->count();
-        $clicked = CampaignRecipient::where('status', 'clicked')->count();
-        $bounced = CampaignRecipient::whereIn('status', ['bounced', 'failed'])->count();
-        $unsubscribed = CampaignRecipient::where('status', 'unsubscribed')->count();
+        $recipientCounts = CampaignRecipient::query()->selectRaw('status, COUNT(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
+        $totalRecipients = (int) $recipientCounts->sum();
+        $sentCount = collect(['sent', 'delivered', 'opened', 'clicked'])->sum(fn (string $status): int => (int) $recipientCounts->get($status, 0));
+        $opened = (int) $recipientCounts->get('opened', 0);
+        $clicked = (int) $recipientCounts->get('clicked', 0);
+        $bounced = (int) $recipientCounts->get('bounced', 0) + (int) $recipientCounts->get('failed', 0);
+        $unsubscribed = (int) $recipientCounts->get('unsubscribed', 0);
 
         $openRate = $sentCount > 0 ? round(($opened / $sentCount) * 100, 1) : 0;
         $clickRate = $opened > 0 ? round(($clicked / $opened) * 100, 1) : 0;

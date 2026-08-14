@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Spatie\Permission\PermissionRegistrar;
 
 class ProductionWarmup extends Command
 {
@@ -11,10 +12,17 @@ class ProductionWarmup extends Command
 
     public function handle(): int
     {
-        $this->call('optimize');
-        if ($this->getApplication()?->has('filament:optimize')) $this->call('filament:optimize');
+        // Reset stale RBAC data before warming caches. Resetting at the end
+        // makes the first real login rebuild the complete permission graph.
         $this->call('permission:cache-reset');
+        $this->call('optimize');
+        if ($this->getApplication()?->has('filament:optimize')) {
+            $this->call('filament:optimize');
+        }
+
+        app(PermissionRegistrar::class)->registerPermissions();
         $this->info('Production caches warmed.');
+
         return self::SUCCESS;
     }
 }

@@ -22,10 +22,14 @@ class StaffOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $total = Staff::count();
-        $active = Staff::where('employment_status', StaffEmploymentStatus::Active->value)->count();
-        $inactive = Staff::where('employment_status', StaffEmploymentStatus::Inactive->value)->count();
-        $resigned = Staff::where('employment_status', StaffEmploymentStatus::Resigned->value)->count();
+        $staffCounts = Staff::query()
+            ->selectRaw('employment_status, COUNT(*) as aggregate')
+            ->groupBy('employment_status')
+            ->pluck('aggregate', 'employment_status');
+        $total = (int) $staffCounts->sum();
+        $active = (int) $staffCounts->get(StaffEmploymentStatus::Active->value, 0);
+        $inactive = (int) $staffCounts->get(StaffEmploymentStatus::Inactive->value, 0);
+        $resigned = (int) $staffCounts->get(StaffEmploymentStatus::Resigned->value, 0);
 
         $onLeave = StaffAvailability::where('starts_at', '<=', now())
             ->where('ends_at', '>=', now())
@@ -33,10 +37,11 @@ class StaffOverviewWidget extends BaseWidget
             ->distinct('staff_id')
             ->count('staff_id');
 
-        $totalManaged = CustomerAssignment::where('assignment_type', 'owner')
-            ->where('status', 'active')->count();
-        $totalSupported = CustomerAssignment::where('assignment_type', 'support')
-            ->where('status', 'active')->count();
+        $assignmentCounts = CustomerAssignment::query()->where('status', 'active')
+            ->selectRaw('assignment_type, COUNT(*) as aggregate')
+            ->groupBy('assignment_type')->pluck('aggregate', 'assignment_type');
+        $totalManaged = (int) $assignmentCounts->get('owner', 0);
+        $totalSupported = (int) $assignmentCounts->get('support', 0);
 
         return [
             Stat::make(__('dashboard.staff.total'), $total)

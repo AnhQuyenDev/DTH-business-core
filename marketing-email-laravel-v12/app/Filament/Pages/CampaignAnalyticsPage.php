@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Services\Dashboard\EnterpriseAnalyticsService;
+use App\Services\Dashboard\DashboardSnapshotCache;
 use Filament\Pages\Page;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -38,14 +39,17 @@ class CampaignAnalyticsPage extends Page
 
     protected function getViewData(): array
     {
+        $user = auth()->user();
+
         return [
-            'analytics' => app(EnterpriseAnalyticsService::class)->campaignAnalysis(auth()->user(), $this->period),
+            'analytics' => app(DashboardSnapshotCache::class)->remember($user, 'campaign-analysis', $this->period, fn (): array => app(EnterpriseAnalyticsService::class)->campaignAnalysis($user, $this->period)),
         ];
     }
 
     public function exportCsv(): StreamedResponse
     {
-        $data = app(EnterpriseAnalyticsService::class)->campaignAnalysis(auth()->user(), $this->period);
+        $user = auth()->user();
+        $data = app(DashboardSnapshotCache::class)->remember($user, 'campaign-analysis', $this->period, fn (): array => app(EnterpriseAnalyticsService::class)->campaignAnalysis($user, $this->period));
         $filename = 'campaign-analytics-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($data): void {

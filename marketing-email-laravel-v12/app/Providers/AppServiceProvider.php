@@ -40,6 +40,7 @@ use App\Services\Billing\NullElectronicInvoiceProvider;
 use App\Services\Crm\FakeTaxVerificationProvider;
 use App\Services\Security\RbacAuthorizationService;
 use App\Services\Security\RbacDefinition;
+use App\Services\Security\RbacSyncService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -51,6 +52,12 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(TaxCodeVerificationProvider::class, FakeTaxVerificationProvider::class);
         $this->app->bind(ElectronicInvoiceProvider::class, NullElectronicInvoiceProvider::class);
+
+        // Navigation and policy discovery can evaluate dozens of permissions in
+        // one request. Reusing these services prevents the RBAC readiness check
+        // from querying information_schema/permissions for every menu item.
+        $this->app->singleton(RbacSyncService::class);
+        $this->app->singleton(RbacAuthorizationService::class);
     }
 
     public function boot(): void

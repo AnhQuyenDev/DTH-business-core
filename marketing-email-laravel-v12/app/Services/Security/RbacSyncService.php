@@ -12,17 +12,33 @@ use Spatie\Permission\PermissionRegistrar;
 
 class RbacSyncService
 {
+    private ?bool $tablesReady = null;
+
+    private ?bool $ready = null;
+
     public function tablesReady(): bool
     {
-        return Schema::hasTable('permissions')
+        if ($this->tablesReady === true) {
+            return true;
+        }
+
+        $ready = Schema::hasTable('permissions')
             && Schema::hasTable('roles')
             && Schema::hasTable('model_has_roles')
             && Schema::hasTable('role_has_permissions');
+
+        // Do not retain false: migrations create these tables after the app and
+        // model observers have already booted in the same PHP process.
+        if ($ready) {
+            $this->tablesReady = true;
+        }
+
+        return $ready;
     }
 
     public function ready(): bool
     {
-        return $this->tablesReady() && Permission::query()->exists();
+        return $this->ready ??= $this->tablesReady() && Permission::query()->exists();
     }
 
     public function syncDefinitions(): void
@@ -41,6 +57,7 @@ class RbacSyncService
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->ready = true;
     }
 
     public function syncAllUsers(): void

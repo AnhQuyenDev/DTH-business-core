@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Services\Dashboard\WorkforceAnalyticsService;
+use App\Services\Dashboard\DashboardSnapshotCache;
 use Filament\Pages\Page;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -33,14 +34,17 @@ class WorkforceAnalyticsPage extends Page
 
     protected function getViewData(): array
     {
+        $user = auth()->user();
+
         return [
-            'analytics' => app(WorkforceAnalyticsService::class)->report(auth()->user(), $this->period),
+            'analytics' => app(DashboardSnapshotCache::class)->remember($user, 'workforce-all', $this->period, fn (): array => app(WorkforceAnalyticsService::class)->report($user, $this->period)),
         ];
     }
 
     public function exportCsv(): StreamedResponse
     {
-        $data = app(WorkforceAnalyticsService::class)->report(auth()->user(), $this->period);
+        $user = auth()->user();
+        $data = app(DashboardSnapshotCache::class)->remember($user, 'workforce-all', $this->period, fn (): array => app(WorkforceAnalyticsService::class)->report($user, $this->period));
         $filename = 'workforce-analytics-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($data): void {

@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\Sales\QuotationApprovalResource;
 use App\Filament\Resources\Sales\QuotationResource;
 use App\Services\Dashboard\EnterpriseAnalyticsService;
+use App\Services\Dashboard\DashboardSnapshotCache;
 use App\Services\Dashboard\WorkforceAnalyticsService;
 use Filament\Pages\Page;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -44,11 +45,14 @@ class SalesDashboard extends Page
     protected function getViewData(): array
     {
         $user = auth()->user();
+        $cache = app(DashboardSnapshotCache::class);
 
         return [
             'isManager' => $user->isSalesManager(),
-            'analytics' => app(EnterpriseAnalyticsService::class)->sales($user, $this->period),
-            'workforce' => $user->isSalesManager() ? app(WorkforceAnalyticsService::class)->report($user, $this->period, \App\Enums\Crm\DepartmentFunction::Sales) : null,
+            'analytics' => $cache->remember($user, 'sales', $this->period, fn (): array => app(EnterpriseAnalyticsService::class)->sales($user, $this->period)),
+            'workforce' => $user->isSalesManager()
+                ? $cache->remember($user, 'workforce-sales', $this->period, fn (): array => app(WorkforceAnalyticsService::class)->report($user, $this->period, \App\Enums\Crm\DepartmentFunction::Sales))
+                : null,
             'links' => [
                 'quotations' => QuotationResource::canViewAny() ? QuotationResource::getUrl() : null,
                 'approvals' => QuotationApprovalResource::canViewAny() ? QuotationApprovalResource::getUrl() : null,
@@ -60,7 +64,8 @@ class SalesDashboard extends Page
 
     public function exportCsv(): StreamedResponse
     {
-        $data = app(EnterpriseAnalyticsService::class)->sales(auth()->user(), $this->period);
+        $user = auth()->user();
+        $data = app(DashboardSnapshotCache::class)->remember($user, 'sales', $this->period, fn (): array => app(EnterpriseAnalyticsService::class)->sales($user, $this->period));
         $filename = 'sales-performance-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($data): void {

@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\LandingPageResource;
 use App\Filament\Resources\MarketingCampaignResource;
 use App\Services\Dashboard\EnterpriseAnalyticsService;
+use App\Services\Dashboard\DashboardSnapshotCache;
 use App\Services\Dashboard\WorkforceAnalyticsService;
 use Filament\Pages\Page;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -44,11 +45,14 @@ class MarketingDashboard extends Page
     protected function getViewData(): array
     {
         $user = auth()->user();
+        $cache = app(DashboardSnapshotCache::class);
 
         return [
             'isManager' => $user->isMarketingManager(),
-            'analytics' => app(EnterpriseAnalyticsService::class)->marketing($user, $this->period),
-            'workforce' => $user->isMarketingManager() ? app(WorkforceAnalyticsService::class)->report($user, $this->period, \App\Enums\Crm\DepartmentFunction::Marketing) : null,
+            'analytics' => $cache->remember($user, 'marketing', $this->period, fn (): array => app(EnterpriseAnalyticsService::class)->marketing($user, $this->period)),
+            'workforce' => $user->isMarketingManager()
+                ? $cache->remember($user, 'workforce-marketing', $this->period, fn (): array => app(WorkforceAnalyticsService::class)->report($user, $this->period, \App\Enums\Crm\DepartmentFunction::Marketing))
+                : null,
             'links' => [
                 'campaigns' => MarketingCampaignResource::canViewAny() ? MarketingCampaignResource::getUrl() : null,
                 'landing_pages' => LandingPageResource::canViewAny() ? LandingPageResource::getUrl() : null,
@@ -61,7 +65,8 @@ class MarketingDashboard extends Page
 
     public function exportCsv(): StreamedResponse
     {
-        $data = app(EnterpriseAnalyticsService::class)->marketing(auth()->user(), $this->period);
+        $user = auth()->user();
+        $data = app(DashboardSnapshotCache::class)->remember($user, 'marketing', $this->period, fn (): array => app(EnterpriseAnalyticsService::class)->marketing($user, $this->period));
         $filename = 'marketing-analytics-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($data): void {

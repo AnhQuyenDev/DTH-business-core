@@ -20,15 +20,14 @@ class DashboardLeadPipelineWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $new = ContactQualification::where('status', ContactQualificationStatus::New->value)->count();
-        $contacting = ContactQualification::whereIn('status', [
-            ContactQualificationStatus::Assigned->value,
-            ContactQualificationStatus::Contacting->value,
-        ])->count();
-        $followUp = ContactQualification::where('status', ContactQualificationStatus::FollowUp->value)->count();
-        $qualified = ContactQualification::where('status', ContactQualificationStatus::Qualified->value)->count();
-        $converted = ContactQualification::where('status', ContactQualificationStatus::Converted->value)->count();
-        $unqualified = ContactQualification::where('status', ContactQualificationStatus::Unqualified->value)->count();
+        $counts = ContactQualification::query()->selectRaw('status, COUNT(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
+        $new = (int) $counts->get(ContactQualificationStatus::New->value, 0);
+        $contacting = (int) $counts->get(ContactQualificationStatus::Assigned->value, 0)
+            + (int) $counts->get(ContactQualificationStatus::Contacting->value, 0);
+        $followUp = (int) $counts->get(ContactQualificationStatus::FollowUp->value, 0);
+        $qualified = (int) $counts->get(ContactQualificationStatus::Qualified->value, 0);
+        $converted = (int) $counts->get(ContactQualificationStatus::Converted->value, 0);
+        $unqualified = (int) $counts->get(ContactQualificationStatus::Unqualified->value, 0);
 
         $totalActive = $new + $contacting + $followUp;
         $totalProcessed = $qualified + $unqualified + $converted;

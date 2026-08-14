@@ -21,19 +21,27 @@ class DashboardLandingPageWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $totalLP = LandingPage::count();
-        $publishedLP = LandingPage::where('status', 'published')->count();
-        $draftLP = LandingPage::where('status', 'draft')->count();
+        $pageCounts = LandingPage::query()->selectRaw('status, COUNT(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
+        $totalLP = (int) $pageCounts->sum();
+        $publishedLP = (int) $pageCounts->get('published', 0);
+        $draftLP = (int) $pageCounts->get('draft', 0);
 
-        $totalViews = LandingPageView::count();
-        $uniqueViews = LandingPageView::distinct('session_id')->count('session_id');
+        $viewStats = LandingPageView::query()->selectRaw('COUNT(*) as total_views, COUNT(DISTINCT session_id) as unique_views')->first();
+        $totalViews = (int) ($viewStats?->total_views ?? 0);
+        $uniqueViews = (int) ($viewStats?->unique_views ?? 0);
 
-        $totalSubmissions = LandingPageSubmission::count();
-        $todaySubmissions = LandingPageSubmission::whereDate('submitted_at', today())->count();
+        $submissionStats = LandingPageSubmission::query()
+            ->selectRaw('COUNT(*) as total_submissions')
+            ->selectRaw('SUM(CASE WHEN submitted_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as today_submissions', [today()->startOfDay(), today()->endOfDay()])
+            ->selectRaw("SUM(CASE WHEN submission_type = 'personal' THEN 1 ELSE 0 END) as personal_submissions")
+            ->selectRaw("SUM(CASE WHEN submission_type = 'business' THEN 1 ELSE 0 END) as business_submissions")
+            ->first();
+        $totalSubmissions = (int) ($submissionStats?->total_submissions ?? 0);
+        $todaySubmissions = (int) ($submissionStats?->today_submissions ?? 0);
 
         $conversionRate = $totalViews > 0 ? round(($totalSubmissions / $totalViews) * 100, 1) : 0;
-        $personalSubmissions = LandingPageSubmission::where('submission_type', 'personal')->count();
-        $businessSubmissions = LandingPageSubmission::where('submission_type', 'business')->count();
+        $personalSubmissions = (int) ($submissionStats?->personal_submissions ?? 0);
+        $businessSubmissions = (int) ($submissionStats?->business_submissions ?? 0);
 
         return [
             Stat::make(__('dashboard.landing_page.total'), number_format($totalLP))

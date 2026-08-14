@@ -23,9 +23,12 @@ class DashboardSystemAlertsWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $overdueTasks = CustomerInteraction::where('status', 'scheduled')
-            ->where('next_follow_up_at', '<', now())
-            ->count();
+        $interactionStats = CustomerInteraction::query()
+            ->where('status', 'scheduled')
+            ->selectRaw('SUM(CASE WHEN next_follow_up_at < ? THEN 1 ELSE 0 END) as overdue_tasks', [now()])
+            ->selectRaw('SUM(CASE WHEN next_follow_up_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as today_follow_ups', [today()->startOfDay(), today()->endOfDay()])
+            ->first();
+        $overdueTasks = (int) ($interactionStats?->overdue_tasks ?? 0);
 
         $unassignedLeads = ContactQualification::where('status', ContactQualificationStatus::New->value)
             ->whereNull('assigned_staff_id')
@@ -35,9 +38,7 @@ class DashboardSystemAlertsWidget extends BaseWidget
 
         $failedCampaigns = Campaign::where('status', 'failed')->count();
 
-        $todayFollowUps = CustomerInteraction::where('status', 'scheduled')
-            ->whereDate('next_follow_up_at', today())
-            ->count();
+        $todayFollowUps = (int) ($interactionStats?->today_follow_ups ?? 0);
 
         return [
             Stat::make(__('dashboard.system_alerts.overdue_follow_up'), number_format($overdueTasks))

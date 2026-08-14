@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\Crm\StaffEmploymentStatus;
+use App\Models\Crm\CustomerAssignment;
 use App\Models\Crm\Staff;
 use App\Models\Crm\StaffAvailability;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -21,9 +22,10 @@ class DashboardStaffWorkloadWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $active = Staff::where('employment_status', StaffEmploymentStatus::Active->value)->count();
-        $inactive = Staff::where('employment_status', StaffEmploymentStatus::Inactive->value)->count();
-        $resigned = Staff::where('employment_status', StaffEmploymentStatus::Resigned->value)->count();
+        $staffCounts = Staff::query()->selectRaw('employment_status, COUNT(*) as aggregate')->groupBy('employment_status')->pluck('aggregate', 'employment_status');
+        $active = (int) $staffCounts->get(StaffEmploymentStatus::Active->value, 0);
+        $inactive = (int) $staffCounts->get(StaffEmploymentStatus::Inactive->value, 0);
+        $resigned = (int) $staffCounts->get(StaffEmploymentStatus::Resigned->value, 0);
 
         $onLeave = StaffAvailability::where('starts_at', '<=', now())
             ->where('ends_at', '>=', now())
@@ -33,17 +35,17 @@ class DashboardStaffWorkloadWidget extends BaseWidget
 
         $available = $active - $onLeave;
 
-        $staffList = Staff::where('employment_status', StaffEmploymentStatus::Active->value)
-            ->withCount([
-                'assignments as managing_count' => fn ($q) => $q->where('assignment_type', 'owner')->where('status', 'active'),
-                'assignments as supporting_count' => fn ($q) => $q->where('assignment_type', 'support')->where('status', 'active'),
-            ])
-            ->get();
-
-        $totalManaging = $staffList->sum('managing_count');
-        $totalSupporting = $staffList->sum('supporting_count');
-        $avgManaging = $staffList->count() > 0 ? round($totalManaging / $staffList->count(), 1) : 0;
-        $avgSupporting = $staffList->count() > 0 ? round($totalSupporting / $staffList->count(), 1) : 0;
+        $assignmentCounts = CustomerAssignment::query()
+            ->join('staff as workload_staff', 'workload_staff.id', '=', 'customer_assignments.staff_id')
+            ->where('workload_staff.employment_status', StaffEmploymentStatus::Active->value)
+            ->where('customer_assignments.status', 'active')
+            ->selectRaw('customer_assignments.assignment_type, COUNT(*) as aggregate')
+            ->groupBy('customer_assignments.assignment_type')
+            ->pluck('aggregate', 'assignment_type');
+        $totalManaging = (int) $assignmentCounts->get('owner', 0);
+        $totalSupporting = (int) $assignmentCounts->get('support', 0);
+        $avgManaging = $active > 0 ? round($totalManaging / $active, 1) : 0;
+        $avgSupporting = $active > 0 ? round($totalSupporting / $active, 1) : 0;
 
         return [
             Stat::make(__('dashboard.staff.working'), number_format($active))

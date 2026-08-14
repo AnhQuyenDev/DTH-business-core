@@ -7,6 +7,7 @@ use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\LeadResource;
 use App\Filament\Resources\Sales\PaymentTrackingResource;
 use App\Services\Dashboard\EnterpriseAnalyticsService;
+use App\Services\Dashboard\DashboardSnapshotCache;
 use App\Services\Dashboard\WorkforceAnalyticsService;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -78,8 +79,19 @@ class AdminDashboard extends BaseDashboard
     protected function getViewData(): array
     {
         $user = auth()->user();
-        $analytics = app(EnterpriseAnalyticsService::class)->overview($user, $this->period);
-        $workforce = app(WorkforceAnalyticsService::class)->report($user, $this->period);
+        $cache = app(DashboardSnapshotCache::class);
+        $analytics = $cache->remember(
+            $user,
+            'enterprise-overview',
+            $this->period,
+            fn (): array => app(EnterpriseAnalyticsService::class)->overview($user, $this->period),
+        );
+        $workforce = $cache->remember(
+            $user,
+            'workforce-all',
+            $this->period,
+            fn (): array => app(WorkforceAnalyticsService::class)->report($user, $this->period),
+        );
 
         return [
             'analytics' => $analytics,

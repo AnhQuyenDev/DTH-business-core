@@ -9,6 +9,7 @@ use App\Models\Crm\Customer;
 use App\Models\Crm\CustomerInteraction;
 use App\Models\Support\SupportTicket;
 use App\Services\Dashboard\WorkforceAnalyticsService;
+use App\Services\Dashboard\DashboardSnapshotCache;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -69,20 +70,34 @@ class CustomerServiceDashboard extends Page
             $interactions->where('staff_id', $staffId);
         }
 
-        $periodCustomers = (clone $customers)->whereBetween('converted_at', [$range['start'], $range['end']]);
-        $periodInteractions = (clone $interactions)->whereBetween('interaction_at', [$range['start'], $range['end']]);
+        $todayStart = today()->startOfDay();
+        $todayEnd = today()->endOfDay();
+        $customerStats = (clone $customers)
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as active_customers', ['active'])
+            ->selectRaw('SUM(CASE WHEN converted_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as new_customers', [$range['start'], $range['end']])
+            ->selectRaw('SUM(CASE WHEN next_follow_up_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as follow_up_today', [$todayStart, $todayEnd])
+            ->selectRaw('SUM(CASE WHEN next_follow_up_at IS NOT NULL AND next_follow_up_at < ? THEN 1 ELSE 0 END) as overdue', [now()])
+            ->first();
+        $interactionCount = (clone $interactions)
+            ->whereBetween('interaction_at', [$range['start'], $range['end']])
+            ->count();
+        $ticketCounts = (clone $tickets)
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+        $openTicketStatuses = [
+            TicketStatus::Open->value,
+            TicketStatus::InProgress->value,
+            TicketStatus::PendingCustomer->value,
+        ];
 
         $summary = [
-            'active_customers' => (clone $customers)->where('status', 'active')->count(),
-            'new_customers' => $periodCustomers->count(),
-            'customer_interactions' => $periodInteractions->count(),
-            'follow_up_today' => (clone $customers)->whereDate('next_follow_up_at', today())->count(),
-            'overdue' => (clone $customers)->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<', now())->count(),
-            'open_tickets' => (clone $tickets)->whereIn('status', [
-                TicketStatus::Open->value,
-                TicketStatus::InProgress->value,
-                TicketStatus::PendingCustomer->value,
-            ])->count(),
+            'active_customers' => (int) ($customerStats?->active_customers ?? 0),
+            'new_customers' => (int) ($customerStats?->new_customers ?? 0),
+            'customer_interactions' => $interactionCount,
+            'follow_up_today' => (int) ($customerStats?->follow_up_today ?? 0),
+            'overdue' => (int) ($customerStats?->overdue ?? 0),
+            'open_tickets' => collect($openTicketStatuses)->sum(fn (string $status): int => (int) $ticketCounts->get($status, 0)),
             'unassigned' => $user->isCustomerServiceManager()
                 ? Customer::query()->whereDoesntHave('assignments', fn (Builder $q): Builder => $q->where('status', 'active'))->count()
                 : 0,
@@ -91,7 +106,7 @@ class CustomerServiceDashboard extends Page
         $statusRows = collect(TicketStatus::cases())
             ->map(fn (TicketStatus $status): array => [
                 'label' => $status->label(),
-                'value' => (clone $tickets)->where('status', $status->value)->count(),
+                'value' => (int) $ticketCounts->get($status->value, 0),
             ])
             ->filter(fn (array $row): bool => $row['value'] > 0)
             ->values()
@@ -119,10 +134,15 @@ class CustomerServiceDashboard extends Page
             'statusRows' => $statusRows,
             'priority' => $priority,
             'workforce' => $user->isCustomerServiceManager()
-                ? app(WorkforceAnalyticsService::class)->report(
+                ? app(DashboardSnapshotCache::class)->remember(
                     $user,
+                    'workforce-customer-service',
                     $this->period,
-                    \App\Enums\Crm\DepartmentFunction::CustomerService,
+                    fn (): array => app(WorkforceAnalyticsService::class)->report(
+                        $user,
+                        $this->period,
+                        \App\Enums\Crm\DepartmentFunction::CustomerService,
+                    ),
                 )
                 : null,
             'customerUrl' => CustomerResource::canViewAny() ? CustomerResource::getUrl() : null,

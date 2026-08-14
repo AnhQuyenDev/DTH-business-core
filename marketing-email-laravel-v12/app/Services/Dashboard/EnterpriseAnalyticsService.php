@@ -258,19 +258,19 @@ final class EnterpriseAnalyticsService
     {
         return $this->scope->payments($user)
             ->verified()
-            ->whereBetween('paid_at', [$start, $end]);
+            ->whereBetween('payments.paid_at', [$start, $end]);
     }
 
     /** @return Builder */
     private function leadsBetween(User $user, Carbon $start, Carbon $end): Builder
     {
-        return $this->scope->leads($user)->whereBetween('created_at', [$start, $end]);
+        return $this->scope->leads($user)->whereBetween('leads.created_at', [$start, $end]);
     }
 
     /** @return Builder */
     private function submissionsBetween(User $user, Carbon $start, Carbon $end): Builder
     {
-        return $this->scope->submissions($user)->whereBetween('submitted_at', [$start, $end]);
+        return $this->scope->submissions($user)->whereBetween('landing_page_submissions.submitted_at', [$start, $end]);
     }
 
     private function customerInteractionsBetween(User $user, Carbon $start, Carbon $end): int
@@ -324,50 +324,66 @@ final class EnterpriseAnalyticsService
     {
         $currentBuckets = $this->periods->buckets($range['start'], $range['end']);
         $previousBuckets = $this->periods->buckets($range['previous_start'], $range['previous_end'], count($currentBuckets));
-        $current = [];
-        $previous = [];
 
-        foreach ($currentBuckets as $bucket) {
-            $current[] = [
+        $dailyRevenue = $this->paymentsBetween($user, $range['previous_start'], $range['end'])
+            ->selectRaw('DATE(paid_at) as revenue_date, COALESCE(SUM(net_amount), 0) as net_revenue')
+            ->groupByRaw('DATE(paid_at)')
+            ->pluck('net_revenue', 'revenue_date');
+
+        $current = collect($currentBuckets)
+            ->map(fn (array $bucket): array => [
                 'label' => $bucket['label'],
-                'value' => (float) $this->paymentsBetween($user, $bucket['start'], $bucket['end'])->sum('net_amount'),
-            ];
-        }
+                'value' => $this->bucketRevenue($dailyRevenue, $bucket['start'], $bucket['end']),
+            ])
+            ->all();
 
-        foreach ($previousBuckets as $index => $bucket) {
-            $previous[] = [
+        $previous = collect($previousBuckets)
+            ->map(fn (array $bucket, int $index): array => [
                 'label' => $current[$index]['label'] ?? $bucket['label'],
-                'value' => (float) $this->paymentsBetween($user, $bucket['start'], $bucket['end'])->sum('net_amount'),
-            ];
-        }
+                'value' => $this->bucketRevenue($dailyRevenue, $bucket['start'], $bucket['end']),
+            ])
+            ->all();
 
         return ['current' => $current, 'previous' => $previous];
+    }
+
+    private function bucketRevenue(Collection $dailyRevenue, Carbon $start, Carbon $end): float
+    {
+        $total = 0.0;
+        $cursor = $start->copy()->startOfDay();
+
+        while ($cursor->lte($end)) {
+            $total += (float) $dailyRevenue->get($cursor->toDateString(), 0);
+            $cursor->addDay();
+        }
+
+        return $total;
     }
 
     /** @param Builder<Payment> $payments */
     private function sourceRevenue(Builder $payments, int $limit): array
     {
         $sourceOptions = UtmOptions::source();
+        $sourceExpression = "COALESCE(NULLIF(dashboard_attribution.utm_source, ''), NULLIF(dashboard_attribution.acquisition_source, ''), 'unknown')";
 
         return (clone $payments)
-            ->with('attribution')
-            ->get(['id', 'net_amount'])
-            ->groupBy(fn (Payment $payment): string => (string) (
-                $payment->attribution?->utm_source
-                ?: $payment->attribution?->acquisition_source
-                ?: 'unknown'
-            ))
-            ->map(function (Collection $rows, string $source) use ($sourceOptions): array {
+            ->leftJoin('payment_attributions as dashboard_attribution', 'dashboard_attribution.payment_id', '=', 'payments.id')
+            ->selectRaw("{$sourceExpression} as source_key")
+            ->selectRaw('COALESCE(SUM(payments.net_amount), 0) as net_revenue, COUNT(*) as payments_count')
+            ->groupByRaw($sourceExpression)
+            ->orderByDesc('net_revenue')
+            ->limit($limit)
+            ->get()
+            ->map(function ($row) use ($sourceOptions): array {
+                $source = (string) $row->source_key;
+
                 return [
                     'key' => $source,
                     'label' => $sourceOptions[$source] ?? str($source)->headline()->toString(),
-                    'value' => (float) $rows->sum('net_amount'),
-                    'count' => $rows->count(),
+                    'value' => (float) $row->net_revenue,
+                    'count' => (int) $row->payments_count,
                 ];
             })
-            ->sortByDesc('value')
-            ->values()
-            ->take($limit)
             ->all();
     }
 
@@ -394,21 +410,18 @@ final class EnterpriseAnalyticsService
     private function salesStaffRevenue(Builder $payments, int $limit): array
     {
         return (clone $payments)
-            ->with('salesStaff:id,full_name')
-            ->get(['id', 'sales_staff_id', 'net_amount', 'customer_id'])
-            ->groupBy('sales_staff_id')
-            ->map(function (Collection $rows): array {
-                $staff = $rows->first()?->salesStaff;
-
-                return [
-                    'label' => $staff?->full_name ?: __('common.not_available'),
-                    'value' => (float) $rows->sum('net_amount'),
-                    'count' => $rows->pluck('customer_id')->filter()->unique()->count(),
-                ];
-            })
-            ->sortByDesc('value')
-            ->values()
-            ->take($limit)
+            ->leftJoin('staff as dashboard_staff', 'dashboard_staff.id', '=', 'payments.sales_staff_id')
+            ->selectRaw('payments.sales_staff_id, dashboard_staff.full_name')
+            ->selectRaw('COALESCE(SUM(payments.net_amount), 0) as net_revenue, COUNT(DISTINCT payments.customer_id) as customers_count')
+            ->groupBy('payments.sales_staff_id', 'dashboard_staff.full_name')
+            ->orderByDesc('net_revenue')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($row): array => [
+                'label' => $row->full_name ?: __('common.not_available'),
+                'value' => (float) $row->net_revenue,
+                'count' => (int) $row->customers_count,
+            ])
             ->all();
     }
 
@@ -421,17 +434,42 @@ final class EnterpriseAnalyticsService
             ->limit(max($limit * 2, 20))
             ->get();
 
+        $campaignIds = $campaigns->modelKeys();
+        if ($campaignIds === []) {
+            return [];
+        }
+
+        $submissionStats = $this->submissionsBetween($user, $range['start'], $range['end'])
+            ->whereIn('marketing_campaign_id', $campaignIds)
+            ->selectRaw('marketing_campaign_id, COUNT(*) as submissions_count')
+            ->groupBy('marketing_campaign_id')
+            ->get()
+            ->keyBy('marketing_campaign_id');
+
+        $leadStats = $this->leadsBetween($user, $range['start'], $range['end'])
+            ->join('landing_page_submissions as dashboard_submission', 'dashboard_submission.id', '=', 'leads.submission_id')
+            ->whereIn('dashboard_submission.marketing_campaign_id', $campaignIds)
+            ->selectRaw('dashboard_submission.marketing_campaign_id, COUNT(*) as leads_count')
+            ->groupBy('dashboard_submission.marketing_campaign_id')
+            ->get()
+            ->keyBy('marketing_campaign_id');
+
+        $paymentStats = $this->paymentsBetween($user, $range['start'], $range['end'])
+            ->join('payment_attributions as dashboard_attribution', 'dashboard_attribution.payment_id', '=', 'payments.id')
+            ->whereIn('dashboard_attribution.marketing_campaign_id', $campaignIds)
+            ->selectRaw('dashboard_attribution.marketing_campaign_id')
+            ->selectRaw('COALESCE(SUM(payments.net_amount), 0) as net_revenue, COUNT(DISTINCT payments.customer_id) as paid_customers')
+            ->groupBy('dashboard_attribution.marketing_campaign_id')
+            ->get()
+            ->keyBy('marketing_campaign_id');
+
         return $campaigns
-            ->map(function (MarketingCampaign $campaign) use ($user, $range): array {
-                $submissions = $this->submissionsBetween($user, $range['start'], $range['end'])
-                    ->where('marketing_campaign_id', $campaign->id)
-                    ->count();
-                $leads = $this->leadsBetween($user, $range['start'], $range['end'])
-                    ->whereHas('submission', fn (Builder $q): Builder => $q->where('marketing_campaign_id', $campaign->id))
-                    ->count();
-                $payments = $this->paymentsBetween($user, $range['start'], $range['end'])
-                    ->whereHas('attribution', fn (Builder $q): Builder => $q->where('marketing_campaign_id', $campaign->id));
-                $summary = $this->paymentSummary($payments);
+            ->map(function (MarketingCampaign $campaign) use ($submissionStats, $leadStats, $paymentStats): array {
+                $submissions = (int) ($submissionStats->get($campaign->id)?->submissions_count ?? 0);
+                $leads = (int) ($leadStats->get($campaign->id)?->leads_count ?? 0);
+                $payment = $paymentStats->get($campaign->id);
+                $paidCustomers = (int) ($payment?->paid_customers ?? 0);
+                $netRevenue = (float) ($payment?->net_revenue ?? 0);
                 $budget = (float) ($campaign->budget ?? 0);
 
                 return [
@@ -441,10 +479,10 @@ final class EnterpriseAnalyticsService
                     'budget' => $budget,
                     'submissions' => $submissions,
                     'leads' => $leads,
-                    'paid_customers' => $summary['paid_customers'],
-                    'net_revenue' => $summary['net_revenue'],
-                    'conversion_rate' => $leads > 0 ? round(($summary['paid_customers'] / $leads) * 100, 1) : 0,
-                    'roas' => $budget > 0 ? round($summary['net_revenue'] / $budget, 2) : null,
+                    'paid_customers' => $paidCustomers,
+                    'net_revenue' => $netRevenue,
+                    'conversion_rate' => $leads > 0 ? round(($paidCustomers / $leads) * 100, 1) : 0,
+                    'roas' => $budget > 0 ? round($netRevenue / $budget, 2) : null,
                 ];
             })
             ->filter(fn (array $row): bool => $row['status'] === 'active' || $row['submissions'] > 0 || $row['leads'] > 0 || $row['net_revenue'] > 0)
@@ -462,25 +500,41 @@ final class EnterpriseAnalyticsService
             $campaigns->where('created_by', $user->id);
         }
 
-        return $campaigns
+        $campaigns = $campaigns
             ->where(function (Builder $q) use ($range): void {
                 $q->whereBetween('sent_at', [$range['start'], $range['end']])
                     ->orWhereBetween('created_at', [$range['start'], $range['end']]);
             })
-            ->with('recipients')
+            ->withCount([
+                'recipients as recipients_count',
+                'recipients as sent_count' => fn (Builder $q): Builder => $q->whereNotNull('sent_at'),
+                'recipients as opened_count' => fn (Builder $q): Builder => $q->whereNotNull('opened_at'),
+                'recipients as clicked_count' => fn (Builder $q): Builder => $q->whereNotNull('clicked_at'),
+            ])
             ->orderByDesc('sent_at')
             ->orderByDesc('created_at')
             ->limit($limit)
-            ->get()
-            ->map(function (Campaign $campaign) use ($user, $range): array {
-                $recipients = $campaign->recipients;
-                $total = $recipients->count();
-                $sent = $recipients->whereNotNull('sent_at')->count();
-                $opened = $recipients->whereNotNull('opened_at')->count();
-                $clicked = $recipients->whereNotNull('clicked_at')->count();
-                $payments = $this->paymentsBetween($user, $range['start'], $range['end'])
-                    ->whereHas('attribution', fn (Builder $q): Builder => $q->where('email_campaign_id', $campaign->id));
-                $summary = $this->paymentSummary($payments);
+            ->get();
+
+        $campaignIds = $campaigns->modelKeys();
+        $paymentStats = $campaignIds === []
+            ? collect()
+            : $this->paymentsBetween($user, $range['start'], $range['end'])
+                ->join('payment_attributions as dashboard_attribution', 'dashboard_attribution.payment_id', '=', 'payments.id')
+                ->whereIn('dashboard_attribution.email_campaign_id', $campaignIds)
+                ->selectRaw('dashboard_attribution.email_campaign_id')
+                ->selectRaw('COALESCE(SUM(payments.net_amount), 0) as net_revenue, COUNT(DISTINCT payments.customer_id) as paid_customers')
+                ->groupBy('dashboard_attribution.email_campaign_id')
+                ->get()
+                ->keyBy('email_campaign_id');
+
+        return $campaigns
+            ->map(function (Campaign $campaign) use ($paymentStats): array {
+                $total = (int) $campaign->recipients_count;
+                $sent = (int) $campaign->sent_count;
+                $opened = (int) $campaign->opened_count;
+                $clicked = (int) $campaign->clicked_count;
+                $payment = $paymentStats->get($campaign->id);
 
                 return [
                     'id' => $campaign->id,
@@ -492,8 +546,8 @@ final class EnterpriseAnalyticsService
                     'clicked' => $clicked,
                     'open_rate' => $sent > 0 ? round(($opened / $sent) * 100, 1) : 0,
                     'click_rate' => $sent > 0 ? round(($clicked / $sent) * 100, 1) : 0,
-                    'paid_customers' => $summary['paid_customers'],
-                    'net_revenue' => $summary['net_revenue'],
+                    'paid_customers' => (int) ($payment?->paid_customers ?? 0),
+                    'net_revenue' => (float) ($payment?->net_revenue ?? 0),
                 ];
             })
             ->all();
@@ -511,13 +565,31 @@ final class EnterpriseAnalyticsService
             ->limit($limit)
             ->get();
 
-        return $pages->map(function ($page) use ($user, $range): array {
-            $leads = $this->leadsBetween($user, $range['start'], $range['end'])
-                ->whereHas('submission', fn (Builder $q): Builder => $q->where('landing_page_id', $page->id))
-                ->count();
-            $payments = $this->paymentsBetween($user, $range['start'], $range['end'])
-                ->whereHas('attribution', fn (Builder $q): Builder => $q->where('landing_page_id', $page->id));
-            $summary = $this->paymentSummary($payments);
+        $pageIds = $pages->modelKeys();
+        $leadStats = $pageIds === []
+            ? collect()
+            : $this->leadsBetween($user, $range['start'], $range['end'])
+                ->join('landing_page_submissions as dashboard_submission', 'dashboard_submission.id', '=', 'leads.submission_id')
+                ->whereIn('dashboard_submission.landing_page_id', $pageIds)
+                ->selectRaw('dashboard_submission.landing_page_id, COUNT(*) as leads_count')
+                ->groupBy('dashboard_submission.landing_page_id')
+                ->get()
+                ->keyBy('landing_page_id');
+
+        $paymentStats = $pageIds === []
+            ? collect()
+            : $this->paymentsBetween($user, $range['start'], $range['end'])
+                ->join('payment_attributions as dashboard_attribution', 'dashboard_attribution.payment_id', '=', 'payments.id')
+                ->whereIn('dashboard_attribution.landing_page_id', $pageIds)
+                ->selectRaw('dashboard_attribution.landing_page_id')
+                ->selectRaw('COALESCE(SUM(payments.net_amount), 0) as net_revenue, COUNT(DISTINCT payments.customer_id) as paid_customers')
+                ->groupBy('dashboard_attribution.landing_page_id')
+                ->get()
+                ->keyBy('landing_page_id');
+
+        return $pages->map(function ($page) use ($leadStats, $paymentStats): array {
+            $leads = (int) ($leadStats->get($page->id)?->leads_count ?? 0);
+            $payment = $paymentStats->get($page->id);
             $views = (int) $page->period_views;
             $submissions = (int) $page->period_submissions;
 
@@ -526,8 +598,8 @@ final class EnterpriseAnalyticsService
                 'views' => $views,
                 'submissions' => $submissions,
                 'leads' => $leads,
-                'paid_customers' => $summary['paid_customers'],
-                'net_revenue' => $summary['net_revenue'],
+                'paid_customers' => (int) ($payment?->paid_customers ?? 0),
+                'net_revenue' => (float) ($payment?->net_revenue ?? 0),
                 'conversion_rate' => $views > 0 ? round(($submissions / $views) * 100, 1) : 0,
             ];
         })->all();

@@ -22,18 +22,18 @@ class DashboardCustomerStatsWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $totalCustomers = Customer::count();
-        $active = Customer::where('status', CustomerStatus::Active->value)->count();
-        $potential = Customer::where('status', CustomerStatus::Potential->value)->count();
+        $customerCounts = Customer::query()->selectRaw('status, COUNT(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
+        $totalCustomers = (int) $customerCounts->sum();
+        $active = (int) $customerCounts->get(CustomerStatus::Active->value, 0);
+        $potential = (int) $customerCounts->get(CustomerStatus::Potential->value, 0);
 
-        $new = ContactQualification::where('status', ContactQualificationStatus::New->value)->count();
-        $contacting = ContactQualification::whereIn('status', [
-            ContactQualificationStatus::Assigned->value,
-            ContactQualificationStatus::Contacting->value,
-        ])->count();
-        $followUp = ContactQualification::where('status', ContactQualificationStatus::FollowUp->value)->count();
-        $converted = ContactQualification::where('status', ContactQualificationStatus::Converted->value)->count();
-        $unqualified = ContactQualification::where('status', ContactQualificationStatus::Unqualified->value)->count();
+        $qualificationCounts = ContactQualification::query()->selectRaw('status, COUNT(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
+        $new = (int) $qualificationCounts->get(ContactQualificationStatus::New->value, 0);
+        $contacting = (int) $qualificationCounts->get(ContactQualificationStatus::Assigned->value, 0)
+            + (int) $qualificationCounts->get(ContactQualificationStatus::Contacting->value, 0);
+        $followUp = (int) $qualificationCounts->get(ContactQualificationStatus::FollowUp->value, 0);
+        $converted = (int) $qualificationCounts->get(ContactQualificationStatus::Converted->value, 0);
+        $unqualified = (int) $qualificationCounts->get(ContactQualificationStatus::Unqualified->value, 0);
 
         $totalActive = $new + $contacting + $followUp;
         $totalProcessed = $unqualified + $converted;

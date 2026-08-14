@@ -7,6 +7,7 @@ use App\Filament\Resources\Finance\PaymentResource;
 use App\Filament\Resources\Sales\PaymentTrackingResource;
 use App\Models\Sales\Quotation;
 use App\Services\Dashboard\EnterpriseAnalyticsService;
+use App\Services\Dashboard\DashboardSnapshotCache;
 use Filament\Pages\Page;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -60,7 +61,7 @@ class FinanceDashboard extends Page
             ->all();
 
         return [
-            'analytics' => app(EnterpriseAnalyticsService::class)->finance(auth()->user(), $this->period),
+            'analytics' => app(DashboardSnapshotCache::class)->remember(auth()->user(), 'finance', $this->period, fn (): array => app(EnterpriseAnalyticsService::class)->finance(auth()->user(), $this->period)),
             'queue' => $queue,
             'links' => [
                 'tracking' => PaymentTrackingResource::canViewAny() ? PaymentTrackingResource::getUrl() : null,
@@ -72,7 +73,8 @@ class FinanceDashboard extends Page
 
     public function exportCsv(): StreamedResponse
     {
-        $data = app(EnterpriseAnalyticsService::class)->finance(auth()->user(), $this->period);
+        $user = auth()->user();
+        $data = app(DashboardSnapshotCache::class)->remember($user, 'finance', $this->period, fn (): array => app(EnterpriseAnalyticsService::class)->finance($user, $this->period));
         $filename = 'finance-analytics-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($data): void {
