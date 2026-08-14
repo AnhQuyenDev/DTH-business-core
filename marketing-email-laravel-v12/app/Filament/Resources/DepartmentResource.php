@@ -5,12 +5,15 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\DepartmentResource\Pages;
 use App\Models\Crm\Department;
 use App\Support\Ui\SystemColorPalette;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
@@ -136,7 +139,31 @@ class DepartmentResource extends Resource
                         ->extraAttributes(['class' => 'dth-color-swatch-picker'])
                         ->hintIcon('heroicon-m-question-mark-circle', __('configuration.department.color_helper'))
                         ->default(SystemColorPalette::DEFAULT)
+                        ->live()
                         ->required()
+                        ->columnSpanFull(),
+
+                    Placeholder::make('color_business_warning')
+                        ->label('')
+                        ->content(fn (): string => __('configuration.system_labels.department_color_warning'))
+                        ->extraAttributes([
+                            'class' => 'rounded-lg border border-warning-500/30 bg-warning-500/10 px-4 py-3 text-sm text-warning-700 dark:text-warning-300',
+                        ])
+                        ->visible(fn (Get $get, ?Department $record): bool => $record !== null
+                            && filled($get('color'))
+                            && SystemColorPalette::normalize((string) $get('color')) !== SystemColorPalette::normalize($record->color))
+                        ->columnSpanFull(),
+
+                    Checkbox::make('acknowledge_color_business_impact')
+                        ->label(__('configuration.system_labels.acknowledgement'))
+                        ->accepted()
+                        ->required(fn (Get $get, ?Department $record): bool => $record !== null
+                            && filled($get('color'))
+                            && SystemColorPalette::normalize((string) $get('color')) !== SystemColorPalette::normalize($record->color))
+                        ->visible(fn (Get $get, ?Department $record): bool => $record !== null
+                            && filled($get('color'))
+                            && SystemColorPalette::normalize((string) $get('color')) !== SystemColorPalette::normalize($record->color))
+                        ->dehydrated(false)
                         ->columnSpanFull(),
 
                     Textarea::make('description')
@@ -230,18 +257,17 @@ HTML;
     {
         return $table
             ->columns([
-                
-                TextColumn::make('code')
-                    ->label(__('configuration.department.code'))
-                    ->searchable()
-                    ->sortable(),
-                    
                 TextColumn::make('name')
                     ->label(__('configuration.department.name'))
                     ->searchable()
                     ->sortable()
                     ->badge()
                     ->color(fn (Department $record): string => SystemColorPalette::normalize($record->color)),
+
+                TextColumn::make('code')
+                    ->label(__('configuration.department.code'))
+                    ->searchable()
+                    ->sortable(),
 
                 TextColumn::make('staff_count')
                     ->label(__('configuration.department.staff_count'))

@@ -92,10 +92,11 @@ class ContactListResource extends Resource
         return $table->columns([
             TextColumn::make('name')->label(__('field.name'))->searchable()->sortable(),
             TextColumn::make('type')->label(__('field.type'))->badge()
-                ->color(fn ($state): string => match ($state) {
-                    'newsletter', 'service', 'event' => 'info',
-                    default => 'gray',
-                }),
+                ->color(fn ($state): string => BadgePalette::managed(
+                    'marketing.contact_list_type',
+                    (string) $state,
+                    in_array($state, ['newsletter', 'service', 'event'], true) ? 'info' : 'gray',
+                )),
             TextColumn::make('status')->label(__('field.status'))->badge()
                 ->formatStateUsing(fn ($state): string => match ($state) {
                     'active' => __('enum.status.active'),
@@ -103,7 +104,7 @@ class ContactListResource extends Resource
                     'archived' => __('enum.status.archived'),
                     default => $state ?? '',
                 })
-                ->color(fn ($state): string => BadgePalette::status($state)),
+                ->color(fn ($state): string => BadgePalette::status($state, category: 'marketing.contact_status')),
             TextColumn::make('customers_count')->counts('customers')->label(__('field.customers')),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->sortable(),
         ]);

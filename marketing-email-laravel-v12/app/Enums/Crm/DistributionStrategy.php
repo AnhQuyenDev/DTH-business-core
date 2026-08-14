@@ -2,6 +2,8 @@
 
 namespace App\Enums\Crm;
 
+use App\Support\Ui\BadgePalette;
+
 enum DistributionStrategy: string
 {
     case RoundRobin = 'round_robin';
@@ -31,9 +33,11 @@ enum DistributionStrategy: string
 
     public function color(): string
     {
-        return match ($this) {
+        $fallback = match ($this) {
             self::RoundRobin, self::LeastLoaded, self::Weighted => 'info',
             self::Manual => 'warning',
         };
+
+        return BadgePalette::managed('crm.distribution_strategy', $this, $fallback);
     }
 }

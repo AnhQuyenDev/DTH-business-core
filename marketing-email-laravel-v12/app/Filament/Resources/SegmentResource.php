@@ -177,7 +177,7 @@ class SegmentResource extends Resource
             TextColumn::make('name')->label(__('field.name'))->searchable()->sortable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
                 ->formatStateUsing(fn (?string $state): string => $state ? __('field.status_'.$state) : __('common.not_available'))
-                ->color(fn (?string $state): string => BadgePalette::status($state)),
+                ->color(fn (?string $state): string => BadgePalette::status($state, category: 'marketing.segment_status')),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->sortable(),
         ])
             ->headerActions([

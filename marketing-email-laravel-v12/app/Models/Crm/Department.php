@@ -4,6 +4,7 @@ namespace App\Models\Crm;
 
 use App\Enums\Crm\DepartmentFunction;
 use App\Models\Marketing\SendingAccount;
+use App\Support\Ui\Labels\SystemLabelRegistry;
 use App\Support\Ui\SystemColorPalette;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,7 @@ class Department extends Model
         'name',
         'function_key',
         'color',
+        'default_color',
         'description',
         'sort_order',
         'is_active',
@@ -38,10 +40,33 @@ class Department extends Model
                 $department->code = static::nextCode();
             }
 
+            $department->color = SystemColorPalette::normalize($department->color);
+
+            if (blank($department->default_color)) {
+                $department->default_color = $department->color;
+            }
         });
 
         static::saving(function (self $department): void {
             $department->name = trim((string) $department->name);
+            $department->color = SystemColorPalette::normalize($department->color);
+
+            if (blank($department->default_color)) {
+                $department->default_color = $department->color;
+            }
+
+            $department->default_color = SystemColorPalette::normalize(
+                $department->default_color,
+                $department->color,
+            );
+        });
+
+        static::saved(static function (): void {
+            SystemLabelRegistry::flushCache();
+        });
+
+        static::deleted(static function (): void {
+            SystemLabelRegistry::flushCache();
         });
     }
 
@@ -99,6 +124,16 @@ class Department extends Model
     public static function colorOptions(): array
     {
         return SystemColorPalette::options();
+    }
+
+    public function resolvedDefaultColor(): string
+    {
+        return SystemColorPalette::normalize($this->default_color, $this->color);
+    }
+
+    public function isColorCustomized(): bool
+    {
+        return SystemColorPalette::normalize($this->color) !== $this->resolvedDefaultColor();
     }
 
     public static function options(): array

@@ -2,6 +2,8 @@
 
 namespace App\Enums\Marketing;
 
+use App\Support\Ui\BadgePalette;
+
 enum SuppressionReason: string
 {
     case Unsubscribe = 'unsubscribe';
@@ -31,5 +33,15 @@ enum SuppressionReason: string
             self::InvalidEmail => __('enum.suppression_reason.invalid_email'),
             self::DoNotContact => __('enum.suppression_reason.do_not_contact'),
         };
+    }
+
+    public function color(): string
+    {
+        $fallback = match ($this) {
+            self::Manual => 'warning',
+            default => 'danger',
+        };
+
+        return BadgePalette::managed('marketing.suppression_reason', $this, $fallback);
     }
 }

@@ -5,6 +5,8 @@ namespace App\Support\Ui;
 use App\Enums\UserRole;
 use App\Enums\Crm\DepartmentFunction;
 use App\Models\System\UiBadgeStyle;
+use App\Support\Ui\Labels\SystemLabelCatalog;
+use Closure;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -13,11 +15,17 @@ final class BadgePalette
 {
     private static ?bool $tableAvailable = null;
 
+    private static bool $ignoreOverrides = false;
+
     public const COLORS = SystemColorPalette::COLORS;
 
     public static function color(string $category, string $key, string $fallback = 'gray'): string
     {
         $fallback = SystemColorPalette::normalize($fallback);
+
+        if (self::$ignoreOverrides) {
+            return $fallback;
+        }
 
         try {
             self::$tableAvailable ??= Schema::hasTable('ui_badge_styles');
@@ -42,15 +50,48 @@ final class BadgePalette
     }
 
     /**
-     * Business statuses use a fixed semantic palette. Keeping status colors
-     * deterministic prevents one screen from showing "Paid" as green while
-     * another administrator changes the same meaning to an arbitrary color.
+     * Enum-backed business statuses are isolated by module/category. Their
+     * defaults remain semantic; an administrator override is only accepted by
+     * the guarded System Label Management workflow.
      */
-    public static function status(string|\BackedEnum|null $state, ?string $fallback = null): string
+    public static function status(string|\BackedEnum|null $state, ?string $fallback = null, ?string $category = null): string
     {
         $key = $state instanceof \BackedEnum ? (string) $state->value : (string) $state;
 
-        return SystemColorPalette::normalize($fallback ?? self::defaultStatusColor($key));
+        $default = SystemColorPalette::normalize($fallback ?? self::defaultStatusColor($key));
+
+        if ($category !== null) {
+            return self::color($category, $key, $default);
+        }
+
+        if ($state instanceof \BackedEnum) {
+            $category = SystemLabelCatalog::categoryForEnum($state::class);
+
+            if ($category !== null) {
+                return self::color($category, $key, $default);
+            }
+        }
+
+        return $default;
+    }
+
+    public static function managed(string $category, string|\BackedEnum|null $value, string $fallback = 'gray'): string
+    {
+        $key = $value instanceof \BackedEnum ? (string) $value->value : (string) $value;
+
+        return self::color($category, $key, $fallback);
+    }
+
+    public static function withoutOverrides(Closure $callback): mixed
+    {
+        $previous = self::$ignoreOverrides;
+        self::$ignoreOverrides = true;
+
+        try {
+            return $callback();
+        } finally {
+            self::$ignoreOverrides = $previous;
+        }
     }
 
     public static function role(string|UserRole|null $role, string $fallback = 'gray'): string
@@ -138,7 +179,7 @@ final class BadgePalette
     public static function keyOptions(string $category): array
     {
         return match ($category) {
-            'role' => collect(UserRole::cases())
+            'role' => collect(UserRole::assignableCases())
                 ->mapWithKeys(fn (UserRole $role): array => [$role->value => $role->label()])
                 ->all(),
             'department_function' => collect(DepartmentFunction::cases())

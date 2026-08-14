@@ -173,6 +173,8 @@ return [
             'sending_account.deleted' => 'Deleted sending account',
             'suppression.created' => 'Added suppression entry',
             'distribution.completed' => 'Completed customer distribution',
+            'system_label.color_changed' => 'Changed system label color',
+            'system_label.color_reset' => 'Restored system label color',
             'distribution.skipped' => 'Skipped customer distribution',
             'quotation.submitted_for_approval' => 'Submit quotation for approval',
             'quotation.created_from_opportunity' => 'Create quotation from opportunity',

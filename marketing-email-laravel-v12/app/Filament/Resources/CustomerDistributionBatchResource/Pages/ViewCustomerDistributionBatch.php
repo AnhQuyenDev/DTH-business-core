@@ -22,21 +22,17 @@ class ViewCustomerDistributionBatch extends ViewRecord
                     TextEntry::make('batch_code')->label(__('field.batch_code')),
                     TextEntry::make('type')->label(__('field.type'))->badge()
                         ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label') ? $state->label() : ($state ?? ''))
-                        ->color(fn ($state): string => match ($state instanceof \BackedEnum ? $state->value : $state) {
-                            'initial', 'new_customer', 'staff_return' => 'info',
-                            'staff_absence', 'rebalance', 'manual' => 'warning',
-                            default => 'gray',
-                        }),
+                        ->color(fn ($state): string => \App\Enums\Crm\DistributionBatchType::tryFrom(
+                            (string) ($state instanceof \BackedEnum ? $state->value : $state),
+                        )?->color() ?? 'gray'),
                     TextEntry::make('status')->label(__('field.status'))->badge()
                         ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label') ? $state->label() : ($state ?? ''))
-                        ->color(fn ($state): string => BadgePalette::status($state instanceof \BackedEnum ? $state->value : $state)),
+                        ->color(fn ($state): string => BadgePalette::status($state instanceof \BackedEnum ? $state->value : $state, category: 'crm.distribution_batch_status')),
                     TextEntry::make('strategy')->label(__('field.strategy'))->badge()
                         ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label') ? $state->label() : ($state ?? ''))
-                        ->color(fn ($state): string => match ($state instanceof \BackedEnum ? $state->value : $state) {
-                            'round_robin', 'least_loaded', 'weighted' => 'info',
-                            'manual' => 'warning',
-                            default => 'gray',
-                        }),
+                        ->color(fn ($state): string => \App\Enums\Crm\DistributionStrategy::tryFrom(
+                            (string) ($state instanceof \BackedEnum ? $state->value : $state),
+                        )?->color() ?? 'gray'),
                     TextEntry::make('sourceStaff.full_name')->label(__('field.source_staff')),
                     TextEntry::make('total_customers')->label(__('field.total_customers')),
                     TextEntry::make('total_assigned')->label(__('field.total_assigned')),

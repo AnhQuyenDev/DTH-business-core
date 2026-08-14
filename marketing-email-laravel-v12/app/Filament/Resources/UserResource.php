@@ -15,10 +15,12 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -78,7 +80,17 @@ class UserResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        return false;
+        $actor = auth()->user();
+
+        if (! ($actor?->isSuperAdmin() ?? false)) {
+            return false;
+        }
+
+        if (! $actor->can('system.manage-users')) {
+            return false;
+        }
+
+        return $record instanceof User && $record->id !== $actor->id;
     }
 
     public static function form(Form $form): Form
@@ -283,6 +295,12 @@ class UserResource extends Resource
             ->actions([
                 ActionGroup::make([
                     EditAction::make()->label(__('configuration.account.edit'))->icon('heroicon-o-pencil-square'),
+                    DeleteAction::make()
+                        ->label(__('configuration.account.delete'))
+                        ->icon('heroicon-o-trash')
+                        ->modalHeading(__('configuration.account.delete_confirm_title'))
+                        ->modalDescription(__('configuration.account.delete_confirm_description'))
+                        ->visible(fn (User $record): bool => $record->id !== auth()->id()),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->bulkActions([
@@ -303,6 +321,30 @@ class UserResource extends Resource
                             $ids = $records->reject(fn (User $user): bool => $user->isSuperAdmin() || $user->id === $actorId)->modelKeys();
 
                             User::query()->whereKey($ids)->update(['is_active' => false]);
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('delete_accounts')
+                        ->label(__('configuration.common.delete_selected'))
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading(__('configuration.account.bulk_delete_confirm_title'))
+                        ->modalDescription(__('configuration.account.bulk_delete_confirm_description'))
+                        ->visible(fn (): bool => auth()->user()?->isSuperAdmin() ?? false)
+                        ->action(function (Collection $records): void {
+                            $actorId = auth()->id();
+                            $deleteable = $records->reject(fn (User $user): bool => $user->isSuperAdmin() || $user->id === $actorId);
+                            $blocked = $records->count() - $deleteable->count();
+
+                            $deleteable->each(fn (User $user): bool => (bool) $user->delete());
+
+                            Notification::make()
+                                ->color($blocked > 0 ? 'warning' : 'success')
+                                ->title(__('configuration.account.bulk_delete_result', [
+                                    'deleted' => $deleteable->count(),
+                                    'blocked' => $blocked,
+                                ]))
+                                ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
                 ]),

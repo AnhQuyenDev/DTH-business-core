@@ -73,11 +73,7 @@ class SuppressionEntryResource extends Resource
             TextColumn::make('email')->label(__('field.email'))->searchable()->sortable(),
             TextColumn::make('reason')->label(__('field.reason'))->badge()
                 ->formatStateUsing(fn (string $state): string => SuppressionReason::tryFrom($state)?->label() ?? $state)
-                ->color(fn ($state): string => match ($state) {
-                    'unsubscribe', 'bounce', 'complaint', 'invalid_email', 'do_not_contact' => 'danger',
-                    'manual' => 'warning',
-                    default => 'gray',
-                }),
+                ->color(fn ($state): string => SuppressionReason::tryFrom((string) $state)?->color() ?? 'gray'),
             TextColumn::make('source')->label(__('field.source'))->toggleable(),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->sortable(),
         ]);

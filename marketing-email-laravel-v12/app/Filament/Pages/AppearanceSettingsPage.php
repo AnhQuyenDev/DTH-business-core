@@ -2,9 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Resources\DepartmentResource;
-use App\Filament\Resources\UiBadgeStyleResource;
-use App\Support\Ui\SystemColorPalette;
 use Filament\Pages\Page;
 
 class AppearanceSettingsPage extends Page
@@ -44,21 +41,11 @@ class AppearanceSettingsPage extends Page
 
     public static function canAccess(): bool
     {
-        $user = auth()->user();
-
-        return (bool) ($user?->can('system.manage-company-settings')
-            || $user?->can('system.manage-organization'));
+        return auth()->user()?->can('system.manage-company-settings') ?? false;
     }
 
-    protected function getViewData(): array
+    public function mount(): void
     {
-        return [
-            'colors' => SystemColorPalette::options(),
-            'colorHex' => SystemColorPalette::hexMap(),
-            'canManageDepartments' => DepartmentResource::canViewAny(),
-            'canManageSharedBadges' => UiBadgeStyleResource::canViewAny(),
-            'departmentUrl' => DepartmentResource::getUrl(),
-            'sharedBadgeUrl' => UiBadgeStyleResource::getUrl(),
-        ];
+        $this->redirect(SystemLabelManagementPage::getUrl());
     }
 }

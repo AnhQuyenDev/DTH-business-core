@@ -28,7 +28,7 @@ class PaymentsRelationManager extends RelationManager
                 TextColumn::make('net_amount')->label(__('field.net_revenue'))->money('VND'),
                 TextColumn::make('tax_amount')->label(__('field.vat'))->money('VND'),
                 TextColumn::make('transfer_reference')->label(__('field.transfer_reference'))->placeholder('—'),
-                TextColumn::make('status')->label(__('field.status'))->badge()->color(fn (?string $state): string => BadgePalette::status($state)),
+                TextColumn::make('status')->label(__('field.status'))->badge()->color(fn (?string $state): string => BadgePalette::status($state, category: 'finance.payment_record_status')),
             ])
             ->actions([
                 Action::make('receipt')

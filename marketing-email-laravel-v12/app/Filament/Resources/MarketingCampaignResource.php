@@ -203,7 +203,7 @@ class MarketingCampaignResource extends Resource
                             ? __('field.status_'.$state)
                             : '—'
                     )
-                    ->color(fn (?string $state): string => BadgePalette::status($state)),
+                    ->color(fn (?string $state): string => BadgePalette::status($state, category: 'marketing.marketing_campaign_status')),
                 TextColumn::make('promoted_services')
                     ->label(__('field.promoted_services'))
                     ->getStateUsing(

@@ -138,27 +138,23 @@ class CustomerCarePage extends Page implements HasTable
                     ->label(__('field.priority'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => $state ? __('field.priority.'.$state) : '—')
-                    ->color(fn (?string $state): string => match ($state) {
-                        'vip' => 'danger',
-                        'high' => 'warning',
-                        'normal' => 'info',
-                        default => 'gray',
-                    }),
+                    ->color(fn (?string $state): string => \App\Support\Ui\BadgePalette::managed(
+                        'crm.customer_priority',
+                        $state,
+                        match ($state) {
+                            'vip' => 'danger',
+                            'high' => 'warning',
+                            'normal' => 'info',
+                            default => 'gray',
+                        },
+                    )),
                 TextColumn::make('lifecycle_stage')
                     ->label(__('field.lifecycle_stage'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => $state
                         ? CustomerLifecycleStage::tryFrom($state)?->label() ?? $state
                         : __('common.not_available'))
-                    ->color(fn (?string $state): string => match ($state) {
-                        'new_customer' => 'info',
-                        'onboarding', 'purchasing' => 'primary',
-                        'retained' => 'success',
-                        'nurturing' => 'gray',
-                        'at_risk' => 'warning',
-                        'churned' => 'danger',
-                        default => 'gray',
-                    }),
+                    ->color(fn (?string $state): string => CustomerLifecycleStage::tryFrom((string) $state)?->color() ?? 'gray'),
                 TextColumn::make('next_follow_up_at')
                     ->label(__('field.next_follow_up'))
                     ->dateTime('d/m/Y H:i')

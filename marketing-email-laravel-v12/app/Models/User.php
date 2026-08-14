@@ -7,6 +7,7 @@ use App\Enums\Crm\PositionAuthority;
 use App\Enums\UserRole;
 use App\Models\Crm\Staff;
 use App\Models\Marketing\AuditLog;
+use App\Services\Security\RbacSyncService;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -16,13 +17,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
-use App\Services\Security\RbacSyncService;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
-
+    use HasFactory, HasRoles, Notifiable;
 
     protected static function booted(): void
     {
@@ -215,8 +214,7 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return collect(DepartmentFunction::cases())
-            ->filter(fn (DepartmentFunction $function): bool =>
-                ! in_array($function, [DepartmentFunction::Admin, DepartmentFunction::Other], true)
+            ->filter(fn (DepartmentFunction $function): bool => ! in_array($function, [DepartmentFunction::Admin, DepartmentFunction::Other], true)
                 && $this->staff->hasBusinessManagerAuthority($function)
             )
             ->values()
@@ -368,29 +366,22 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return match ($role) {
-            UserRole::MarketingManager =>
-                $this->hasBusinessFunction(DepartmentFunction::Marketing)
+            UserRole::MarketingManager => $this->hasBusinessFunction(DepartmentFunction::Marketing)
                 && $this->hasBusinessManagerAuthority(DepartmentFunction::Marketing),
 
-            UserRole::MarketingStaff =>
-                $this->hasBusinessFunction(DepartmentFunction::Marketing),
+            UserRole::MarketingStaff => $this->hasBusinessFunction(DepartmentFunction::Marketing),
 
-            UserRole::CustomerServiceManager =>
-                $this->hasBusinessFunction(DepartmentFunction::CustomerService)
+            UserRole::CustomerServiceManager => $this->hasBusinessFunction(DepartmentFunction::CustomerService)
                 && $this->hasBusinessManagerAuthority(DepartmentFunction::CustomerService),
 
-            UserRole::CustomerServiceStaff =>
-                $this->hasBusinessFunction(DepartmentFunction::CustomerService),
+            UserRole::CustomerServiceStaff => $this->hasBusinessFunction(DepartmentFunction::CustomerService),
 
-            UserRole::SalesManager =>
-                $this->hasBusinessFunction(DepartmentFunction::Sales)
+            UserRole::SalesManager => $this->hasBusinessFunction(DepartmentFunction::Sales)
                 && $this->hasBusinessManagerAuthority(DepartmentFunction::Sales),
 
-            UserRole::SalesStaff =>
-                $this->hasBusinessFunction(DepartmentFunction::Sales),
+            UserRole::SalesStaff => $this->hasBusinessFunction(DepartmentFunction::Sales),
 
-            UserRole::FinanceStaff =>
-                $this->hasBusinessFunction(DepartmentFunction::Finance),
+            UserRole::FinanceStaff => $this->hasBusinessFunction(DepartmentFunction::Finance),
 
             default => false,
         };

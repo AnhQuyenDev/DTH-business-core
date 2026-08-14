@@ -2,6 +2,8 @@
 
 namespace App\Enums\Crm;
 
+use App\Support\Ui\BadgePalette;
+
 enum DistributionBatchType: string
 {
     case Initial = 'initial';
@@ -35,9 +37,11 @@ enum DistributionBatchType: string
 
     public function color(): string
     {
-        return match ($this) {
+        $fallback = match ($this) {
             self::Initial, self::NewCustomer, self::StaffReturn => 'info',
             self::StaffAbsence, self::Rebalance, self::Manual => 'warning',
         };
+
+        return BadgePalette::managed('crm.distribution_batch_type', $this, $fallback);
     }
 }

@@ -187,13 +187,15 @@ class ContactQualificationResource extends Resource
                 ->badge()
                 ->formatStateUsing(fn ($state): string => __('field.priority.'.Str::lower((string) $state)))
                 ->color(function ($state): string {
-                    return match (Str::lower((string) $state)) {
+                    $key = Str::lower((string) $state);
+                    $fallback = match ($key) {
                         'vip' => 'danger',
                         'high' => 'warning',
                         'normal' => 'info',
-                        'low' => 'gray',
                         default => 'gray',
                     };
+
+                    return \App\Support\Ui\BadgePalette::managed('crm.customer_priority', $key, $fallback);
                 }),
             TextColumn::make('next_follow_up_at')->dateTime('d/m/Y H:i')->sortable(),
         ])

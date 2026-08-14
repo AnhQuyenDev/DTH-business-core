@@ -37,7 +37,7 @@ class AssignmentsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label(__('field.status'))
                     ->badge()
-                    ->color(fn (?string $state): string => BadgePalette::status($state)),
+                    ->color(fn (?string $state): string => BadgePalette::status($state, category: 'crm.customer_assignment_status')),
                 TextColumn::make('staff.full_name')
                     ->label(__('field.staff')),
                 TextColumn::make('reason')

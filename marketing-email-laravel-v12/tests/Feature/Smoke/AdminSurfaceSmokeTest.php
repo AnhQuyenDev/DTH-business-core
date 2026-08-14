@@ -13,6 +13,7 @@ use App\Filament\Pages\MarketingDashboard;
 use App\Filament\Pages\RevenueReportPage;
 use App\Filament\Pages\RolePermissionMatrix;
 use App\Filament\Pages\SalesDashboard;
+use App\Filament\Pages\SystemLabelManagementPage;
 use App\Filament\Pages\WorkforceAnalyticsPage;
 use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\BusinessContactResource;
@@ -53,7 +54,6 @@ use App\Filament\Resources\StaffResource;
 use App\Filament\Resources\SupportTicketResource;
 use App\Filament\Resources\SuppressionEntryResource;
 use App\Filament\Resources\TagResource;
-use App\Filament\Resources\UiBadgeStyleResource;
 use App\Filament\Resources\UserResource;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -116,7 +116,6 @@ class AdminSurfaceSmokeTest extends TestCase
             SupportTicketResource::class,
             SuppressionEntryResource::class,
             TagResource::class,
-            UiBadgeStyleResource::class,
             UserResource::class,
         ];
 
@@ -151,6 +150,7 @@ class AdminSurfaceSmokeTest extends TestCase
             RevenueReportPage::class,
             RolePermissionMatrix::class,
             SalesDashboard::class,
+            SystemLabelManagementPage::class,
             WorkforceAnalyticsPage::class,
         ];
 

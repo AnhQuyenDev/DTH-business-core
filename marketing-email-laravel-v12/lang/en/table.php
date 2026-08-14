@@ -1,5 +1,5 @@
 <?php
 
 return [
-        'empty' => 'No data',
-    ];
+    'empty' => 'No data',
+];

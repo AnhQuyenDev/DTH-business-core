@@ -2,6 +2,8 @@
 
 namespace App\Enums\Crm;
 
+use App\Support\Ui\BadgePalette;
+
 enum PositionAuthority: string
 {
     case Executive = 'executive';
@@ -21,6 +23,22 @@ enum PositionAuthority: string
             self::Executive,
             self::Manager,
         ], true);
+    }
+
+    public function defaultColor(): string
+    {
+        return match ($this) {
+            self::Executive => 'danger',
+            self::Manager => 'warning',
+            self::Lead => 'info',
+            self::Member => 'success',
+            self::Limited => 'gray',
+        };
+    }
+
+    public function color(): string
+    {
+        return BadgePalette::managed('organization.position_authority', $this, $this->defaultColor());
     }
 
     /** @return array<string, string> */

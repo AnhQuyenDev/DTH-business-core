@@ -49,15 +49,8 @@
                                         const failedTitle = this.dataset.copyFailed || '';
                                         const fallbackTitle = this.dataset.copyFallback || '';
                                         const notify = (ok, title) => {
-                                            if (typeof FilamentNotification !== 'undefined') {
-                                                const n = new FilamentNotification();
-                                                n.title(title);
-                                                ok ? n.success() : n.danger();
-                                                n.send();
-                                                return;
-                                            }
-                                            if (title) {
-                                                alert(title);
+                                            if (title && window.Livewire) {
+                                                window.Livewire.dispatch('notificationSent', { title: title, status: ok ? 'success' : 'danger', duration: 3000 });
                                             }
                                         };
                                         const fallbackCopy = (value) => {
@@ -122,15 +115,8 @@
                                             return;
                                         }
                                         const notify = (ok, title) => {
-                                            if (typeof FilamentNotification !== 'undefined') {
-                                                const n = new FilamentNotification();
-                                                n.title(title);
-                                                ok ? n.success() : n.danger();
-                                                n.send();
-                                                return;
-                                            }
-                                            if (title) {
-                                                alert(title);
+                                            if (title && window.Livewire) {
+                                                window.Livewire.dispatch('notificationSent', { title: title, status: ok ? 'success' : 'danger', duration: 3000 });
                                             }
                                         };
                                         fetch(deleteUrl, {

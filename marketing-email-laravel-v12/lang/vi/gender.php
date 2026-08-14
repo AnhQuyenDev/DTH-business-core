@@ -1,8 +1,8 @@
 <?php
 
 return [
-        'male' => 'Nam',
-        'female' => 'Nữ',
-        'other' => 'Khác',
-        'unspecified' => 'Không xác định',
-    ];
+    'male' => 'Nam',
+    'female' => 'Nữ',
+    'other' => 'Khác',
+    'unspecified' => 'Không xác định',
+];

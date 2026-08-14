@@ -2,6 +2,8 @@
 
 namespace App\Enums\Crm;
 
+use App\Support\Ui\BadgePalette;
+
 enum PositionGroup: string
 {
     case Leadership = 'leadership';
@@ -16,7 +18,7 @@ enum PositionGroup: string
         return __('configuration.position.groups.'.$this->value);
     }
 
-    public function color(): string
+    public function defaultColor(): string
     {
         return match ($this) {
             self::Leadership => 'danger',
@@ -26,6 +28,11 @@ enum PositionGroup: string
             self::Temporary => 'gray',
             self::Other => 'gray',
         };
+    }
+
+    public function color(): string
+    {
+        return BadgePalette::managed('organization.position_group', $this, $this->defaultColor());
     }
 
     /** @return array<string, string> */

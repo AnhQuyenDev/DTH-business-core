@@ -39,7 +39,26 @@
         <x-filament::section>
             <x-slot name="heading">{{ __('analytics.recipient_detail') }}</x-slot>
             @if($this->selectedCampaign)
-                <div class="overflow-x-auto"><table class="dth-analytics-table"><thead><tr><th>{{ __('report.contact') }}</th><th>{{ __('report.email') }}</th><th>{{ __('report.status') }}</th><th>{{ __('report.sent_at') }}</th><th>{{ __('report.opened_at') }}</th><th>{{ __('report.clicked_at') }}</th></tr></thead><tbody>@forelse($this->selectedCampaign->recipients->take(50) as $recipient)<tr><td>{{ $recipient->contact?->full_name ?: '—' }}</td><td>{{ $recipient->email }}</td><td><x-filament::badge color="gray">{{ \App\Enums\Marketing\CampaignRecipientStatus::tryFrom((string) $recipient->status)?->label() ?: str($recipient->status)->headline() }}</x-filament::badge></td><td>{{ $recipient->sent_at?->format('d/m/Y H:i') ?: '—' }}</td><td>{{ $recipient->opened_at?->format('d/m/Y H:i') ?: '—' }}</td><td>{{ $recipient->clicked_at?->format('d/m/Y H:i') ?: '—' }}</td></tr>@empty<tr><td colspan="6" class="text-center text-gray-500">{{ __('uiux.dashboard.common.no_data') }}</td></tr>@endforelse</tbody></table></div>
+                <div class="overflow-x-auto">
+                    <table class="dth-analytics-table">
+                        <thead><tr><th>{{ __('report.contact') }}</th><th>{{ __('report.email') }}</th><th>{{ __('report.status') }}</th><th>{{ __('report.sent_at') }}</th><th>{{ __('report.opened_at') }}</th><th>{{ __('report.clicked_at') }}</th></tr></thead>
+                        <tbody>
+                            @forelse($this->selectedCampaign->recipients->take(50) as $recipient)
+                                @php($recipientStatus = \App\Enums\Marketing\CampaignRecipientStatus::tryFrom((string) $recipient->status))
+                                <tr>
+                                    <td>{{ $recipient->contact?->full_name ?: '—' }}</td>
+                                    <td>{{ $recipient->email }}</td>
+                                    <td><x-filament::badge :color="$recipientStatus?->color() ?? 'gray'">{{ $recipientStatus?->label() ?: str($recipient->status)->headline() }}</x-filament::badge></td>
+                                    <td>{{ $recipient->sent_at?->format('d/m/Y H:i') ?: '—' }}</td>
+                                    <td>{{ $recipient->opened_at?->format('d/m/Y H:i') ?: '—' }}</td>
+                                    <td>{{ $recipient->clicked_at?->format('d/m/Y H:i') ?: '—' }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="text-center text-gray-500">{{ __('uiux.dashboard.common.no_data') }}</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             @else<div class="dth-empty-state">{{ __('uiux.dashboard.common.no_data') }}</div>@endif
         </x-filament::section>
     </div>

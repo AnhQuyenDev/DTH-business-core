@@ -30,7 +30,7 @@ class PaymentsRelationManager extends RelationManager
                 TextColumn::make('attribution.utm_source')
                     ->label(__('field.source'))
                     ->formatStateUsing(fn (?string $state, Payment $record): string => $state ?: ($record->attribution?->acquisition_source ?: '—')),
-                TextColumn::make('status')->label(__('field.status'))->badge()->color(fn (?string $state): string => BadgePalette::status($state)),
+                TextColumn::make('status')->label(__('field.status'))->badge()->color(fn (?string $state): string => BadgePalette::status($state, category: 'finance.payment_record_status')),
             ])
             ->actions([
                 Action::make('receipt')

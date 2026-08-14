@@ -150,7 +150,7 @@ class BankAccountResource extends Resource
             TextColumn::make('account_name')->label(__('field.account_name'))->searchable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
                 ->formatStateUsing(fn ($state): string => $state === 'active' ? __('field.status_active') : __('field.status_inactive'))
-                ->color(fn ($state): string => BadgePalette::status((string) $state)),
+                ->color(fn ($state): string => BadgePalette::status((string) $state, category: 'sales.bank_account_status')),
             IconColumn::make('is_default')->label(__('field.is_default'))->boolean(),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->sortable()->toggleable(),
         ])

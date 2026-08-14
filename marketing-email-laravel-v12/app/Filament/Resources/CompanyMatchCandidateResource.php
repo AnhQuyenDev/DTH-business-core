@@ -76,7 +76,7 @@ class CompanyMatchCandidateResource extends Resource
                 TextColumn::make('status')
                     ->label(__('field.status'))
                     ->badge()
-                    ->color(fn (string $state): string => BadgePalette::status($state)),
+                    ->color(fn (string $state): string => BadgePalette::status($state, category: 'crm.company_match_status')),
                 TextColumn::make('contact.full_name')
                     ->label(__('field.contact_person')),
                 TextColumn::make('suggestedCompany.legal_name')

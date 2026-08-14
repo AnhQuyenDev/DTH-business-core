@@ -2,6 +2,8 @@
 
 namespace App\Enums\Support;
 
+use App\Support\Ui\BadgePalette;
+
 enum TicketPriority: string
 {
     case Low = 'low';
@@ -16,12 +18,14 @@ enum TicketPriority: string
 
     public function color(): string
     {
-        return match ($this) {
+        $fallback = match ($this) {
             self::Low => 'gray',
             self::Normal => 'info',
             self::High => 'warning',
             self::Urgent => 'danger',
         };
+
+        return BadgePalette::managed('support.ticket_priority', $this, $fallback);
     }
 
     public static function options(): array

@@ -2,6 +2,8 @@
 
 namespace App\Enums\Support;
 
+use App\Support\Ui\BadgePalette;
+
 enum TicketStatus: string
 {
     case Open = 'open';
@@ -17,13 +19,15 @@ enum TicketStatus: string
 
     public function color(): string
     {
-        return match ($this) {
+        $fallback = match ($this) {
             self::Open => 'warning',
             self::InProgress => 'info',
             self::PendingCustomer => 'gray',
             self::Resolved => 'success',
             self::Closed => 'gray',
         };
+
+        return BadgePalette::managed('support.ticket_status', $this, $fallback);
     }
 
     public static function options(): array

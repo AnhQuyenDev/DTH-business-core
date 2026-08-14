@@ -131,7 +131,7 @@ class SendingAccountResource extends Resource
             TextColumn::make('from_email')->label(__('field.from_email'))->searchable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
                 ->formatStateUsing(fn ($state): string => $state ? __('field.status_'.(string) $state) : __('common.not_available'))
-                ->color(fn ($state): string => BadgePalette::status($state)),
+                ->color(fn ($state): string => BadgePalette::status($state, category: 'marketing.sending_account_status')),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->sortable(),
         ])
             ->headerActions([

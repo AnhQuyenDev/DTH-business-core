@@ -105,16 +105,16 @@ class SendingDomainResource extends Resource
             TextColumn::make('domain')->label(__('field.domain'))->searchable()->sortable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
                 ->formatStateUsing(fn ($state): string => $state ? __('field.verification_'.(string) $state) : __('common.not_available'))
-                ->color(fn ($state): string => BadgePalette::status($state, $state === 'unknown' ? 'gray' : null)),
+                ->color(fn ($state): string => BadgePalette::status($state, $state === 'unknown' ? 'gray' : null, 'marketing.dns_status')),
             TextColumn::make('spf_status')->label(__('field.spf_status'))->badge()
                 ->formatStateUsing(fn ($state): string => $state ? __('field.verification_'.(string) $state) : __('common.not_available'))
-                ->color(fn ($state): string => BadgePalette::status($state, $state === 'unknown' ? 'gray' : null)),
+                ->color(fn ($state): string => BadgePalette::status($state, $state === 'unknown' ? 'gray' : null, 'marketing.dns_status')),
             TextColumn::make('dkim_status')->label(__('field.dkim_status'))->badge()
                 ->formatStateUsing(fn ($state): string => $state ? __('field.verification_'.(string) $state) : __('common.not_available'))
-                ->color(fn ($state): string => BadgePalette::status($state, $state === 'unknown' ? 'gray' : null)),
+                ->color(fn ($state): string => BadgePalette::status($state, $state === 'unknown' ? 'gray' : null, 'marketing.dns_status')),
             TextColumn::make('dmarc_status')->label(__('field.dmarc_status'))->badge()
                 ->formatStateUsing(fn ($state): string => $state ? __('field.verification_'.(string) $state) : __('common.not_available'))
-                ->color(fn ($state): string => BadgePalette::status($state, $state === 'unknown' ? 'gray' : null)),
+                ->color(fn ($state): string => BadgePalette::status($state, $state === 'unknown' ? 'gray' : null, 'marketing.dns_status')),
             TextColumn::make('verified_at')->label(__('field.verified_at'))->dateTime('d/m/Y H:i')->sortable(),
         ]);
     }

@@ -29,9 +29,9 @@ enum UserRole: string
         return __('enum.role.'.$this->value);
     }
 
-    public function color(): string
+    public function defaultColor(): string
     {
-        $fallback = match ($this) {
+        return match ($this) {
             self::SuperAdmin => 'danger',
             self::Admin => 'danger',
             self::Executive => 'warning',
@@ -48,8 +48,11 @@ enum UserRole: string
 
             self::FinanceStaff => 'success',
         };
+    }
 
-        return BadgePalette::role($this, $fallback);
+    public function color(): string
+    {
+        return BadgePalette::role($this, $this->defaultColor());
     }
 
     public function isAssignable(): bool

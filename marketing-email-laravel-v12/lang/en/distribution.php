@@ -1,6 +1,6 @@
 <?php
 
 return [
-        'unassigned' => 'Unassigned',
-        'assigned' => 'Assigned',
-    ];
+    'unassigned' => 'Unassigned',
+    'assigned' => 'Assigned',
+];

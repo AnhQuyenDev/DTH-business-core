@@ -347,7 +347,7 @@ class StaffResource extends Resource
                     ->formatStateUsing(fn ($state): string => ($state instanceof StaffEmploymentStatus
                         ? $state
                         : StaffEmploymentStatus::tryFrom((string) $state))?->label() ?? __('common.not_available'))
-                    ->color(fn ($state): string => BadgePalette::status($state instanceof StaffEmploymentStatus ? $state->value : (string) $state)),
+                    ->color(fn ($state): string => BadgePalette::status($state instanceof StaffEmploymentStatus ? $state->value : (string) $state, category: 'crm.staff_employment_status')),
                 IconColumn::make('can_receive_customers')
                     ->label(__('configuration.staff.can_receive_customers'))
                     ->boolean(),

@@ -117,24 +117,13 @@ class LandingPageSubmissionResource extends Resource
                     'assigned' => __('distribution.assigned'),
                     default => __('distribution.unassigned'),
                 })
-                ->color(fn ($state): string => BadgePalette::status($state?->value ?? $state))
-                ->color(fn ($state): string => match ($state?->value ?? $state) {
-                    'new' => 'gray',
-                    'assigned' => 'info',
-                    'contacting' => 'warning',
-                    'follow_up' => 'primary',
-                    'qualified', 'converted' => 'success',
-                    'unqualified', 'spam', 'duplicate', 'archived' => 'danger',
-                    default => 'gray',
-                }),
+                ->color(fn ($state): string => BadgePalette::status(
+                    (string) ($state instanceof \BackedEnum ? $state->value : $state),
+                    category: 'marketing.landing_page_distribution_state',
+                )),
             TextColumn::make('contact_action')->label(__('field.action'))->badge()
                 ->formatStateUsing(fn (?LandingPageContactAction $state): string => $state ? __('enum.landing_page_contact_action.'.$state->value) : __('common.not_available'))
-                ->color(fn (?LandingPageContactAction $state): string => match ($state?->value) {
-                    'created' => 'success',
-                    'updated' => 'info',
-                    'skipped' => 'gray',
-                    default => 'gray',
-                }),
+                ->color(fn (?LandingPageContactAction $state): string => $state?->color() ?? 'gray'),
             TextColumn::make('submitted_at')->label(__('field.submitted_at'))->dateTime('d/m/Y H:i')->sortable(),
             TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->toggleable(),
         ])

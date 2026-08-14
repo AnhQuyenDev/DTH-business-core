@@ -2,6 +2,8 @@
 
 namespace App\Enums\Crm;
 
+use App\Support\Ui\BadgePalette;
+
 enum CustomerAssignmentType: string
 {
     case Owner = 'owner';
@@ -27,9 +29,11 @@ enum CustomerAssignmentType: string
 
     public function color(): string
     {
-        return match ($this) {
+        $fallback = match ($this) {
             self::Owner => 'success',
             self::Support => 'info',
         };
+
+        return BadgePalette::managed('crm.customer_assignment_type', $this, $fallback);
     }
 }

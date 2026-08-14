@@ -19,9 +19,9 @@ enum DepartmentFunction: string
         return __('enum.department_function.'.$this->value);
     }
 
-    public function color(): string
+    public function defaultColor(): string
     {
-        $fallback = match ($this) {
+        return match ($this) {
             self::Admin => 'danger',
             self::Marketing => 'primary',
             self::CustomerService => 'info',
@@ -30,8 +30,11 @@ enum DepartmentFunction: string
             self::Technical => 'gray',
             self::Other => 'gray',
         };
+    }
 
-        return BadgePalette::departmentFunction($this, $fallback);
+    public function color(): string
+    {
+        return BadgePalette::departmentFunction($this, $this->defaultColor());
     }
 
     /** @return array<string, string> */

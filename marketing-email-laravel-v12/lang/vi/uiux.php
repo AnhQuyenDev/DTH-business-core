@@ -173,6 +173,8 @@ return [
             'sending_account.deleted' => 'Xóa tài khoản gửi',
             'suppression.created' => 'Thêm địa chỉ vào danh sách chặn',
             'distribution.completed' => 'Hoàn tất phân phối khách hàng',
+            'system_label.color_changed' => 'Thay đổi màu nhãn hệ thống',
+            'system_label.color_reset' => 'Khôi phục màu nhãn hệ thống',
             'distribution.skipped' => 'Bỏ qua phân phối khách hàng',
             'quotation.submitted_for_approval' => 'Gửi báo giá chờ phê duyệt',
             'quotation.created_from_opportunity' => 'Tạo báo giá từ cơ hội',

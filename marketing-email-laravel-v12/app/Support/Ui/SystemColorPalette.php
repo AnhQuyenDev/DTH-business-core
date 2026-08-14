@@ -6,7 +6,8 @@ namespace App\Support\Ui;
  * Single source of truth for user-selectable colors used by configuration UI.
  *
  * Filament's semantic colors remain available, while additional registered
- * palettes provide enough visual choices for configurable identities such as departments, roles, functions, and audiences. Business status colors stay semantic and locked.
+ * palettes provide enough visual choices for configurable identities and
+ * guarded business-status overrides managed by the system label directory.
  */
 final class SystemColorPalette
 {

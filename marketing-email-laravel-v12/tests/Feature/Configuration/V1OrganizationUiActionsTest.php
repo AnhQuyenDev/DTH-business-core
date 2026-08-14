@@ -8,6 +8,7 @@ use App\Enums\Crm\PositionGroup;
 use App\Filament\Pages\AccessControlPage;
 use App\Filament\Pages\AppearanceSettingsPage;
 use App\Filament\Pages\OrganizationAccessPage;
+use App\Filament\Pages\SystemLabelManagementPage;
 use App\Filament\Resources\DepartmentResource;
 use App\Filament\Resources\PositionResource;
 use App\Filament\Resources\StaffResource;
@@ -31,7 +32,8 @@ class V1OrganizationUiActionsTest extends TestCase
 
         $this->get(OrganizationAccessPage::getUrl())->assertOk();
         $this->get(AccessControlPage::getUrl())->assertOk();
-        $this->get(AppearanceSettingsPage::getUrl())->assertOk();
+        $this->get(AppearanceSettingsPage::getUrl())
+            ->assertRedirect(SystemLabelManagementPage::getUrl());
         $this->get(DepartmentResource::getUrl())->assertOk();
         $this->get(PositionResource::getUrl())->assertOk();
         $this->get(StaffResource::getUrl())->assertOk();

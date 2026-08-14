@@ -154,7 +154,7 @@ class CampaignResource extends Resource
             TextColumn::make('landingPage.name')->label(__('field.landing_page'))->toggleable(),
             TextColumn::make('status')->label(__('field.status'))->badge()
                 ->formatStateUsing(fn (?string $state): string => $state ? __('enum.campaign_status.'.$state) : '')
-                ->color(fn (?string $state): string => BadgePalette::status($state)),
+                ->color(fn (?string $state): string => BadgePalette::status($state, category: 'marketing.campaign_status')),
             TextColumn::make('scheduled_at')->label(__('field.scheduled_at'))->dateTime('d/m/Y H:i')->sortable(),
             TextColumn::make('sent_at')->label(__('field.sent_at'))->dateTime('d/m/Y H:i')->toggleable(),
         ])

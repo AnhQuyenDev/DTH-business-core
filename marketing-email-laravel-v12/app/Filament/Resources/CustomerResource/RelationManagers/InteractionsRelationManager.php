@@ -33,11 +33,15 @@ class InteractionsRelationManager extends RelationManager
         return $table
             ->columns([
                 TextColumn::make('interaction_type')->label(__('field.type'))->badge()
-                    ->color(fn (?string $state): string => match ($state) {
-                        'call', 'email', 'message', 'meeting' => 'info',
-                        'support', 'follow_up' => 'warning',
-                        default => 'gray',
-                    }),
+                    ->color(fn (?string $state): string => \App\Support\Ui\BadgePalette::managed(
+                        'crm.interaction_type',
+                        $state,
+                        match ($state) {
+                            'call', 'email', 'message', 'meeting' => 'info',
+                            'support', 'follow_up' => 'warning',
+                            default => 'gray',
+                        },
+                    )),
                 TextColumn::make('status')->label(__('field.status'))->badge()
                     ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label') ? $state->label() : ($state ?? ''))
                     ->color(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'color') ? $state->color() : (InteractionStatus::tryFrom((string) $state)?->color() ?? 'gray')),

@@ -1051,18 +1051,6 @@
         background: rgba(var(--dth-v3-accent), .075) !important;
     }
 
-    .fi-no-notification {
-        border-radius: var(--dth-v3-radius-md) !important;
-    }
-
-    .fi-notification {
-        border: 1px solid rgba(var(--dth-v3-border), .92) !important;
-        border-radius: .78rem !important;
-        background: rgba(var(--dth-v3-panel), .96) !important;
-        box-shadow: 0 18px 38px rgba(var(--dth-v3-shadow), .14) !important;
-        backdrop-filter: blur(14px);
-    }
-
     /* ---------------------------------------------------------------------
        Authentication and account surfaces
        ------------------------------------------------------------------ */

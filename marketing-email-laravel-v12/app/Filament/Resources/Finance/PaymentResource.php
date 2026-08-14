@@ -95,7 +95,7 @@ class PaymentResource extends Resource
                         Payment::STATUS_REFUNDED => __('field.payment_status_refunded'),
                         default => str($state)->headline()->toString(),
                     })
-                    ->color(fn (string $state): string => BadgePalette::status($state)),
+                    ->color(fn (string $state): string => BadgePalette::status($state, category: 'finance.payment_record_status')),
             ])
             ->filters([
                 SelectFilter::make('status')->options([

@@ -178,16 +178,9 @@ class PositionResource extends Resource
                     ->formatStateUsing(fn ($state): string => ($state instanceof PositionAuthority
                         ? $state
                         : PositionAuthority::tryFrom((string) $state))?->label() ?? __('common.not_available'))
-                    ->color(fn ($state): string => match ($state instanceof PositionAuthority
+                    ->color(fn ($state): string => ($state instanceof PositionAuthority
                         ? $state
-                        : PositionAuthority::tryFrom((string) $state)) {
-                        PositionAuthority::Executive => 'danger',
-                        PositionAuthority::Manager => 'warning',
-                        PositionAuthority::Lead => 'info',
-                        PositionAuthority::Member => 'success',
-                        PositionAuthority::Limited => 'gray',
-                        default => 'gray',
-                    }),
+                        : PositionAuthority::tryFrom((string) $state))?->color() ?? 'gray'),
 
                 TextColumn::make('staff_count')
                     ->label(__('configuration.position.staff_count'))

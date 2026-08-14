@@ -39,20 +39,17 @@ class ItemsRelationManager extends RelationManager
                     ->label(__('field.assignment_type'))
                     ->badge()
                     ->formatStateUsing(fn ($state): string => $state instanceof \BackedEnum && method_exists($state, 'label') ? $state->label() : ($state ?? ''))
-                    ->color(fn ($state): string => match ($state instanceof \BackedEnum ? $state->value : $state) {
-                        'owner' => 'success',
-                        'support' => 'info',
-                        default => 'gray',
-                    }),
+                    ->color(fn ($state): string => \App\Enums\Crm\CustomerAssignmentType::tryFrom(
+                        (string) ($state instanceof \BackedEnum ? $state->value : $state),
+                    )?->color() ?? 'gray'),
                 Tables\Columns\TextColumn::make('result_status')
                     ->label(__('field.result_status'))
                     ->badge()
                     ->formatStateUsing(fn ($state): string => __("field.{$state}"))
-                    ->color(fn ($state): string => match ($state) {
-                        'success' => 'success',
-                        'skipped' => 'gray',
-                        default => 'gray',
-                    }),
+                    ->color(fn ($state): string => \App\Support\Ui\BadgePalette::status(
+                        (string) $state,
+                        category: 'crm.distribution_item_result',
+                    )),
                 Tables\Columns\TextColumn::make('reason')
                     ->label(__('field.reason'))
                     ->formatStateUsing(fn (string $state): string => CustomerAssignmentReason::tryFrom($state)?->label() ?? $state),

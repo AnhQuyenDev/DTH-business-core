@@ -2,6 +2,8 @@
 
 namespace App\Enums\Marketing;
 
+use App\Support\Ui\BadgePalette;
+
 enum LandingPageContactAction: string
 {
     case Created = 'created';
@@ -25,5 +27,16 @@ enum LandingPageContactAction: string
             self::Updated => __('enum.landing_page_contact_action.updated'),
             self::Skipped => __('enum.landing_page_contact_action.skipped'),
         };
+    }
+
+    public function color(): string
+    {
+        $fallback = match ($this) {
+            self::Created => 'success',
+            self::Updated => 'info',
+            self::Skipped => 'gray',
+        };
+
+        return BadgePalette::managed('marketing.landing_page_contact_action', $this, $fallback);
     }
 }

@@ -137,7 +137,7 @@ class EmailTemplateResource extends Resource
                 TextColumn::make('subject')->label(__('field.subject'))->searchable()->limit(50),
                 TextColumn::make('status')->label(__('field.status'))->badge()
                     ->formatStateUsing(fn (?string $state): string => $state ? __('field.status_'.$state) : '')
-                    ->color(fn (?string $state): string => BadgePalette::status($state)),
+                    ->color(fn (?string $state): string => BadgePalette::status($state, category: 'marketing.email_template_status')),
                 TextColumn::make('created_at')->label(__('field.created_at'))->dateTime('d/m/Y H:i')->sortable(),
             ])
             ->actions([ActionGroup::make([

@@ -49,51 +49,37 @@ class DepartmentUiHardeningTest extends TestCase
         $this->assertStringNotContainsString('DeleteBulkAction::make', $source);
     }
 
-    public function test_configuration_navigation_is_flat_and_appearance_hub_is_hidden(): void
+    public function test_navigation_separates_organization_access_and_system_labels(): void
     {
-        $appearancePage = File::get(
-            app_path('Filament/Pages/AppearanceSettingsPage.php')
-        );
+        foreach (['DepartmentResource.php', 'PositionResource.php', 'StaffResource.php'] as $resource) {
+            $source = File::get(app_path('Filament/Resources/'.$resource));
+            $this->assertStringContainsString('OrganizationAccessPage::getNavigationLabel()', $source);
+        }
 
-        $this->assertStringContainsString(
-            'public static function shouldRegisterNavigation(): bool',
-            $appearancePage,
-        );
+        foreach (['UserResource.php', 'Security/RbacRoleResource.php'] as $resource) {
+            $source = File::get(app_path('Filament/Resources/'.$resource));
+            $this->assertStringContainsString('AccessControlPage::getNavigationLabel()', $source);
+        }
 
-        $this->assertStringContainsString(
-            'return false;',
-            $appearancePage,
-        );
+        $page = File::get(app_path('Filament/Pages/SystemLabelManagementPage.php'));
+        $this->assertStringContainsString("'configuration/system-labels'", $page);
+        $this->assertStringContainsString("'configuration.system_labels.navigation'", $page);
 
-        $badgeResource = File::get(
-            app_path('Filament/Resources/UiBadgeStyleResource.php')
-        );
-
-        $this->assertStringNotContainsString(
-            'getNavigationParentItem',
-            $badgeResource,
-        );
-
-        $this->assertStringContainsString(
-            'dth-shared-color-swatch',
-            $badgeResource,
-        );
-
-        $this->assertStringNotContainsString(
-            'hiddenButtonLabels',
-            $badgeResource,
-        );
+        $legacyResource = File::get(app_path('Filament/Resources/UiBadgeStyleResource.php'));
+        $this->assertStringContainsString('shouldRegisterNavigation(): bool', $legacyResource);
+        $this->assertStringContainsString('return false;', $legacyResource);
     }
 
-    public function test_business_status_colors_are_semantic_and_not_user_editable(): void
+    public function test_business_status_colors_keep_semantic_defaults_and_use_guarded_editor(): void
     {
-        $this->assertArrayNotHasKey('status', BadgePalette::editableCategoryOptions());
         $this->assertSame('success', BadgePalette::status('paid'));
         $this->assertSame('warning', BadgePalette::status('pending'));
         $this->assertSame('danger', BadgePalette::status('rejected'));
 
-        $source = File::get(app_path('Filament/Resources/UiBadgeStyleResource.php'));
-        $this->assertStringContainsString("where('category', '!=', 'status')", $source);
+        $source = File::get(app_path('Filament/Pages/SystemLabelManagementPage.php'));
+        $this->assertStringContainsString("'acknowledged'", $source);
+        $this->assertStringContainsString("'changeReason'", $source);
+        $this->assertStringContainsString('SystemLabelColorService', $source);
     }
 
     public function test_locale_switch_reloads_the_whole_document(): void

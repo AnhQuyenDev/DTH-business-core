@@ -108,7 +108,13 @@
         </div>
     </div>
 
-    <div id="toast" class="fixed bottom-4 right-4 bg-gray-900 text-white text-sm px-4 py-3 rounded shadow-lg hidden z-50"></div>
+    <div id="toast" role="status" class="no-print fixed top-4 right-4 z-50 hidden w-80 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
+        <svg id="toastIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="#16a34a" class="h-5 w-5 shrink-0"></svg>
+        <p id="toastMessage" class="min-w-0 text-sm leading-5 text-gray-700"></p>
+        <button type="button" onclick="hideToast()" class="-mr-1 -mt-0.5 ml-auto shrink-0 rounded p-0.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600" aria-label="{{ __('action.close') }}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/></svg>
+        </button>
+    </div>
 
     <script>
         var publicUrl = '{{ route("sales.quotation.public.show", ["quotationCode" => $quotation->quotation_code, "token" => $quotation->public_token]) }}';
@@ -116,13 +122,29 @@
         var confirmationMode = @json($confirmationMode);
         var otpAction = 'accept';
         var otpVerifiedEmail = null;
+        var toastTimer = null;
 
-        function showToast(message) {
-            var el = document.getElementById('toast');
-            el.textContent = message;
-            el.classList.remove('hidden');
-            clearTimeout(showToast._t);
-            showToast._t = setTimeout(function () { el.classList.add('hidden'); }, 3000);
+        function showToast(message, status) {
+            status = status || 'success';
+            var isDanger = status === 'danger';
+            var icon = document.getElementById('toastIcon');
+            icon.setAttribute('fill', isDanger ? '#dc2626' : '#16a34a');
+            icon.innerHTML = isDanger
+                ? '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"></path>'
+                : '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"></path>';
+            var toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('hidden');
+            toast.classList.add('flex');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(hideToast, 3000);
+        }
+
+        function hideToast() {
+            var toast = document.getElementById('toast');
+            toast.classList.add('hidden');
+            toast.classList.remove('flex');
+            clearTimeout(toastTimer);
         }
 
         function getCsrf() {
@@ -169,7 +191,7 @@
                 form.submit();
             } catch (error) {
                 form.dataset.submitting = '0';
-                showToast('{{ __("sales.public.error_occurred") }}');
+                showToast('{{ __("sales.public.error_occurred") }}', 'danger');
             }
 
             return false;
