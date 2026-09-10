@@ -7,6 +7,7 @@ use Dth\Email\DTO\AnalyticsRange;
 use Dth\Email\DTO\EmailAnalyticsFilters;
 use Dth\Email\Enums\EmailCampaignStatus;
 use Dth\Email\Enums\EmailMessageStatus;
+use Illuminate\Http\Request;
 use Throwable;
 
 final class EmailDashboardFilterResolver
@@ -17,6 +18,19 @@ final class EmailDashboardFilterResolver
      *
      * @param array<string, mixed>|null $state
      */
+    public function resolveRequest(Request $request): EmailAnalyticsFilters
+    {
+        return $this->resolve([
+            'start_date' => $request->query('start_date'),
+            'end_date' => $request->query('end_date'),
+            'sending_account_id' => $request->query('sending_account_id'),
+            'campaign_id' => $request->query('campaign_id'),
+            'message_status' => $request->query('message_status'),
+            'campaign_status' => $request->query('campaign_status'),
+            'compare_previous' => $request->query('compare_previous'),
+        ]);
+    }
+
     public function resolve(?array $state): EmailAnalyticsFilters
     {
         $state ??= [];

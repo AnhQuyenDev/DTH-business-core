@@ -4,6 +4,7 @@ namespace Dth\Email\Filament\Widgets\Dashboard;
 
 use Dth\Email\Filament\Resources\SendingAccountResource;
 use Dth\Email\Filament\Resources\SendingDomainResource;
+use Dth\Email\Filament\Widgets\Concerns\UsesEmailDashboardFilters;
 use Dth\Email\Services\EmailAnalyticsService;
 use Dth\Email\Support\UiText;
 use Filament\Widgets\StatsOverviewWidget;
@@ -11,6 +12,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class EmailInfrastructureOverview extends StatsOverviewWidget
 {
+    use UsesEmailDashboardFilters;
     protected static bool $isLazy = false;
     protected ?string $pollingInterval = null;
     protected int|string|array $columnSpan = [

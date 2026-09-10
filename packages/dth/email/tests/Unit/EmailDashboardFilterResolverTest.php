@@ -5,6 +5,7 @@ namespace Dth\Email\Tests\Unit;
 use Carbon\CarbonImmutable;
 use Dth\Email\Services\EmailDashboardFilterResolver;
 use Dth\Email\Tests\TestCase;
+use Illuminate\Http\Request;
 
 class EmailDashboardFilterResolverTest extends TestCase
 {
@@ -59,4 +60,23 @@ class EmailDashboardFilterResolverTest extends TestCase
 
         CarbonImmutable::setTestNow();
     }
+    public function test_request_query_is_resolved_without_livewire_filter_state(): void
+    {
+        $request = Request::create('/admin/email-dashboard', 'GET', [
+            'start_date' => '2026-09-05',
+            'end_date' => '2026-09-10',
+            'sending_account_id' => '2',
+            'campaign_status' => 'completed',
+            'compare_previous' => '0',
+        ]);
+
+        $filters = app(EmailDashboardFilterResolver::class)->resolveRequest($request);
+
+        $this->assertSame('2026-09-05', $filters->range->start->format('Y-m-d'));
+        $this->assertSame('2026-09-10', $filters->range->end->format('Y-m-d'));
+        $this->assertSame(2, $filters->sendingAccountId);
+        $this->assertSame('completed', $filters->campaignStatusValue());
+        $this->assertFalse($filters->comparePrevious);
+    }
+
 }

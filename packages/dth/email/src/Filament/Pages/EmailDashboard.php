@@ -14,18 +14,13 @@ use Dth\Email\Filament\Widgets\Dashboard\TopLinksChart;
 use Dth\Email\Models\SendingAccount;
 use Dth\Email\Services\EmailDashboardFilterResolver;
 use Dth\Email\Support\UiText;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
 use Filament\Pages\Dashboard;
-use Filament\Pages\Dashboard\Actions\FilterAction;
-use Filament\Pages\Dashboard\Concerns\HasFiltersAction;
+use Filament\Schemas\Components\View as SchemaView;
+use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
 
 class EmailDashboard extends Dashboard
 {
-    use HasFiltersAction;
-
     protected static string $routePath = 'email-dashboard';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar-square';
     protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
@@ -43,11 +38,11 @@ class EmailDashboard extends Dashboard
 
     public function getSubheading(): string|Htmlable|null
     {
-        $filters = app(EmailDashboardFilterResolver::class)->resolve($this->filters);
+        $filters = app(EmailDashboardFilterResolver::class)->resolveRequest(request());
 
         return UiText::get(
             'dashboard.subheading',
-            'Performance from :start to :end. Use Filters to refine the report.',
+            'Performance from :start to :end. Use the filters below to refine the report.',
             [
                 'start' => $filters->range->start->format('d/m/Y'),
                 'end' => $filters->range->end->format('d/m/Y'),
@@ -77,58 +72,61 @@ class EmailDashboard extends Dashboard
         ];
     }
 
-    protected function getHeaderActions(): array
+    /** @return array<string, mixed> */
+    public function getWidgetData(): array
     {
-        $defaultDays = max(1, (int) config('dth-email.analytics.default_range_days', 30));
-
         return [
-            FilterAction::make()
-                ->label(UiText::get('dashboard.filters.action', 'Filters'))
-                ->modalHeading(UiText::get('dashboard.filters.heading', 'Dashboard filters'))
-                ->modalSubmitActionLabel(UiText::get('dashboard.filters.apply', 'Apply filters'))
-                ->schema([
-                    DatePicker::make('start_date')
-                        ->label(UiText::get('dashboard.filters.start_date', 'Start date'))
-                        ->default(now()->subDays($defaultDays - 1)->startOfDay())
-                        ->native(false)
-                        ->displayFormat('d/m/Y')
-                        ->maxDate(now())
-                        ->required(),
-
-                    DatePicker::make('end_date')
-                        ->label(UiText::get('dashboard.filters.end_date', 'End date'))
-                        ->default(now()->endOfDay())
-                        ->native(false)
-                        ->displayFormat('d/m/Y')
-                        ->maxDate(now())
-                        ->rule('after_or_equal:start_date')
-                        ->required(),
-
-                    Select::make('sending_account_id')
-                        ->label(UiText::get('dashboard.filters.sending_account', 'Sending account'))
-                        ->options(fn (): array => SendingAccount::query()
-                            ->orderBy('name')
-                            ->pluck('name', 'id')
-                            ->all())
-                        ->searchable()
-                        ->preload()
-                        ->placeholder(UiText::get('dashboard.filters.all_accounts', 'All sending accounts')),
-
-                    Select::make('campaign_status')
-                        ->label(UiText::get('dashboard.filters.campaign_status', 'Campaign status'))
-                        ->options(collect(EmailCampaignStatus::cases())
-                            ->mapWithKeys(fn (EmailCampaignStatus $status): array => [
-                                $status->value => UiText::status($status),
-                            ])
-                            ->all())
-                        ->native(false)
-                        ->placeholder(UiText::get('dashboard.filters.all_statuses', 'All statuses')),
-
-                    Toggle::make('compare_previous')
-                        ->label(UiText::get('dashboard.filters.compare_previous', 'Compare with previous period'))
-                        ->default(true)
-                        ->inline(false),
-                ]),
+            'dashboardFilters' => $this->normalizedFilterState(),
         ];
     }
+
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                SchemaView::make('dth-email::filament.pages.email-dashboard-filters')
+                    ->viewData($this->filterViewData()),
+                $this->getWidgetsContentComponent(),
+            ]);
+    }
+
+    /**
+     * Dashboard filters deliberately use a normal GET request instead of a
+     * Livewire action. The dashboard is a read-only reporting surface, so a
+     * URL-based filter state is simpler, shareable/bookmarkable, and avoids
+     * creating an unnecessary /livewire/update dependency for filtering.
+     *
+     * @return array<string, mixed>
+     */
+    private function filterViewData(): array
+    {
+        return [
+            'actionUrl' => static::getUrl(),
+            'resetUrl' => static::getUrl(),
+            'state' => $this->normalizedFilterState(),
+            'sendingAccounts' => SendingAccount::query()
+                ->orderBy('name')
+                ->pluck('name', 'id')
+                ->all(),
+            'campaignStatuses' => collect(EmailCampaignStatus::cases())
+                ->mapWithKeys(fn (EmailCampaignStatus $status): array => [
+                    $status->value => UiText::status($status),
+                ])
+                ->all(),
+        ];
+    }
+    /** @return array<string, mixed> */
+    private function normalizedFilterState(): array
+    {
+        $filters = app(EmailDashboardFilterResolver::class)->resolveRequest(request());
+
+        return [
+            'start_date' => $filters->range->start->format('Y-m-d'),
+            'end_date' => $filters->range->end->format('Y-m-d'),
+            'sending_account_id' => $filters->sendingAccountId,
+            'campaign_status' => $filters->campaignStatusValue(),
+            'compare_previous' => $filters->comparePrevious,
+        ];
+    }
+
 }
