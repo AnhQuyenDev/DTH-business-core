@@ -2,6 +2,7 @@
 
 namespace Dth\Email\Filament;
 
+use Dth\Email\Filament\Pages\EmailDashboard;
 use Dth\Email\Filament\Resources\EmailDeliveryLogResource;
 use Dth\Email\Filament\Resources\EmailSuppressionResource;
 use Dth\Email\Filament\Resources\EmailTemplateCategoryResource;
@@ -26,6 +27,10 @@ class EmailPlugin implements Plugin
 
     public function register(Panel $panel): void
     {
+        $panel->pages([
+            EmailDashboard::class,
+        ]);
+
         $panel->resources([
             SendingDomainResource::class,
             SendingAccountResource::class,

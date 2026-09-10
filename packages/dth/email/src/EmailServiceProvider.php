@@ -8,6 +8,7 @@ use Dth\Email\Contracts\DnsResolver;
 use Dth\Email\Contracts\EmailTransport;
 use Dth\Email\Services\CampaignAnalyticsService;
 use Dth\Email\Services\EmailAnalyticsService;
+use Dth\Email\Services\EmailDashboardFilterResolver;
 use Dth\Email\Services\NativeDnsResolver;
 use Dth\Email\Services\SmtpEmailTransport;
 use Dth\Email\Services\TransportCapabilityService;
@@ -29,6 +30,7 @@ class EmailServiceProvider extends ServiceProvider
         $this->app->singleton(TransportCapabilityService::class);
         $this->app->singleton(CampaignAnalyticsService::class);
         $this->app->singleton(EmailAnalyticsService::class);
+        $this->app->singleton(EmailDashboardFilterResolver::class);
     }
 
     public function boot(): void
