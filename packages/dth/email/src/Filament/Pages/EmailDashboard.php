@@ -15,6 +15,7 @@ use Dth\Email\Filament\Widgets\Dashboard\TopLinksChart;
 use Dth\Email\Models\SendingAccount;
 use Dth\Email\Services\EmailDashboardFilterResolver;
 use Dth\Email\Support\UiText;
+use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
 use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Schema;
@@ -49,6 +50,35 @@ class EmailDashboard extends Dashboard
                 'end' => $filters->range->end->format('d/m/Y'),
             ],
         );
+    }
+
+    protected function getHeaderActions(): array
+    {
+        $query = array_filter(
+            request()->query(),
+            static fn (mixed $value): bool => ! ($value === null || $value === ''),
+        );
+
+        return [
+            Action::make('emailReportPdf')
+                ->label(UiText::get('reports.export_pdf', 'PDF report'))
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('primary')
+                ->url(fn (): string => route('dth.email.reports.dashboard.pdf', $query))
+                ->visible(fn (): bool => (bool) config('dth-email.reports.pdf.enabled', true)),
+
+            Action::make('emailReportXlsx')
+                ->label(UiText::get('reports.export_xlsx', 'Excel'))
+                ->icon('heroicon-o-table-cells')
+                ->color('gray')
+                ->url(fn (): string => route('dth.email.reports.dashboard.xlsx', $query)),
+
+            Action::make('emailReportCsv')
+                ->label(UiText::get('reports.export_csv', 'CSV'))
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->url(fn (): string => route('dth.email.reports.dashboard.csv', $query)),
+        ];
     }
 
     /** @return array<class-string<\Filament\Widgets\Widget>> */

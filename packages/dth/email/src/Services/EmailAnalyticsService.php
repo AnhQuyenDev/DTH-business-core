@@ -256,6 +256,149 @@ class EmailAnalyticsService
         );
     }
 
+
+    /**
+     * Campaign rows for management exports. This deliberately reuses the same
+     * metric definitions as topCampaigns(), but sorts by campaign activity so
+     * exported reports are easy to audit chronologically.
+     *
+     * @return array<int, TopCampaignResult>
+     */
+    public function campaignExportRows(
+        EmailAnalyticsFilters $filters,
+        ?int $limit = null,
+    ): array {
+        $this->assertRangeAllowed($filters->range);
+
+        $limit ??= (int) config('dth-email.reports.max_campaign_export_rows', 5000);
+        $limit = max(1, min($limit, 50000));
+
+        $sentExpression = 'SUM(CASE WHEN ecr.sent_at IS NOT NULL THEN 1 ELSE 0 END)';
+
+        $query = DB::table('email_campaigns as ec')
+            ->leftJoin('email_campaign_recipients as ecr', 'ecr.campaign_id', '=', 'ec.id')
+            ->leftJoin('email_messages as em', 'em.campaign_recipient_id', '=', 'ecr.id')
+            ->whereNull('ec.deleted_at')
+            ->whereBetween('ec.started_at', [$filters->range->start, $filters->range->end]);
+
+        $this->applyCampaignFilters($query, $filters);
+        $this->applyMessageStatusFilter($query, $filters);
+
+        $rows = $query
+            ->select([
+                'ec.id',
+                'ec.name',
+                'ec.subject',
+                'ec.status',
+                'ec.started_at',
+            ])
+            ->selectRaw('COUNT(DISTINCT ecr.id) as recipients')
+            ->selectRaw($sentExpression.' as sent')
+            ->selectRaw('SUM(CASE WHEN ecr.opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened')
+            ->selectRaw('SUM(CASE WHEN ecr.clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked')
+            ->selectRaw('SUM(CASE WHEN ecr.status = ? THEN 1 ELSE 0 END) as failed', [CampaignRecipientStatus::Failed->value])
+            ->groupBy('ec.id', 'ec.name', 'ec.subject', 'ec.status', 'ec.started_at')
+            ->orderByDesc('ec.started_at')
+            ->orderByDesc('ec.id')
+            ->limit($limit)
+            ->get();
+
+        $campaignIds = $rows->pluck('id')->map(static fn ($id): int => (int) $id)->all();
+        $unsubscribeCounts = collect();
+
+        if ($campaignIds !== []) {
+            $unsubscribeQuery = DB::table('email_events as ee')
+                ->join('email_messages as em', 'em.id', '=', 'ee.message_id')
+                ->join('email_campaign_recipients as ecr', 'ecr.id', '=', 'em.campaign_recipient_id')
+                ->where('ee.event_type', EmailEventType::Unsubscribed->value)
+                ->whereIn('ecr.campaign_id', $campaignIds);
+
+            $this->applyMessageStatusFilter($unsubscribeQuery, $filters);
+
+            $unsubscribeCounts = $unsubscribeQuery
+                ->select('ecr.campaign_id')
+                ->selectRaw('COUNT(DISTINCT ee.message_id) as unsubscribed')
+                ->groupBy('ecr.campaign_id')
+                ->pluck('unsubscribed', 'ecr.campaign_id');
+        }
+
+        return $rows->map(function (object $row) use ($unsubscribeCounts): TopCampaignResult {
+            $sent = (int) $row->sent;
+            $opened = (int) $row->opened;
+            $clicked = (int) $row->clicked;
+            $unsubscribed = (int) ($unsubscribeCounts[(int) $row->id] ?? 0);
+            $failed = (int) $row->failed;
+
+            return new TopCampaignResult(
+                campaignId: (int) $row->id,
+                name: (string) $row->name,
+                subject: (string) $row->subject,
+                status: (string) $row->status,
+                startedAt: $row->started_at ? CarbonImmutable::parse($row->started_at) : null,
+                recipients: (int) $row->recipients,
+                sent: $sent,
+                opened: $opened,
+                clicked: $clicked,
+                unsubscribed: $unsubscribed,
+                failed: $failed,
+                openRate: $this->rate($opened, $sent),
+                clickRate: $this->rate($clicked, $sent),
+                clickToOpenRate: $this->rate($clicked, $opened),
+                unsubscribeRate: $this->rate($unsubscribed, $sent),
+                failureRate: $this->rate($failed, max((int) $row->recipients, 0)),
+            );
+        })->all();
+    }
+
+    /**
+     * All-time link performance for one campaign. Unlike the global topLinks()
+     * report, this method is not tied to a campaign-start cohort window.
+     *
+     * @return array<int, TopLinkResult>
+     */
+    public function campaignTopLinks(
+        int|EmailCampaign $campaign,
+        int $limit = 10,
+    ): array {
+        $campaignId = $campaign instanceof EmailCampaign
+            ? (int) $campaign->getKey()
+            : $campaign;
+        $limit = max(1, min($limit, 100));
+
+        return $this->remember(
+            "campaign-top-links:{$campaignId}:{$limit}",
+            function () use ($campaignId, $limit): array {
+                $base = DB::table('email_tracked_links as etl')
+                    ->join('email_messages as em', 'em.id', '=', 'etl.message_id')
+                    ->join('email_campaign_recipients as ecr', 'ecr.id', '=', 'em.campaign_recipient_id')
+                    ->where('ecr.campaign_id', $campaignId);
+
+                $totalClicks = (int) (clone $base)->sum('etl.click_count');
+
+                $rows = $base
+                    ->select('etl.original_url')
+                    ->selectRaw('COUNT(DISTINCT etl.message_id) as messages_containing_link')
+                    ->selectRaw('COUNT(DISTINCT CASE WHEN etl.click_count > 0 THEN etl.message_id END) as unique_clickers')
+                    ->selectRaw('SUM(etl.click_count) as total_clicks')
+                    ->selectRaw('MAX(etl.last_clicked_at) as last_clicked_at')
+                    ->groupBy('etl.original_url')
+                    ->orderByDesc('total_clicks')
+                    ->orderByDesc('unique_clickers')
+                    ->limit($limit)
+                    ->get();
+
+                return $rows->map(fn (object $row): TopLinkResult => new TopLinkResult(
+                    url: (string) $row->original_url,
+                    messagesContainingLink: (int) $row->messages_containing_link,
+                    uniqueClickers: (int) $row->unique_clickers,
+                    totalClicks: (int) $row->total_clicks,
+                    lastClickedAt: $row->last_clicked_at ? CarbonImmutable::parse($row->last_clicked_at) : null,
+                    clickShare: $this->rate((int) $row->total_clicks, $totalClicks),
+                ))->all();
+            },
+        );
+    }
+
     /** @return array<int, SendingAccountPerformanceResult> */
     public function sendingAccountPerformance(EmailAnalyticsFilters $filters): array
     {

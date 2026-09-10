@@ -13,6 +13,12 @@ class CampaignAnalyticsWidget extends StatsOverviewWidget
 
     protected static bool $isLazy = false;
     protected ?string $pollingInterval = null;
+    protected int|string|array $columnSpan = 'full';
+
+    protected function getColumns(): int|array
+    {
+        return 1;
+    }
 
     protected function getStats(): array
     {
@@ -42,46 +48,47 @@ class CampaignAnalyticsWidget extends StatsOverviewWidget
                 ->descriptionIcon('heroicon-o-paper-airplane'),
 
             Stat::make(
-                UiText::get('analytics.delivered', 'Delivered'),
-                $stats->capabilities->delivery
-                    ? number_format($stats->delivered)
-                    : UiText::get('analytics.not_available', 'N/A')
-            )
-                ->description(
-                    $stats->capabilities->delivery
-                        ? UiText::get(
-                            'analytics.delivery_rate',
-                            ':rate% of sent',
-                            ['rate' => $stats->deliveryRate]
-                        )
-                        : UiText::get(
-                            'analytics.delivery_unavailable',
-                            'Delivery confirmation is unavailable for this transport.'
-                        )
-                )
-                ->descriptionIcon('heroicon-o-check-circle'),
-
-            Stat::make(
-                UiText::get('analytics.opened', 'Opened'),
+                UiText::get('reports.unique_opens', 'Unique opens'),
                 number_format($stats->opened)
             )
                 ->description(UiText::get(
-                    'analytics.open_rate',
-                    ':rate% open rate',
-                    ['rate' => $stats->openRate]
+                    'reports.total_opens_description',
+                    ':total total opens',
+                    ['total' => number_format($stats->totalOpens)]
                 ))
                 ->descriptionIcon('heroicon-o-envelope-open'),
 
             Stat::make(
-                UiText::get('analytics.clicked', 'Clicked'),
+                UiText::get('dashboard.metrics.open_rate', 'Open rate'),
+                number_format($stats->openRate, 1).'%'
+            )
+                ->description(UiText::get('reports.rate_of_sent', 'Unique opens / sent'))
+                ->descriptionIcon('heroicon-o-chart-bar'),
+
+            Stat::make(
+                UiText::get('reports.unique_clicks', 'Unique clicks'),
                 number_format($stats->clicked)
             )
                 ->description(UiText::get(
-                    'analytics.click_rate',
-                    ':rate% click rate',
-                    ['rate' => $stats->clickRate]
+                    'reports.total_clicks_description',
+                    ':total total clicks',
+                    ['total' => number_format($stats->totalClicks)]
                 ))
                 ->descriptionIcon('heroicon-o-cursor-arrow-rays'),
+
+            Stat::make(
+                UiText::get('dashboard.metrics.click_rate', 'Click rate'),
+                number_format($stats->clickRate, 1).'%'
+            )
+                ->description(UiText::get('reports.click_rate_basis', 'Unique clicks / sent'))
+                ->descriptionIcon('heroicon-o-arrow-trending-up'),
+
+            Stat::make(
+                UiText::get('dashboard.metrics.ctor', 'Click-to-open rate'),
+                number_format($stats->clickToOpenRate, 1).'%'
+            )
+                ->description(UiText::get('reports.ctor_basis', 'Unique clicks / unique opens'))
+                ->descriptionIcon('heroicon-o-bolt'),
 
             Stat::make(
                 UiText::get('analytics.unsubscribed', 'Unsubscribed from campaign'),

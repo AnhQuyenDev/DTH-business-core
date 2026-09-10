@@ -41,6 +41,19 @@ return [
         ],
     ],
 
+    'reports' => [
+        // Management exports are generated through authenticated GET routes so
+        // dashboard/report downloads do not depend on Livewire actions.
+        'max_campaign_export_rows' => (int) env('DTH_EMAIL_REPORT_MAX_CAMPAIGNS', 5000),
+        'max_recipient_export_rows' => (int) env('DTH_EMAIL_REPORT_MAX_RECIPIENTS', 100000),
+        'xlsx_temp_directory' => env('DTH_EMAIL_XLSX_TEMP_DIRECTORY', storage_path('app/private/dth-email-exports')),
+        'pdf' => [
+            'enabled' => (bool) env('DTH_EMAIL_PDF_REPORTS_ENABLED', true),
+            'paper' => env('DTH_EMAIL_PDF_PAPER', 'a4'),
+            'orientation' => env('DTH_EMAIL_PDF_ORIENTATION', 'landscape'),
+        ],
+    ],
+
     'tracking' => [
         'enabled' => (bool) env('DTH_EMAIL_TRACKING_ENABLED', true),
 
