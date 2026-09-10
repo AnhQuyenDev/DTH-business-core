@@ -3,6 +3,7 @@
 namespace Dth\Email\Jobs;
 
 use Dth\Email\Enums\EmailMessageStatus;
+use Dth\Email\Exceptions\EmailQuotaExceededException;
 use Dth\Email\Models\EmailMessage;
 use Dth\Email\Services\EmailDispatchService;
 use Illuminate\Bus\Queueable;
@@ -27,6 +28,14 @@ class SendEmailMessageJob implements ShouldQueue
             return;
         }
 
-        $dispatch->send($message);
+        try {
+            $dispatch->send($message);
+        } catch (EmailQuotaExceededException $e) {
+            if ((string) config('queue.default', 'sync') === 'sync') {
+                throw $e;
+            }
+
+            $this->release(max(60, $e->retryAfterSeconds));
+        }
     }
 }

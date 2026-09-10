@@ -8,6 +8,7 @@ use Dth\Email\Filament\Resources\EmailCampaignResource\Widgets\CampaignAnalytics
 use Dth\Email\Filament\Resources\EmailCampaignResource\Widgets\CampaignEngagementFunnelChart;
 use Dth\Email\Filament\Resources\EmailCampaignResource\Widgets\CampaignPerformanceTrendChart;
 use Dth\Email\Filament\Resources\EmailCampaignResource\Widgets\CampaignReportSummaryWidget;
+use Dth\Email\Filament\Resources\EmailCampaignResource\Widgets\CampaignInsightsWidget;
 use Dth\Email\Filament\Resources\EmailCampaignResource\Widgets\CampaignTopLinksTableWidget;
 use Dth\Email\Support\UiText;
 use Filament\Actions\Action;
@@ -87,11 +88,17 @@ class ViewEmailCampaign extends ViewRecord
             CampaignTopLinksTableWidget::make([
                 'campaignId' => $campaignId,
             ]),
+            CampaignInsightsWidget::make([
+                'campaignId' => $campaignId,
+            ]),
         ];
     }
 
     public function getHeaderWidgetsColumns(): int|array
     {
-        return 1;
+        return [
+            'md' => 6,
+            'xl' => 12,
+        ];
     }
 }

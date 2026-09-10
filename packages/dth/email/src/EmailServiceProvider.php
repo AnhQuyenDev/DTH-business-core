@@ -4,11 +4,15 @@ namespace Dth\Email;
 
 use Dth\Email\Console\Commands\CheckEmailAnalyticsCommand;
 use Dth\Email\Console\Commands\ProcessScheduledCampaignsCommand;
+use Dth\Email\Console\Commands\RecordEmailSystemHeartbeatCommand;
 use Dth\Email\Contracts\DnsResolver;
 use Dth\Email\Contracts\EmailTransport;
 use Dth\Email\Services\CampaignAnalyticsService;
 use Dth\Email\Services\EmailAnalyticsService;
 use Dth\Email\Services\EmailDashboardFilterResolver;
+use Dth\Email\Services\EmailInsightService;
+use Dth\Email\Services\EmailSendingQuotaService;
+use Dth\Email\Services\EmailSystemHeartbeatService;
 use Dth\Email\Support\ReportChartBuilder;
 use Dth\Email\Services\EmailReportSpreadsheetService;
 use Dth\Email\Services\EmailReportPdfService;
@@ -35,6 +39,9 @@ class EmailServiceProvider extends ServiceProvider
         $this->app->singleton(CampaignAnalyticsService::class);
         $this->app->singleton(EmailAnalyticsService::class);
         $this->app->singleton(EmailDashboardFilterResolver::class);
+        $this->app->singleton(EmailInsightService::class);
+        $this->app->singleton(EmailSendingQuotaService::class);
+        $this->app->singleton(EmailSystemHeartbeatService::class);
         $this->app->singleton(ReportChartBuilder::class);
         $this->app->singleton(EmailReportDataService::class);
         $this->app->singleton(EmailReportPdfService::class);
@@ -55,11 +62,16 @@ class EmailServiceProvider extends ServiceProvider
             $this->commands([
                 ProcessScheduledCampaignsCommand::class,
                 CheckEmailAnalyticsCommand::class,
+                RecordEmailSystemHeartbeatCommand::class,
             ]);
 
             $this->app->booted(function (): void {
                 $schedule = $this->app->make(Schedule::class);
                 $schedule->command('email:campaigns:process')
+                    ->everyMinute()
+                    ->withoutOverlapping();
+
+                $schedule->command('email:health:heartbeat')
                     ->everyMinute()
                     ->withoutOverlapping();
             });

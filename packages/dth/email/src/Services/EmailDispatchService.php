@@ -17,6 +17,7 @@ class EmailDispatchService
         private readonly EmailTransport $transport,
         private readonly SuppressionService $suppressions,
         private readonly EmailEventService $events,
+        private readonly EmailSendingQuotaService $quota,
     ) {}
     
     public function send(EmailMessage $message): EmailMessage
@@ -42,10 +43,14 @@ class EmailDispatchService
             return $message->refresh();
         }
 
+        $this->quota->reserve($message, $account);
+
         $message->update(['status' => EmailMessageStatus::Sending]);
 
         try {
             $providerMessageId = $this->transport->send($message, $account);
+
+            $this->quota->consume($message);
 
             $message->update([
                 'status' => EmailMessageStatus::Sent,
@@ -61,6 +66,8 @@ class EmailDispatchService
 
             return $message->refresh();
         } catch (Throwable $e) {
+            $this->quota->release($message);
+
             $message->update([
                 'status' => EmailMessageStatus::Failed,
                 'failed_at' => now(),

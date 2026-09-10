@@ -4,9 +4,11 @@ namespace Dth\Email\Filament\Pages;
 
 use Carbon\CarbonImmutable;
 use Dth\Email\Enums\EmailCampaignStatus;
+use Dth\Email\Filament\Resources\EmailCampaignResource;
 use Dth\Email\Filament\Navigation\EmailNavigationGroup;
 use Dth\Email\Filament\Widgets\Dashboard\EmailEngagementFunnelChart;
 use Dth\Email\Filament\Widgets\Dashboard\EmailInfrastructureOverview;
+use Dth\Email\Filament\Widgets\Dashboard\EmailInsightsWidget;
 use Dth\Email\Filament\Widgets\Dashboard\EmailOverviewStats;
 use Dth\Email\Filament\Widgets\Dashboard\EmailPerformanceTrendChart;
 use Dth\Email\Filament\Widgets\Dashboard\SendingAccountPerformanceChart;
@@ -27,6 +29,11 @@ class EmailDashboard extends Dashboard
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar-square';
     protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
     protected static ?int $navigationSort = 0;
+
+    public static function canAccess(): bool
+    {
+        return EmailCampaignResource::canViewAny();
+    }
 
     public static function getNavigationLabel(): string
     {
@@ -91,6 +98,7 @@ class EmailDashboard extends Dashboard
             TopCampaignsChart::class,
             TopLinksChart::class,
             SendingAccountPerformanceChart::class,
+            EmailInsightsWidget::class,
             EmailInfrastructureOverview::class,
         ];
     }

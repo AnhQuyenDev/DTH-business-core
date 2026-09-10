@@ -41,6 +41,8 @@
         .data-table td { border-bottom: 1px solid #eef0f2; padding: 7px 6px; vertical-align: top; }
         .data-table .num { text-align: right; white-space: nowrap; }
         .url { word-break: break-all; font-size: 8.5px; }
+        .insight { border-left: 3px solid #9ca3af; padding: 7px 9px; margin: 7px 0; background: #f9fafb; }
+        .insight-title { font-weight: 700; margin-bottom: 2px; }
         .footer { position: fixed; bottom: -13px; left: 0; right: 0; color: #9ca3af; font-size: 7.5px; text-align: center; }
     </style>
 </head>
@@ -129,6 +131,21 @@
             </td>
         </tr>
     </table>
+</div>
+
+<div class="section">
+    <div class="section-title">{{ \Dth\Email\Support\UiText::get('insights.heading', 'Statistical insights') }} · {{ $insights->score }}/100</div>
+    <div class="panel">
+        <div style="font-weight:700;margin-bottom:7px;">{{ $insights->summary }}</div>
+        @forelse ($insights->items as $item)
+            <div class="insight">
+                <div class="insight-title">{{ \Dth\Email\Support\UiText::get('insights.severity.'.$item->severity, ucfirst($item->severity)) }} · {{ $item->title }}</div>
+                <div class="muted">{{ $item->body }}</div>
+            </div>
+        @empty
+            <div class="muted">{{ \Dth\Email\Support\UiText::get('insights.no_findings', 'No significant statistical finding for the available data.') }}</div>
+        @endforelse
+    </div>
 </div>
 
 <div class="section">

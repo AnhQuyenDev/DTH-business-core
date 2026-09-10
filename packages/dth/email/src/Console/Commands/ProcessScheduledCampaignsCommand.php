@@ -21,6 +21,12 @@ class ProcessScheduledCampaignsCommand extends Command
             ->orderBy('id')
             ->each(fn (EmailCampaign $campaign) => $campaigns->start($campaign));
 
+        EmailCampaign::query()
+            ->where('status', EmailCampaignStatus::Processing->value)
+            ->whereHas('recipients', fn ($query) => $query->where('status', 'pending'))
+            ->orderBy('id')
+            ->each(fn (EmailCampaign $campaign) => $campaigns->resume($campaign));
+
         return self::SUCCESS;
     }
 }

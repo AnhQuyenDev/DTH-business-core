@@ -38,6 +38,8 @@
         .data-table .num { text-align: right; white-space: nowrap; }
         .url { word-break: break-all; font-size: 8.5px; }
         .page-break { page-break-before: always; }
+        .insight { border-left: 3px solid #9ca3af; padding: 7px 9px; margin: 7px 0; background: #f9fafb; }
+        .insight-title { font-weight: 700; margin-bottom: 2px; }
         .footer { position: fixed; bottom: -13px; left: 0; right: 0; color: #9ca3af; font-size: 7.5px; text-align: center; }
     </style>
 </head>
@@ -111,12 +113,29 @@
                         <tr><td>{{ \Dth\Email\Support\UiText::get('dashboard.infrastructure.accounts', 'Sending accounts') }}</td><td class="num"><strong>{{ $health->activeSendingAccounts }}/{{ $health->sendingAccounts }}</strong></td></tr>
                         <tr><td>{{ \Dth\Email\Support\UiText::get('dashboard.infrastructure.domains', 'Verified domains') }}</td><td class="num"><strong>{{ $health->verifiedSendingDomains }}/{{ $health->sendingDomains }}</strong></td></tr>
                         <tr><td>{{ \Dth\Email\Support\UiText::get('dashboard.infrastructure.pending_jobs', 'Pending email jobs') }}</td><td class="num"><strong>{{ $health->pendingEmailJobs ?? 'N/A' }}</strong></td></tr>
+                        <tr><td>{{ \Dth\Email\Support\UiText::get('dashboard.infrastructure.scheduler', 'Scheduler') }}</td><td class="num"><strong>{{ \Dth\Email\Support\UiText::status($health->schedulerHealth) }}</strong></td></tr>
+                        <tr><td>{{ \Dth\Email\Support\UiText::get('dashboard.infrastructure.queue_worker', 'Queue worker') }}</td><td class="num"><strong>{{ \Dth\Email\Support\UiText::status($health->queueWorkerHealth) }}</strong></td></tr>
                         <tr><td>{{ \Dth\Email\Support\UiText::get('dashboard.infrastructure.failed_jobs', 'Failed jobs') }}</td><td class="num"><strong>{{ $health->failedJobs ?? 'N/A' }}</strong></td></tr>
                     </table>
                 </div>
             </td>
         </tr>
     </table>
+</div>
+
+<div class="section">
+    <div class="section-title">{{ \Dth\Email\Support\UiText::get('insights.heading', 'Statistical insights') }} · {{ $insights->score }}/100</div>
+    <div class="panel">
+        <div style="font-weight:700;margin-bottom:7px;">{{ $insights->summary }}</div>
+        @forelse ($insights->items as $item)
+            <div class="insight">
+                <div class="insight-title">{{ \Dth\Email\Support\UiText::get('insights.severity.'.$item->severity, ucfirst($item->severity)) }} · {{ $item->title }}</div>
+                <div class="muted">{{ $item->body }}</div>
+            </div>
+        @empty
+            <div class="muted">{{ \Dth\Email\Support\UiText::get('insights.no_findings', 'No significant statistical finding for the available data.') }}</div>
+        @endforelse
+    </div>
 </div>
 
 <div class="page-break"></div>

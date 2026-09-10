@@ -13,6 +13,7 @@ class EmailReportDataService
 {
     public function __construct(
         private readonly EmailAnalyticsService $analytics,
+        private readonly EmailInsightService $insights,
     ) {}
 
     /**
@@ -34,6 +35,7 @@ class EmailReportDataService
             'topLinks' => $this->analytics->topLinks($filters, 10),
             'sendingAccounts' => $this->analytics->sendingAccountPerformance($filters),
             'health' => $this->analytics->systemHealth(),
+            'insights' => $this->insights->dashboard($filters),
             'generatedAt' => CarbonImmutable::now(),
         ];
     }
@@ -64,6 +66,7 @@ class EmailReportDataService
                 unsubscribed: $metrics->unsubscribed,
             ),
             'topLinks' => $this->analytics->campaignTopLinks($campaign, 10),
+            'insights' => $this->insights->campaign($campaign),
             'generatedAt' => CarbonImmutable::now(),
         ];
     }

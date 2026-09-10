@@ -2,6 +2,8 @@
 
 namespace Dth\Email\DTO;
 
+use Carbon\CarbonImmutable;
+
 final readonly class EmailSystemHealthResult
 {
     public function __construct(
@@ -15,5 +17,7 @@ final readonly class EmailSystemHealthResult
         public ?int $failedJobs,
         public string $schedulerHealth,
         public string $queueWorkerHealth,
+        public ?CarbonImmutable $schedulerLastSeenAt = null,
+        public ?CarbonImmutable $queueWorkerLastSeenAt = null,
     ) {}
 }

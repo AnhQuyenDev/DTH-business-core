@@ -10,6 +10,8 @@ use InvalidArgumentException;
 use Illuminate\Support\HtmlString;
 class SmtpEmailTransport implements EmailTransport
 {
+    public function __construct(private readonly TrackingUrlService $tracking) {}
+
     public function send(EmailMessage $message, SendingAccount $account): ?string
     {
         if ($account->provider !== 'smtp') {
@@ -66,6 +68,13 @@ class SmtpEmailTransport implements EmailTransport
                         $mail->replyTo(
                             $message->reply_to,
                         );
+                    }
+
+                    if ($message->campaign_recipient_id !== null) {
+                        $unsubscribeUrl = $this->tracking->unsubscribeUrl($message);
+                        $headers = $mail->getSymfonyMessage()->getHeaders();
+                        $headers->addTextHeader('List-Unsubscribe', '<'.$unsubscribeUrl.'>');
+                        $headers->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
                     }
                 },
             );

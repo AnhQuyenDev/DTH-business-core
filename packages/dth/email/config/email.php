@@ -54,6 +54,15 @@ return [
         ],
     ],
 
+    'operations' => [
+        // A heartbeat older than this threshold is reported unhealthy.
+        'heartbeat_stale_seconds' => (int) env('DTH_EMAIL_HEARTBEAT_STALE_SECONDS', 180),
+
+        // A reserved quota slot is automatically released if a worker dies
+        // before the SMTP attempt finishes.
+        'quota_reservation_ttl_minutes' => (int) env('DTH_EMAIL_QUOTA_RESERVATION_TTL_MINUTES', 30),
+    ],
+
     'tracking' => [
         'enabled' => (bool) env('DTH_EMAIL_TRACKING_ENABLED', true),
 

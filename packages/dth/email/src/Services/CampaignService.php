@@ -17,6 +17,7 @@ class CampaignService
 {
     public function __construct(
         private readonly CampaignVariableValidator $variables,
+        private readonly EmailSendingQuotaService $quota,
     ) {}
 
     public function schedule(
@@ -107,36 +108,73 @@ class CampaignService
             }
         );
 
-        $chunk = (int) config(
-            'dth-email.campaign_chunk_size',
-            200,
-        );
-
-        $campaign->recipients()
-            ->where(
-                'status',
-                CampaignRecipientStatus::Pending->value
-            )
-            ->chunkById(
-                $chunk,
-                function ($recipients): void {
-                    foreach ($recipients as $recipient) {
-                        $recipient->update([
-                            'status' => CampaignRecipientStatus::Queued,
-                        ]);
-
-                        SendCampaignEmailJob::dispatch(
-                            $recipient->id
-                        )->onQueue(
-                            config('dth-email.queue', 'emails')
-                        );
-                    }
-                }
-            );
+        $this->dispatchPendingRecipients($campaign);
 
         $this->refreshCompletion($campaign);
 
         return $campaign->refresh();
+    }
+
+
+    public function resume(EmailCampaign $campaign): EmailCampaign
+    {
+        $campaign->refresh();
+
+        if ($campaign->status !== EmailCampaignStatus::Processing) {
+            return $campaign;
+        }
+
+        $this->dispatchPendingRecipients($campaign);
+        $this->refreshCompletion($campaign);
+
+        return $campaign->refresh();
+    }
+
+    private function dispatchPendingRecipients(EmailCampaign $campaign): void
+    {
+        $campaign->loadMissing('sendingAccount');
+        $account = $campaign->sendingAccount;
+
+        if (! $account) {
+            return;
+        }
+
+        $capacity = $this->quota->remainingCapacity($account);
+        $chunk = max(1, (int) config('dth-email.campaign_chunk_size', 200));
+
+        if ($capacity === 0) {
+            return;
+        }
+
+        $dispatchRecipient = function ($recipient): void {
+            $recipient->update([
+                'status' => CampaignRecipientStatus::Queued,
+                'failed_at' => null,
+                'failure_reason' => null,
+            ]);
+
+            SendCampaignEmailJob::dispatch($recipient->id)
+                ->onQueue(config('dth-email.queue', 'emails'));
+        };
+
+        if ($capacity === null) {
+            $campaign->recipients()
+                ->where('status', CampaignRecipientStatus::Pending->value)
+                ->chunkById($chunk, function ($recipients) use ($dispatchRecipient): void {
+                    foreach ($recipients as $recipient) {
+                        $dispatchRecipient($recipient);
+                    }
+                });
+
+            return;
+        }
+
+        $campaign->recipients()
+            ->where('status', CampaignRecipientStatus::Pending->value)
+            ->orderBy('id')
+            ->limit($capacity)
+            ->get()
+            ->each($dispatchRecipient);
     }
 
     public function fail(

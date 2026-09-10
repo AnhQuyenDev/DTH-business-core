@@ -7,6 +7,7 @@ Route::prefix('email')->name('dth.email.')->group(function (): void {
     Route::get('/open/{token}.gif', [EmailTrackingController::class, 'open'])->name('open');
     Route::get('/click/{token}', [EmailTrackingController::class, 'click'])->name('click');
     Route::get('/unsubscribe/{token}', [EmailTrackingController::class, 'unsubscribe'])->name('unsubscribe');
+    Route::post('/unsubscribe/{token}', [EmailTrackingController::class, 'unsubscribeOneClick'])->name('unsubscribe.one-click');
 });
 
 Route::middleware(['web'])

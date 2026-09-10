@@ -5,6 +5,7 @@ namespace Dth\Email\Jobs;
 use Dth\Email\Enums\CampaignRecipientStatus;
 use Dth\Email\Enums\EmailEventType;
 use Dth\Email\Enums\EmailMessageStatus;
+use Dth\Email\Exceptions\EmailQuotaExceededException;
 use Dth\Email\Models\CampaignRecipient;
 use Dth\Email\Models\EmailMessage;
 use Dth\Email\Services\CampaignService;
@@ -183,6 +184,15 @@ class SendCampaignEmailJob implements ShouldQueue
                 'failure_reason' => $message->failure_reason,
                 'failed_at' => $message->failed_at,
             ]);
+        } catch (EmailQuotaExceededException $e) {
+            $recipient->update([
+                'status' => CampaignRecipientStatus::Pending,
+                'failure_reason' => null,
+                'failed_at' => null,
+            ]);
+
+            $campaigns->refreshCompletion($campaign);
+            return;
         } catch (Throwable $e) {
             $recipient->update([
                 'failure_reason' => mb_substr(

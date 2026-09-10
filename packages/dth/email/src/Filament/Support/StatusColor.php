@@ -14,9 +14,11 @@ final class StatusColor
             'draft', 'cancelled', 'manual', 'unsubscribe', 'unsubscribed', 'released', 'disabled' => 'gray',
             'scheduled', 'queued' => 'info',
             'processing', 'sending', 'suppressed', 'pending' => 'warning',
-            'completed', 'sent', 'delivered', 'clicked', 'active', 'success', 'subscribed', 'verified' => 'success',
-            'failed', 'bounced', 'complained', 'complaint', 'bounce', 'inactive', 'error' => 'danger',
+            'completed', 'sent', 'delivered', 'clicked', 'active', 'success', 'subscribed', 'verified', 'healthy', 'positive' => 'success',
+            'failed', 'bounced', 'complained', 'complaint', 'bounce', 'inactive', 'error', 'critical', 'unhealthy' => 'danger',
             'opened' => 'primary',
+            'warning' => 'warning',
+            'neutral', 'unknown', 'not_required' => 'gray',
             default => 'gray',
         };
     }

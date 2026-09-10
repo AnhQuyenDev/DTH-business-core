@@ -61,11 +61,20 @@ class EmailTrackingController
         );
     }
 
-    public function unsubscribe(
+    public function unsubscribeOneClick(
         Request $request,
         string $token,
         EmailEventService $events,
     ): Response {
+        $isOneClick = (string) $request->input('List-Unsubscribe') === 'One-Click';
+        $isHumanConfirmation = (string) $request->input('confirm') === '1';
+
+        if (! $isOneClick && ! $isHumanConfirmation) {
+            return response('Invalid unsubscribe request.', 422, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+            ]);
+        }
+
         $message = EmailMessage::query()
             ->with('campaignRecipient')
             ->where('unsubscribe_token', $token)
@@ -77,13 +86,29 @@ class EmailTrackingController
             userAgent: $request->userAgent(),
         );
 
-        return response(
-            'You have been unsubscribed.',
-            200,
-            [
-                'Content-Type' =>
-                    'text/plain; charset=UTF-8',
-            ],
-        );
+        if ($isOneClick) {
+            return response('', 200, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+            ]);
+        }
+
+        return response()->view('dth-email::unsubscribe-success', [
+            'email' => $message->recipient_email,
+        ]);
     }
+
+    public function unsubscribe(
+        Request $request,
+        string $token,
+    ): Response {
+        $message = EmailMessage::query()
+            ->where('unsubscribe_token', $token)
+            ->firstOrFail();
+
+        return response()->view('dth-email::unsubscribe-confirm', [
+            'email' => $message->recipient_email,
+            'postUrl' => route('dth.email.unsubscribe.one-click', ['token' => $token]),
+        ]);
+    }
+
 }

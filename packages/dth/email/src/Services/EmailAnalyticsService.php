@@ -35,6 +35,7 @@ class EmailAnalyticsService
     public function __construct(
         private readonly TransportCapabilityService $capabilities,
         private readonly CampaignAnalyticsService $campaignAnalytics,
+        private readonly EmailSystemHeartbeatService $heartbeats,
     ) {}
 
     public function overview(EmailAnalyticsFilters $filters): EmailAnalyticsOverview
@@ -482,6 +483,10 @@ class EmailAnalyticsService
                     ? (int) DB::table('failed_jobs')->where('queue', $queue)->count()
                     : null;
 
+                $staleSeconds = max(60, (int) config('dth-email.operations.heartbeat_stale_seconds', 180));
+                $schedulerLastSeen = $this->heartbeats->lastSeen(EmailSystemHeartbeatService::SCHEDULER);
+                $workerLastSeen = $this->heartbeats->lastSeen(EmailSystemHeartbeatService::QUEUE_WORKER);
+
                 return new EmailSystemHealthResult(
                     sendingAccounts: (int) DB::table('email_sending_accounts')->whereNull('deleted_at')->count(),
                     activeSendingAccounts: (int) DB::table('email_sending_accounts')->whereNull('deleted_at')->where('status', SendingAccountStatus::Active->value)->count(),
@@ -491,8 +496,12 @@ class EmailAnalyticsService
                     failedSendingDomains: (int) DB::table('email_sending_domains')->whereNull('deleted_at')->where('status', SendingDomainStatus::Failed->value)->count(),
                     pendingEmailJobs: $pendingEmailJobs,
                     failedJobs: $failedJobs,
-                    schedulerHealth: 'unknown',
-                    queueWorkerHealth: $queueConnection === 'sync' ? 'not_required' : 'unknown',
+                    schedulerHealth: $this->heartbeats->health(EmailSystemHeartbeatService::SCHEDULER, $staleSeconds),
+                    queueWorkerHealth: $queueConnection === 'sync'
+                        ? 'not_required'
+                        : $this->heartbeats->health(EmailSystemHeartbeatService::QUEUE_WORKER, $staleSeconds),
+                    schedulerLastSeenAt: $schedulerLastSeen,
+                    queueWorkerLastSeenAt: $workerLastSeen,
                 );
             },
             ttlSeconds: min((int) config('dth-email.analytics.cache_ttl_seconds', 120), 30),
