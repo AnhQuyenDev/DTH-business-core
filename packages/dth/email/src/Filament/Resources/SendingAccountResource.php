@@ -25,7 +25,7 @@ class SendingAccountResource extends Resource
     protected static ?string $model = SendingAccount::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-paper-airplane';
     protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
-    protected static ?int $navigationSort = 20;
+    protected static ?int $navigationSort = 60;
 
     public static function getNavigationLabel(): string
     {

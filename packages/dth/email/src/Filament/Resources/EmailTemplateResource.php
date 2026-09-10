@@ -33,7 +33,7 @@ class EmailTemplateResource extends Resource
     protected static ?string $model = EmailTemplate::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
     protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
-    protected static ?int $navigationSort = 40;
+    protected static ?int $navigationSort = 20;
 
     public static function getNavigationLabel(): string
     {

@@ -25,7 +25,7 @@ class EmailDeliveryLogResource extends Resource
     protected static ?string $model = EmailMessage::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-inbox-stack';
     protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
-    protected static ?int $navigationSort = 60;
+    protected static ?int $navigationSort = 40;
     protected static ?string $recordTitleAttribute = 'subject';
 
     public static function getNavigationLabel(): string

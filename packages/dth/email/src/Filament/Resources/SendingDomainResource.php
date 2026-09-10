@@ -23,7 +23,7 @@ class SendingDomainResource extends Resource
     protected static ?string $model = SendingDomain::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-globe-alt';
     protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 70;
 
     public static function getNavigationLabel(): string
     {

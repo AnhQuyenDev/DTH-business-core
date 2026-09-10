@@ -2,6 +2,7 @@
 
 namespace Dth\Email\Filament\Pages;
 
+use Carbon\CarbonImmutable;
 use Dth\Email\Enums\EmailCampaignStatus;
 use Dth\Email\Filament\Navigation\EmailNavigationGroup;
 use Dth\Email\Filament\Widgets\Dashboard\EmailEngagementFunnelChart;
@@ -42,7 +43,7 @@ class EmailDashboard extends Dashboard
 
         return UiText::get(
             'dashboard.subheading',
-            'Performance from :start to :end. Use the filters below to refine the report.',
+            'Performance from :start to :end.',
             [
                 'start' => $filters->range->start->format('d/m/Y'),
                 'end' => $filters->range->end->format('d/m/Y'),
@@ -91,11 +92,6 @@ class EmailDashboard extends Dashboard
     }
 
     /**
-     * Dashboard filters deliberately use a normal GET request instead of a
-     * Livewire action. The dashboard is a read-only reporting surface, so a
-     * URL-based filter state is simpler, shareable/bookmarkable, and avoids
-     * creating an unnecessary /livewire/update dependency for filtering.
-     *
      * @return array<string, mixed>
      */
     private function filterViewData(): array
@@ -104,6 +100,8 @@ class EmailDashboard extends Dashboard
             'actionUrl' => static::getUrl(),
             'resetUrl' => static::getUrl(),
             'state' => $this->normalizedFilterState(),
+            'activePreset' => $this->resolveActivePreset(),
+            'presets' => $this->presetLinks(),
             'sendingAccounts' => SendingAccount::query()
                 ->orderBy('name')
                 ->pluck('name', 'id')
@@ -115,6 +113,7 @@ class EmailDashboard extends Dashboard
                 ->all(),
         ];
     }
+
     /** @return array<string, mixed> */
     private function normalizedFilterState(): array
     {
@@ -129,4 +128,78 @@ class EmailDashboard extends Dashboard
         ];
     }
 
+    /**
+     * @return array<string, array{label: string, url: string}>
+     */
+    private function presetLinks(): array
+    {
+        $today = CarbonImmutable::today();
+
+        return [
+            '7d' => [
+                'label' => UiText::get('dashboard.filters.presets.7d', '7 days'),
+                'url' => $this->buildFilterUrl([
+                    'start_date' => $today->subDays(6)->format('Y-m-d'),
+                    'end_date' => $today->format('Y-m-d'),
+                ]),
+            ],
+            '30d' => [
+                'label' => UiText::get('dashboard.filters.presets.30d', '30 days'),
+                'url' => $this->buildFilterUrl([
+                    'start_date' => $today->subDays(29)->format('Y-m-d'),
+                    'end_date' => $today->format('Y-m-d'),
+                ]),
+            ],
+            '90d' => [
+                'label' => UiText::get('dashboard.filters.presets.90d', '90 days'),
+                'url' => $this->buildFilterUrl([
+                    'start_date' => $today->subDays(89)->format('Y-m-d'),
+                    'end_date' => $today->format('Y-m-d'),
+                ]),
+            ],
+            'month' => [
+                'label' => UiText::get('dashboard.filters.presets.month', 'This month'),
+                'url' => $this->buildFilterUrl([
+                    'start_date' => $today->startOfMonth()->format('Y-m-d'),
+                    'end_date' => $today->format('Y-m-d'),
+                ]),
+            ],
+        ];
+    }
+
+    private function resolveActivePreset(): ?string
+    {
+        $state = $this->normalizedFilterState();
+        $today = CarbonImmutable::today();
+        $start = $state['start_date'] ?? null;
+        $end = $state['end_date'] ?? null;
+
+        $presets = [
+            '7d' => [$today->subDays(6)->format('Y-m-d'), $today->format('Y-m-d')],
+            '30d' => [$today->subDays(29)->format('Y-m-d'), $today->format('Y-m-d')],
+            '90d' => [$today->subDays(89)->format('Y-m-d'), $today->format('Y-m-d')],
+            'month' => [$today->startOfMonth()->format('Y-m-d'), $today->format('Y-m-d')],
+        ];
+
+        foreach ($presets as $key => [$presetStart, $presetEnd]) {
+            if ($start === $presetStart && $end === $presetEnd) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     */
+    private function buildFilterUrl(array $overrides = []): string
+    {
+        $state = array_merge($this->normalizedFilterState(), $overrides);
+
+        $query = array_filter($state, static fn (mixed $value): bool => ! ($value === null || $value === ''));
+        $query['compare_previous'] = ($state['compare_previous'] ?? true) ? '1' : '0';
+
+        return static::getUrl($query);
+    }
 }

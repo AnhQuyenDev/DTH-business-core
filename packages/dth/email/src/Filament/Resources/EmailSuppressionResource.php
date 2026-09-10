@@ -26,7 +26,7 @@ class EmailSuppressionResource extends Resource
     protected static ?string $model = EmailSuppression::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-no-symbol';
     protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
-    protected static ?int $navigationSort = 70;
+    protected static ?int $navigationSort = 50;
 
     public static function getNavigationLabel(): string
     {
