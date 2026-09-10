@@ -31,5 +31,15 @@ class SchemaTest extends TestCase
 
         $this->assertFalse(Schema::hasColumn('email_templates', 'sample_variables'));
         $this->assertFalse(Schema::hasColumn('email_template_categories', 'sort_order'));
+
+        $campaignIndexes = collect(Schema::getIndexes('email_campaigns'))->pluck('name')->all();
+        $recipientIndexes = collect(Schema::getIndexes('email_campaign_recipients'))->pluck('name')->all();
+        $messageIndexes = collect(Schema::getIndexes('email_messages'))->pluck('name')->all();
+        $eventIndexes = collect(Schema::getIndexes('email_events'))->pluck('name')->all();
+
+        $this->assertContains('email_campaigns_started_status_idx', $campaignIndexes);
+        $this->assertContains('email_recipients_campaign_status_idx', $recipientIndexes);
+        $this->assertContains('email_messages_account_sent_idx', $messageIndexes);
+        $this->assertContains('email_events_type_occurred_idx', $eventIndexes);
     }
 }

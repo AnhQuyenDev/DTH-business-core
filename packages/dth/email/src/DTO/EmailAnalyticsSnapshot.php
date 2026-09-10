@@ -2,17 +2,17 @@
 
 namespace Dth\Email\DTO;
 
-final readonly class CampaignAnalyticsResult
+final readonly class EmailAnalyticsSnapshot
 {
     public function __construct(
-        public int $total,
-        public int $pending,
-        public int $queued,
+        public int $campaigns,
+        public int $recipients,
+        public int $messages,
         public int $sent,
         public int $delivered,
-        public int $opened,
+        public int $uniqueOpened,
         public int $totalOpens,
-        public int $clicked,
+        public int $uniqueClicked,
         public int $totalClicks,
         public int $failed,
         public int $bounced,
@@ -27,6 +27,5 @@ final readonly class CampaignAnalyticsResult
         public ?float $bounceRate,
         public ?float $complaintRate,
         public float $unsubscribeRate,
-        public TransportCapabilities $capabilities,
     ) {}
 }

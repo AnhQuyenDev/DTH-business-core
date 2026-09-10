@@ -2,11 +2,15 @@
 
 namespace Dth\Email;
 
+use Dth\Email\Console\Commands\CheckEmailAnalyticsCommand;
 use Dth\Email\Console\Commands\ProcessScheduledCampaignsCommand;
 use Dth\Email\Contracts\DnsResolver;
 use Dth\Email\Contracts\EmailTransport;
+use Dth\Email\Services\CampaignAnalyticsService;
+use Dth\Email\Services\EmailAnalyticsService;
 use Dth\Email\Services\NativeDnsResolver;
 use Dth\Email\Services\SmtpEmailTransport;
+use Dth\Email\Services\TransportCapabilityService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,6 +22,13 @@ class EmailServiceProvider extends ServiceProvider
 
         $this->app->bind(EmailTransport::class, SmtpEmailTransport::class);
         $this->app->singleton(DnsResolver::class, NativeDnsResolver::class);
+
+        // Shared reporting services. Keeping the data layer centralized ensures
+        // Dashboard, Campaign Report, Export and Insight phases all consume the
+        // same metric definitions instead of re-implementing SQL per widget.
+        $this->app->singleton(TransportCapabilityService::class);
+        $this->app->singleton(CampaignAnalyticsService::class);
+        $this->app->singleton(EmailAnalyticsService::class);
     }
 
     public function boot(): void
@@ -33,6 +44,7 @@ class EmailServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ProcessScheduledCampaignsCommand::class,
+                CheckEmailAnalyticsCommand::class,
             ]);
 
             $this->app->booted(function (): void {

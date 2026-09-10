@@ -265,6 +265,8 @@ return [
                     'sent_description' => 'Thất bại :failed · Bị chặn :suppressed',
                     'delivered' => 'Đã chuyển phát',
                     'delivery_rate' => ':rate% trên số đã gửi',
+                    'not_available' => 'Không khả dụng',
+                    'delivery_unavailable' => 'Transport hiện tại không cung cấp xác nhận chuyển phát.',
                     'opened' => 'Đã mở',
                     'open_rate' => 'Tỷ lệ mở :rate%',
                     'clicked' => 'Đã nhấp',

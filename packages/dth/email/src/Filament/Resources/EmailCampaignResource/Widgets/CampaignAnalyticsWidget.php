@@ -43,13 +43,22 @@ class CampaignAnalyticsWidget extends StatsOverviewWidget
 
             Stat::make(
                 UiText::get('analytics.delivered', 'Delivered'),
-                number_format($stats->delivered)
+                $stats->capabilities->delivery
+                    ? number_format($stats->delivered)
+                    : UiText::get('analytics.not_available', 'N/A')
             )
-                ->description(UiText::get(
-                    'analytics.delivery_rate',
-                    ':rate% of sent',
-                    ['rate' => $stats->deliveryRate]
-                ))
+                ->description(
+                    $stats->capabilities->delivery
+                        ? UiText::get(
+                            'analytics.delivery_rate',
+                            ':rate% of sent',
+                            ['rate' => $stats->deliveryRate]
+                        )
+                        : UiText::get(
+                            'analytics.delivery_unavailable',
+                            'Delivery confirmation is unavailable for this transport.'
+                        )
+                )
                 ->descriptionIcon('heroicon-o-check-circle'),
 
             Stat::make(
