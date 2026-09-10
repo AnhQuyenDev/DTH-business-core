@@ -8,6 +8,7 @@ use Dth\Email\Filament\Resources\EmailSuppressionResource\Pages;
 use Dth\Email\Filament\Support\StatusColor;
 use Dth\Email\Models\EmailSuppression;
 use Dth\Email\Services\SuppressionService;
+use Dth\Email\Support\UiText;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -23,27 +24,38 @@ use Filament\Tables\Table;
 class EmailSuppressionResource extends Resource
 {
     protected static ?string $model = EmailSuppression::class;
-
-    protected static string|\BackedEnum|null $navigationIcon =
-        'heroicon-o-no-symbol';
-
-    protected static string|\UnitEnum|null $navigationGroup =
-        EmailNavigationGroup::Email;
-
-    protected static ?string $navigationLabel = 'Suppressions';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-no-symbol';
+    protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
     protected static ?int $navigationSort = 70;
+
+    public static function getNavigationLabel(): string
+    {
+        return UiText::get('navigation.suppressions', 'Suppressions', context: 'navigation');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return UiText::get('models.suppression', 'Suppression', context: 'model');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return UiText::get('models.suppressions', 'Suppressions', context: 'model');
+    }
 
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Suppression')
+            Section::make(UiText::get('suppression.section', 'Suppression'))
                 ->schema([
                     TextInput::make('email')
+                        ->label(UiText::get('common.fields.email', 'Email'))
                         ->email()
                         ->required()
                         ->maxLength(255),
 
                     Textarea::make('note')
+                        ->label(UiText::get('common.fields.notes', 'Note'))
                         ->rows(4)
                         ->columnSpanFull(),
                 ])
@@ -56,69 +68,70 @@ class EmailSuppressionResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('email')
+                    ->label(UiText::get('common.fields.email', 'Email'))
                     ->searchable()
                     ->copyable(),
 
                 TextColumn::make('suppression_status')
-                    ->label('Status')
+                    ->label(UiText::get('suppression.status', 'Status'))
                     ->badge()
-                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->formatStateUsing(fn ($state): string => UiText::status($state))
                     ->color(fn ($state): string => StatusColor::for($state)),
 
                 TextColumn::make('reason')
+                    ->label(UiText::get('common.fields.reason', 'Reason'))
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => ucfirst(
-                        $state instanceof SuppressionReason
-                            ? $state->value
-                            : (string) $state
-                    ))
+                    ->formatStateUsing(fn ($state): string => UiText::status($state))
                     ->color(fn ($state): string => StatusColor::for($state)),
 
                 TextColumn::make('source')
+                    ->label(UiText::get('common.fields.source', 'Source'))
                     ->placeholder('—')
                     ->toggleable(),
 
                 TextColumn::make('note')
+                    ->label(UiText::get('common.fields.notes', 'Note'))
                     ->limit(50)
                     ->placeholder('—'),
 
                 TextColumn::make('created_at')
-                    ->label('Added')
+                    ->label(UiText::get('suppression.added', 'Added'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
                 TextColumn::make('released_at')
-                    ->label('Released')
+                    ->label(UiText::get('suppression.released', 'Released'))
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->toggleable(),
 
                 TextColumn::make('release_source')
-                    ->label('Release source')
+                    ->label(UiText::get('suppression.release_source', 'Release source'))
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('release_note')
-                    ->label('Release note')
+                    ->label(UiText::get('suppression.release_note', 'Release note'))
                     ->limit(50)
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('reason')
+                    ->label(UiText::get('common.fields.reason', 'Reason'))
                     ->options([
-                        'manual' => 'Manual',
-                        'unsubscribe' => 'Unsubscribe',
-                        'bounce' => 'Bounce',
-                        'complaint' => 'Complaint',
+                        'manual' => UiText::get('suppression.manual', 'Manual'),
+                        'unsubscribe' => UiText::get('suppression.unsubscribe', 'Unsubscribe'),
+                        'bounce' => UiText::get('suppression.bounce', 'Bounce'),
+                        'complaint' => UiText::get('suppression.complaint', 'Complaint'),
                     ]),
             ])
             ->recordActions([
                 Action::make('release')
                     ->label(fn (EmailSuppression $record): string =>
                         $record->reason === SuppressionReason::Unsubscribe
-                            ? 'Resubscribe'
-                            : 'Release'
+                            ? UiText::get('suppression.resubscribe', 'Resubscribe')
+                            : UiText::get('suppression.release', 'Release')
                     )
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('warning')
@@ -128,22 +141,28 @@ class EmailSuppressionResource extends Resource
                     )
                     ->modalDescription(fn (EmailSuppression $record): string =>
                         $record->reason === SuppressionReason::Unsubscribe
-                            ? 'This only changes the current subscription state. The original campaign will still keep its historical Unsubscribed metric.'
-                            : 'Release this manual suppression while keeping its audit history?'
+                            ? UiText::get(
+                                'suppression.resubscribe_description',
+                                'This only changes the current subscription state. The original campaign will still keep its historical Unsubscribed metric.'
+                            )
+                            : UiText::get(
+                                'suppression.release_description',
+                                'Release this manual suppression while keeping its audit history?'
+                            )
                     )
                     ->schema([
                         Select::make('release_source')
-                            ->label('Reason / source')
+                            ->label(UiText::get('suppression.reason_source', 'Reason / source'))
                             ->options([
-                                'customer_opt_in' => 'Customer opted in again',
-                                'customer_request' => 'Customer requested resubscription',
-                                'admin_correction' => 'Administrative correction',
-                                'other' => 'Other',
+                                'customer_opt_in' => UiText::get('suppression.customer_opt_in', 'Customer opted in again'),
+                                'customer_request' => UiText::get('suppression.customer_request', 'Customer requested resubscription'),
+                                'admin_correction' => UiText::get('suppression.admin_correction', 'Administrative correction'),
+                                'other' => UiText::get('suppression.other', 'Other'),
                             ])
                             ->native(false)
                             ->required(),
                         Textarea::make('release_note')
-                            ->label('Note / evidence')
+                            ->label(UiText::get('suppression.note_evidence', 'Note / evidence'))
                             ->rows(3)
                             ->required(),
                     ])
@@ -158,10 +177,16 @@ class EmailSuppressionResource extends Resource
                         Notification::make()
                             ->title(
                                 $record->reason === SuppressionReason::Unsubscribe
-                                    ? 'Address resubscribed for future campaigns'
-                                    : 'Suppression released'
+                                    ? UiText::get(
+                                        'suppression.resubscribed_title',
+                                        'Address resubscribed for future campaigns'
+                                    )
+                                    : UiText::get('suppression.released_title', 'Suppression released')
                             )
-                            ->body('Historical campaign metrics were not changed.')
+                            ->body(UiText::get(
+                                'suppression.history_unchanged',
+                                'Historical campaign metrics were not changed.'
+                            ))
                             ->success()
                             ->send();
                     }),

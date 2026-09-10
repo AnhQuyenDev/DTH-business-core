@@ -3,6 +3,7 @@
 namespace Dth\Email\Services;
 
 use Dth\Email\Models\EmailCampaign;
+use Dth\Email\Support\UiText;
 use Illuminate\Support\Str;
 
 class TemplateVariableRegistry
@@ -16,48 +17,47 @@ class TemplateVariableRegistry
     {
         return [
             'name' => [
-                'label' => 'Recipient name',
-                'description' => 'Name stored on the campaign recipient.',
+                'label' => UiText::get('variables.recipient_name', 'Recipient name'),
+                'description' => UiText::get('variables.recipient_name_description', 'Name stored on the campaign recipient.'),
                 'kind' => 'recipient',
             ],
             'email' => [
-                'label' => 'Recipient email',
-                'description' => 'Email address of the campaign recipient.',
+                'label' => UiText::get('variables.recipient_email', 'Recipient email'),
+                'description' => UiText::get('variables.recipient_email_description', 'Email address of the campaign recipient.'),
                 'kind' => 'recipient',
             ],
             'recipient.name' => [
-                'label' => 'Recipient name (nested)',
-                'description' => 'Alias of the recipient name.',
+                'label' => UiText::get('variables.recipient_name_nested', 'Recipient name (nested)'),
+                'description' => UiText::get('variables.recipient_name_nested_description', 'Alias of the recipient name.'),
                 'kind' => 'recipient',
             ],
             'recipient.email' => [
-                'label' => 'Recipient email (nested)',
-                'description' => 'Alias of the recipient email address.',
+                'label' => UiText::get('variables.recipient_email_nested', 'Recipient email (nested)'),
+                'description' => UiText::get('variables.recipient_email_nested_description', 'Alias of the recipient email address.'),
                 'kind' => 'recipient',
             ],
             'customer.name' => [
-                'label' => 'Customer name',
-                'description' => 'Customer/recipient display name.',
+                'label' => UiText::get('variables.customer_name', 'Customer name'),
+                'description' => UiText::get('variables.customer_name_description', 'Customer/recipient display name.'),
                 'kind' => 'recipient',
             ],
             'customer.email' => [
-                'label' => 'Customer email',
-                'description' => 'Customer/recipient email address.',
+                'label' => UiText::get('variables.customer_email', 'Customer email'),
+                'description' => UiText::get('variables.customer_email_description', 'Customer/recipient email address.'),
                 'kind' => 'recipient',
             ],
             'unsubscribe_url' => [
-                'label' => 'Unsubscribe link',
-                'description' => 'Unique unsubscribe URL generated for each recipient. A compliance footer is added automatically when this variable is omitted.',
+                'label' => UiText::get('variables.unsubscribe_link', 'Unsubscribe link'),
+                'description' => UiText::get(
+                    'variables.unsubscribe_link_description',
+                    'Unique unsubscribe URL generated for each recipient. A compliance footer is added automatically when this variable is omitted.'
+                ),
                 'kind' => 'system',
             ],
         ];
     }
 
-    /**
-     * A concise set for Filament RichEditor merge tags.
-     *
-     * @return array<string, string>
-     */
+    /** @return array<string, string> */
     public function mergeTagLabels(): array
     {
         $definitions = $this->definitions();
@@ -71,9 +71,7 @@ class TemplateVariableRegistry
         ];
     }
 
-    /**
-     * @return list<string>
-     */
+    /** @return list<string> */
     public function extract(?string ...$contents): array
     {
         $variables = [];
@@ -96,9 +94,7 @@ class TemplateVariableRegistry
         return array_values($keys);
     }
 
-    /**
-     * @return list<string>
-     */
+    /** @return list<string> */
     public function campaignVariables(EmailCampaign $campaign): array
     {
         return $this->extract(
@@ -109,11 +105,7 @@ class TemplateVariableRegistry
         );
     }
 
-    /**
-     * Fields that must be supplied by recipient data. Keys are form/CSV paths.
-     *
-     * @return array<string, string>
-     */
+    /** @return array<string, string> */
     public function recipientRequirements(EmailCampaign $campaign): array
     {
         $requirements = [];
@@ -124,7 +116,7 @@ class TemplateVariableRegistry
             }
 
             if ($this->isNameAlias($variable)) {
-                $requirements['name'] = 'Recipient name';
+                $requirements['name'] = UiText::get('variables.recipient_name', 'Recipient name');
                 continue;
             }
 
@@ -134,9 +126,7 @@ class TemplateVariableRegistry
         return $requirements;
     }
 
-    /**
-     * @return list<string>
-     */
+    /** @return list<string> */
     public function expectedCsvColumns(EmailCampaign $campaign): array
     {
         return [
@@ -164,7 +154,10 @@ class TemplateVariableRegistry
         $definitions = $this->definitions();
 
         return $definitions[$variable]['description']
-            ?? 'Custom personalization value. Supply this value for each recipient manually or through a CSV column with the same name.';
+            ?? UiText::get(
+                'variables.custom_description',
+                'Custom personalization value. Supply this value for each recipient manually or through a CSV column with the same name.'
+            );
     }
 
     public function kind(string $variable): string

@@ -4,6 +4,7 @@ namespace Dth\Email\Filament\Resources\SendingAccountResource\Pages;
 
 use Dth\Email\DTO\SmtpAccountData;
 use Dth\Email\Filament\Resources\SendingAccountResource;
+use Dth\Email\Support\UiText;
 use Dth\Email\Services\SendingAccountService;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -31,10 +32,10 @@ class CreateSendingAccount extends CreateRecord
     {
         return [
             $this->getCreateFormAction()
-                ->label('Save')
+                ->label(UiText::get('common.actions.save', 'Save'))
                 ->icon('heroicon-o-check'),
             $this->getCancelFormAction()
-                ->label('Cancel')
+                ->label(UiText::get('common.actions.cancel', 'Cancel'))
                 ->icon('heroicon-o-x-mark')
                 ->color('gray'),
         ];

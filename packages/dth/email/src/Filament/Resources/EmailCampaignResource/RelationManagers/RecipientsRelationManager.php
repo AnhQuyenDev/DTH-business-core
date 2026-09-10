@@ -2,7 +2,6 @@
 
 namespace Dth\Email\Filament\Resources\EmailCampaignResource\RelationManagers;
 
-use Dth\Email\Enums\CampaignRecipientStatus;
 use Dth\Email\Enums\EmailCampaignStatus;
 use Dth\Email\Filament\Support\FormHelp;
 use Dth\Email\Filament\Support\StatusColor;
@@ -10,6 +9,7 @@ use Dth\Email\Models\CampaignRecipient;
 use Dth\Email\Services\CampaignRecipientImportService;
 use Dth\Email\Services\CampaignRecipientService;
 use Dth\Email\Services\TemplateVariableRegistry;
+use Dth\Email\Support\UiText;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -21,14 +21,19 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
 
 class RecipientsRelationManager extends RelationManager
 {
     protected static string $relationship = 'recipients';
-    protected static ?string $title = 'Recipients';
     protected static bool $isLazy = false;
+
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
+    {
+        return UiText::get('recipient.title', 'Recipients');
+    }
 
     public function form(Schema $schema): Schema
     {
@@ -37,13 +42,13 @@ class RecipientsRelationManager extends RelationManager
 
         $fields = [
             TextInput::make('email')
-                ->label('Email')
+                ->label(UiText::get('recipient.email', 'Email'))
                 ->email()
                 ->required()
                 ->maxLength(255),
 
             TextInput::make('name')
-                ->label('Name')
+                ->label(UiText::get('recipient.name', 'Name'))
                 ->required(array_key_exists('name', $requirements))
                 ->maxLength(255),
         ];
@@ -58,7 +63,11 @@ class RecipientsRelationManager extends RelationManager
                 ->required()
                 ->maxLength(1000)
                 ->afterLabel([
-                    FormHelp::icon('Required by {{ '.$key.' }} in the campaign content.'),
+                    FormHelp::icon(UiText::get(
+                        'recipient.required_variable',
+                        'Required by {{ :variable }} in the campaign content.',
+                        ['variable' => $key]
+                    )),
                 ]);
         }
 
@@ -73,23 +82,36 @@ class RecipientsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('email')
             ->columns([
-                TextColumn::make('email')->searchable(),
-                TextColumn::make('name')->searchable()->placeholder('—'),
+                TextColumn::make('email')
+                    ->label(UiText::get('recipient.email', 'Email'))
+                    ->searchable(),
+                TextColumn::make('name')
+                    ->label(UiText::get('recipient.name', 'Name'))
+                    ->searchable()
+                    ->placeholder('—'),
                 TextColumn::make('status')
+                    ->label(UiText::get('common.fields.status', 'Status'))
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => ucfirst(
-                        $state instanceof CampaignRecipientStatus
-                            ? $state->value
-                            : (string) $state
-                    ))
+                    ->formatStateUsing(fn ($state): string => UiText::status($state))
                     ->color(fn ($state): string => StatusColor::for($state)),
-                TextColumn::make('sent_at')->label('Sent')->dateTime('d/m/Y H:i')->placeholder('—'),
-                TextColumn::make('opened_at')->label('Opened')->dateTime('d/m/Y H:i')->placeholder('—')->toggleable(),
-                TextColumn::make('clicked_at')->label('Clicked')->dateTime('d/m/Y H:i')->placeholder('—')->toggleable(),
+                TextColumn::make('sent_at')
+                    ->label(UiText::get('recipient.sent', 'Sent'))
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—'),
+                TextColumn::make('opened_at')
+                    ->label(UiText::get('recipient.opened', 'Opened'))
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('clicked_at')
+                    ->label(UiText::get('recipient.clicked', 'Clicked'))
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->toggleable(),
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->label('Add')
+                    ->label(UiText::get('recipient.add', 'Add'))
                     ->icon('heroicon-o-plus')
                     ->createAnother(false)
                     ->visible(fn (): bool => $this->getOwnerRecord()->status === EmailCampaignStatus::Draft)
@@ -97,12 +119,12 @@ class RecipientsRelationManager extends RelationManager
                         ->add($this->getOwnerRecord(), $data)),
 
                 Action::make('import')
-                    ->label('Import')
+                    ->label(UiText::get('recipient.import', 'Import'))
                     ->icon('heroicon-o-arrow-up-tray')
                     ->visible(fn (): bool => $this->getOwnerRecord()->status === EmailCampaignStatus::Draft)
                     ->schema([
                         FileUpload::make('file')
-                            ->label('CSV file')
+                            ->label(UiText::get('recipient.csv_file', 'CSV file'))
                             ->required()
                             ->storeFiles(false)
                             ->acceptedFileTypes([
@@ -114,7 +136,11 @@ class RecipientsRelationManager extends RelationManager
                             ->maxSize(5120)
                             ->hintIcon(
                                 'heroicon-o-question-mark-circle',
-                                tooltip: 'Expected columns: '.implode(', ', $expectedColumns).'. Rows missing required personalization values are skipped.'
+                                tooltip: UiText::get(
+                                    'recipient.expected_columns',
+                                    'Expected columns: :columns. Rows missing required personalization values are skipped.',
+                                    ['columns' => implode(', ', $expectedColumns)]
+                                )
                             ),
                     ])
                     ->action(function (array $data): void {
@@ -122,7 +148,7 @@ class RecipientsRelationManager extends RelationManager
                             $file = $data['file'];
 
                             if (! $file instanceof TemporaryUploadedFile) {
-                                throw new \RuntimeException('Invalid CSV upload.');
+                                throw new \RuntimeException(UiText::get('recipient.invalid_csv', 'Invalid CSV upload.'));
                             }
 
                             $result = app(CampaignRecipientImportService::class)->importCsv(
@@ -131,17 +157,21 @@ class RecipientsRelationManager extends RelationManager
                             );
 
                             Notification::make()
-                                ->title('Recipients imported')
-                                ->body(
-                                    "Added: {$result->added}"
-                                    ." · Updated: {$result->updated}"
-                                    ." · Invalid/incomplete: {$result->invalid}"
-                                )
+                                ->title(UiText::get('recipient.imported_title', 'Recipients imported'))
+                                ->body(UiText::get(
+                                    'recipient.imported_summary',
+                                    'Added: :added · Updated: :updated · Invalid/incomplete: :invalid',
+                                    [
+                                        'added' => $result->added,
+                                        'updated' => $result->updated,
+                                        'invalid' => $result->invalid,
+                                    ]
+                                ))
                                 ->success()
                                 ->send();
                         } catch (Throwable $e) {
                             Notification::make()
-                                ->title('Import failed')
+                                ->title(UiText::get('recipient.import_failed', 'Import failed'))
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();
@@ -164,8 +194,11 @@ class RecipientsRelationManager extends RelationManager
                         }
 
                         Notification::make()
-                            ->title('Recipient cannot be deleted')
-                            ->body('Recipients are frozen after the campaign leaves Draft status.')
+                            ->title(UiText::get('recipient.cannot_delete', 'Recipient cannot be deleted'))
+                            ->body(UiText::get(
+                                'recipient.frozen',
+                                'Recipients are frozen after the campaign leaves Draft status.'
+                            ))
                             ->danger()
                             ->send();
 

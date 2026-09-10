@@ -11,11 +11,11 @@ final class StatusColor
             : (string) $state;
 
         return match ($value) {
-            'draft', 'cancelled', 'manual', 'unsubscribe', 'unsubscribed', 'released' => 'gray',
+            'draft', 'cancelled', 'manual', 'unsubscribe', 'unsubscribed', 'released', 'disabled' => 'gray',
             'scheduled', 'queued' => 'info',
             'processing', 'sending', 'suppressed', 'pending' => 'warning',
-            'completed', 'sent', 'delivered', 'clicked', 'active', 'success', 'subscribed' => 'success',
-            'failed', 'bounced', 'complained', 'complaint', 'bounce', 'inactive' => 'danger',
+            'completed', 'sent', 'delivered', 'clicked', 'active', 'success', 'subscribed', 'verified' => 'success',
+            'failed', 'bounced', 'complained', 'complaint', 'bounce', 'inactive', 'error' => 'danger',
             'opened' => 'primary',
             default => 'gray',
         };

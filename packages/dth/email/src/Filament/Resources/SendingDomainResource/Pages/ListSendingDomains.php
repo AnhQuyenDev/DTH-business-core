@@ -3,6 +3,7 @@
 namespace Dth\Email\Filament\Resources\SendingDomainResource\Pages;
 
 use Dth\Email\Filament\Resources\SendingDomainResource;
+use Dth\Email\Support\UiText;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
@@ -14,7 +15,7 @@ class ListSendingDomains extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('New')
+                ->label(UiText::get('common.actions.new', 'New'))
                 ->icon('heroicon-o-plus'),
         ];
     }

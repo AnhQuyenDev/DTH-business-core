@@ -4,6 +4,7 @@ namespace Dth\Email\Filament\Resources\SendingAccountResource\Pages;
 
 use Dth\Email\DTO\SmtpAccountData;
 use Dth\Email\Filament\Resources\SendingAccountResource;
+use Dth\Email\Support\UiText;
 use Dth\Email\Services\SendingAccountService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -50,7 +51,7 @@ class EditSendingAccount extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-                ->label('Delete')
+                ->label(UiText::get('common.actions.delete', 'Delete'))
                 ->icon('heroicon-o-trash'),
         ];
     }
@@ -59,10 +60,10 @@ class EditSendingAccount extends EditRecord
     {
         return [
             $this->getSaveFormAction()
-                ->label('Save')
+                ->label(UiText::get('common.actions.save', 'Save'))
                 ->icon('heroicon-o-check'),
             $this->getCancelFormAction()
-                ->label('Cancel')
+                ->label(UiText::get('common.actions.cancel', 'Cancel'))
                 ->icon('heroicon-o-x-mark')
                 ->color('gray'),
         ];

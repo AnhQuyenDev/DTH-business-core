@@ -1,6 +1,9 @@
 <div class="space-y-5">
     <p class="text-sm leading-6 text-gray-600 dark:text-gray-400">
-        Use these variables in the selected fields. They are replaced for each recipient when the campaign is sent.
+        {{ \Dth\Email\Support\UiText::get(
+            'variables.help_intro',
+            'Use these variables in the selected fields. They are replaced for each recipient when the campaign is sent.'
+        ) }}
     </p>
 
     <div class="space-y-2">

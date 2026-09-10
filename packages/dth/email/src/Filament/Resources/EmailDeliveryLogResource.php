@@ -6,8 +6,9 @@ use Dth\Email\Enums\EmailEventType;
 use Dth\Email\Enums\EmailMessageStatus;
 use Dth\Email\Filament\Navigation\EmailNavigationGroup;
 use Dth\Email\Filament\Resources\EmailDeliveryLogResource\Pages;
-use Dth\Email\Models\EmailMessage;
 use Dth\Email\Filament\Support\StatusColor;
+use Dth\Email\Models\EmailMessage;
+use Dth\Email\Support\UiText;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -22,166 +23,128 @@ use Illuminate\Database\Eloquent\Builder;
 class EmailDeliveryLogResource extends Resource
 {
     protected static ?string $model = EmailMessage::class;
-
-    protected static string|\BackedEnum|null $navigationIcon =
-        'heroicon-o-inbox-stack';
-
-    protected static string|\UnitEnum|null $navigationGroup =
-        EmailNavigationGroup::Email;
-
-    protected static ?string $navigationLabel =
-        'Delivery Log';
-
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-inbox-stack';
+    protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
     protected static ?int $navigationSort = 60;
+    protected static ?string $recordTitleAttribute = 'subject';
 
-    protected static ?string $recordTitleAttribute =
-        'subject';
+    public static function getNavigationLabel(): string
+    {
+        return UiText::get('navigation.delivery_log', 'Delivery Log', context: 'navigation');
+    }
 
-    public static function table(
-        Table $table,
-    ): Table {
+    public static function getModelLabel(): string
+    {
+        return UiText::get('models.delivery_message', 'Email Message', context: 'model');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return UiText::get('models.delivery_messages', 'Delivery Log', context: 'model');
+    }
+
+    public static function table(Table $table): Table
+    {
         return $table
             ->columns([
                 TextColumn::make('recipient_email')
-                    ->label('Recipient')
+                    ->label(UiText::get('delivery.recipient', 'Recipient'))
                     ->searchable()
                     ->copyable(),
 
                 TextColumn::make('subject')
+                    ->label(UiText::get('template.subject', 'Subject'))
                     ->searchable()
                     ->limit(55),
 
-                TextColumn::make(
-                    'campaignRecipient.campaign.name'
-                )
-                    ->label('Campaign')
+                TextColumn::make('campaignRecipient.campaign.name')
+                    ->label(UiText::get('delivery.campaign', 'Campaign'))
                     ->placeholder('—')
                     ->toggleable(),
 
-                TextColumn::make(
-                    'sendingAccount.name'
-                )
-                    ->label('Account')
+                TextColumn::make('sendingAccount.name')
+                    ->label(UiText::get('delivery.account', 'Account'))
                     ->placeholder('—')
                     ->toggleable(),
 
                 TextColumn::make('status')
+                    ->label(UiText::get('common.fields.status', 'Status'))
                     ->badge()
-                    ->formatStateUsing(
-                        fn ($state): string =>
-                            ucfirst(
-                                $state instanceof EmailMessageStatus
-                                    ? $state->value
-                                    : (string) $state
-                            )
-                    )
-                    ->color(
-                        fn ($state): string =>
-                            StatusColor::for($state)
-                    ),
+                    ->formatStateUsing(fn ($state): string => UiText::status($state))
+                    ->color(fn ($state): string => StatusColor::for($state)),
 
                 TextColumn::make('open_events_count')
-                    ->label('Opens')
+                    ->label(UiText::get('delivery.opens', 'Opens'))
                     ->badge(),
 
                 TextColumn::make('click_events_count')
-                    ->label('Clicks')
+                    ->label(UiText::get('delivery.clicks', 'Clicks'))
                     ->badge(),
 
                 TextColumn::make('sent_at')
-                    ->label('Sent')
+                    ->label(UiText::get('delivery.sent', 'Sent'))
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->options([
-                        'queued' => 'Queued',
-                        'sending' => 'Sending',
-                        'sent' => 'Sent',
-                        'delivered' => 'Delivered',
-                        'failed' => 'Failed',
-                        'bounced' => 'Bounced',
-                        'complained' => 'Complained',
-                        'suppressed' => 'Suppressed',
-                    ]),
+                    ->label(UiText::get('common.fields.status', 'Status'))
+                    ->options(collect(EmailMessageStatus::cases())
+                        ->mapWithKeys(fn ($case) => [$case->value => UiText::status($case)])
+                        ->all()),
 
                 SelectFilter::make('sendingAccount')
-                    ->label('Sending account')
-                    ->relationship(
-                        'sendingAccount',
-                        'name'
-                    )
+                    ->label(UiText::get('delivery.sending_account', 'Sending account'))
+                    ->relationship('sendingAccount', 'name')
                     ->searchable()
                     ->preload(),
             ])
             ->recordActions([
                 ViewAction::make()
-                    ->label('View')
+                    ->label(UiText::get('common.actions.view', 'View'))
                     ->icon('heroicon-o-eye'),
             ])
             ->defaultSort('id', 'desc');
     }
 
-    public static function infolist(
-        Schema $schema,
-    ): Schema {
+    public static function infolist(Schema $schema): Schema
+    {
         return $schema
             ->columns(12)
             ->components([
-                Section::make('Message')
+                Section::make(UiText::get('delivery.message', 'Message'))
                     ->schema([
-                        TextEntry::make(
-                            'recipient_email'
-                        )
-                            ->label('Recipient'),
+                        TextEntry::make('recipient_email')
+                            ->label(UiText::get('delivery.recipient', 'Recipient')),
 
-                        TextEntry::make(
-                            'recipient_name'
-                        )
-                            ->label('Name')
+                        TextEntry::make('recipient_name')
+                            ->label(UiText::get('delivery.name', 'Name'))
                             ->placeholder('—'),
 
                         TextEntry::make('status')
+                            ->label(UiText::get('common.fields.status', 'Status'))
                             ->badge()
-                            ->formatStateUsing(
-                                fn ($state): string =>
-                                    ucfirst(
-                                        $state instanceof EmailMessageStatus
-                                            ? $state->value
-                                            : (string) $state
-                                    )
-                            )
-                            ->color(
-                                fn ($state): string =>
-                                    StatusColor::for($state)
-                            ),
+                            ->formatStateUsing(fn ($state): string => UiText::status($state))
+                            ->color(fn ($state): string => StatusColor::for($state)),
 
                         TextEntry::make('subject')
+                            ->label(UiText::get('template.subject', 'Subject'))
                             ->columnSpanFull(),
 
-                        TextEntry::make(
-                            'from_email'
-                        )
-                            ->label('From'),
+                        TextEntry::make('from_email')
+                            ->label(UiText::get('delivery.from', 'From')),
 
-                        TextEntry::make(
-                            'sendingAccount.name'
-                        )
-                            ->label('Sending account')
+                        TextEntry::make('sendingAccount.name')
+                            ->label(UiText::get('delivery.sending_account', 'Sending account'))
                             ->placeholder('—'),
 
-                        TextEntry::make(
-                            'campaignRecipient.campaign.name'
-                        )
-                            ->label('Campaign')
+                        TextEntry::make('campaignRecipient.campaign.name')
+                            ->label(UiText::get('delivery.campaign', 'Campaign'))
                             ->placeholder('—'),
 
-                        TextEntry::make(
-                            'provider_message_id'
-                        )
-                            ->label('Provider ID')
+                        TextEntry::make('provider_message_id')
+                            ->label(UiText::get('delivery.provider_id', 'Provider ID'))
                             ->placeholder('—')
                             ->copyable(),
 
@@ -201,53 +164,35 @@ class EmailDeliveryLogResource extends Resource
                             ->dateTime('d/m/Y H:i:s')
                             ->placeholder('—'),
 
-                        TextEntry::make(
-                            'failure_reason'
-                        )
-                            ->label('Failure')
+                        TextEntry::make('failure_reason')
+                            ->label(UiText::get('delivery.failure', 'Failure'))
                             ->placeholder('—')
                             ->columnSpanFull(),
                     ])
                     ->columns(4)
                     ->columnSpanFull(),
 
-                Section::make('Event timeline')
+                Section::make(UiText::get('delivery.event_timeline', 'Event timeline'))
                     ->schema([
                         RepeatableEntry::make('events')
                             ->label('')
                             ->schema([
-                                TextEntry::make(
-                                    'event_type'
-                                )
-                                    ->label('Event')
+                                TextEntry::make('event_type')
+                                    ->label(UiText::get('delivery.event', 'Event'))
                                     ->badge()
-                                    ->formatStateUsing(
-                                        fn ($state): string =>
-                                            ucfirst(
-                                                $state instanceof EmailEventType
-                                                    ? $state->value
-                                                    : (string) $state
-                                            )
-                                    ),
+                                    ->formatStateUsing(fn ($state): string => UiText::status($state))
+                                    ->color(fn ($state): string => StatusColor::for($state)),
 
-                                TextEntry::make(
-                                    'occurred_at'
-                                )
-                                    ->label('Time')
-                                    ->dateTime(
-                                        'd/m/Y H:i:s'
-                                    ),
+                                TextEntry::make('occurred_at')
+                                    ->label(UiText::get('delivery.time', 'Time'))
+                                    ->dateTime('d/m/Y H:i:s'),
 
-                                TextEntry::make(
-                                    'ip_address'
-                                )
+                                TextEntry::make('ip_address')
                                     ->label('IP')
                                     ->placeholder('—'),
 
-                                TextEntry::make(
-                                    'provider_event_id'
-                                )
-                                    ->label('Provider event')
+                                TextEntry::make('provider_event_id')
+                                    ->label(UiText::get('delivery.provider_event', 'Provider event'))
                                     ->placeholder('—'),
                             ])
                             ->columns(4),
@@ -264,33 +209,22 @@ class EmailDeliveryLogResource extends Resource
                 'campaignRecipient.campaign',
             ])
             ->withCount([
-                'events as open_events_count' =>
-                    fn (Builder $query) =>
-                        $query->where(
-                            'event_type',
-                            EmailEventType::Opened->value
-                        ),
-
-                'events as click_events_count' =>
-                    fn (Builder $query) =>
-                        $query->where(
-                            'event_type',
-                            EmailEventType::Clicked->value
-                        ),
+                'events as open_events_count' => fn (Builder $query) => $query->where(
+                    'event_type',
+                    EmailEventType::Opened->value
+                ),
+                'events as click_events_count' => fn (Builder $query) => $query->where(
+                    'event_type',
+                    EmailEventType::Clicked->value
+                ),
             ]);
     }
 
     public static function getPages(): array
     {
         return [
-            'index' =>
-                Pages\ListEmailDeliveryLogs::route('/'),
-
-            'view' =>
-                Pages\ViewEmailDeliveryLog::route(
-                    '/{record}'
-                ),
+            'index' => Pages\ListEmailDeliveryLogs::route('/'),
+            'view' => Pages\ViewEmailDeliveryLog::route('/{record}'),
         ];
     }
-
 }

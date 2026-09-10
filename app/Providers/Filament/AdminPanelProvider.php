@@ -2,7 +2,9 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\ApplyLocale;
 use Dth\Email\Filament\EmailPlugin;
+use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -43,10 +45,25 @@ class AdminPanelProvider extends PanelProvider
                 AccountWidget::class,
                 FilamentInfoWidget::class,
             ])
+            ->userMenuItems([
+                [
+                    Action::make('locale_en')
+                        ->label(fn (): string => app()->getLocale() === 'en' ? '✓ English' : 'English')
+                        ->icon('heroicon-o-language')
+                        ->url(fn (): string => route('locale.switch', ['locale' => 'en']))
+                        ->postToUrl(),
+                    Action::make('locale_vi')
+                        ->label(fn (): string => app()->getLocale() === 'vi' ? '✓ Tiếng Việt' : 'Tiếng Việt')
+                        ->icon('heroicon-o-language')
+                        ->url(fn (): string => route('locale.switch', ['locale' => 'vi']))
+                        ->postToUrl(),
+                ],
+            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
+                ApplyLocale::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,

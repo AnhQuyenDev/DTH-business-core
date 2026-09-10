@@ -3,6 +3,7 @@
 namespace Dth\Email\Filament\Resources\EmailCampaignResource\Widgets;
 
 use Dth\Email\Services\CampaignAnalyticsService;
+use Dth\Email\Support\UiText;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -10,90 +11,79 @@ class CampaignAnalyticsWidget extends StatsOverviewWidget
 {
     public int $campaignId;
 
-    /**
-     * Render analytics with the parent page instead of triggering an
-     * immediate lazy Livewire request. This avoids the page-expired (419)
-     * loop that can occur on Filament 4 resource pages when the session/CSRF
-     * token changes between the initial page response and lazy hydration.
-     */
     protected static bool $isLazy = false;
-
     protected ?string $pollingInterval = null;
 
     protected function getStats(): array
     {
-        $stats = app(
-            CampaignAnalyticsService::class
-        )->forCampaignId(
-            $this->campaignId
-        );
+        $stats = app(CampaignAnalyticsService::class)->forCampaignId($this->campaignId);
 
         return [
             Stat::make(
-                'Recipients',
+                UiText::get('analytics.recipients', 'Recipients'),
                 number_format($stats->total)
             )
-                ->description(
-                    "Pending {$stats->pending} · Queued {$stats->queued}"
-                )
-                ->descriptionIcon(
-                    'heroicon-o-users'
-                ),
+                ->description(UiText::get(
+                    'analytics.recipients_description',
+                    'Pending :pending · Queued :queued',
+                    ['pending' => $stats->pending, 'queued' => $stats->queued]
+                ))
+                ->descriptionIcon('heroicon-o-users'),
 
             Stat::make(
-                'Sent',
+                UiText::get('analytics.sent', 'Sent'),
                 number_format($stats->sent)
             )
-                ->description(
-                    "Failed {$stats->failed} · Suppressed {$stats->suppressed}"
-                )
-                ->descriptionIcon(
-                    'heroicon-o-paper-airplane'
-                ),
+                ->description(UiText::get(
+                    'analytics.sent_description',
+                    'Failed :failed · Suppressed :suppressed',
+                    ['failed' => $stats->failed, 'suppressed' => $stats->suppressed]
+                ))
+                ->descriptionIcon('heroicon-o-paper-airplane'),
 
             Stat::make(
-                'Delivered',
+                UiText::get('analytics.delivered', 'Delivered'),
                 number_format($stats->delivered)
             )
-                ->description(
-                    "{$stats->deliveryRate}% of sent"
-                )
-                ->descriptionIcon(
-                    'heroicon-o-check-circle'
-                ),
+                ->description(UiText::get(
+                    'analytics.delivery_rate',
+                    ':rate% of sent',
+                    ['rate' => $stats->deliveryRate]
+                ))
+                ->descriptionIcon('heroicon-o-check-circle'),
 
             Stat::make(
-                'Opened',
+                UiText::get('analytics.opened', 'Opened'),
                 number_format($stats->opened)
             )
-                ->description(
-                    "{$stats->openRate}% open rate"
-                )
-                ->descriptionIcon(
-                    'heroicon-o-envelope-open'
-                ),
+                ->description(UiText::get(
+                    'analytics.open_rate',
+                    ':rate% open rate',
+                    ['rate' => $stats->openRate]
+                ))
+                ->descriptionIcon('heroicon-o-envelope-open'),
 
             Stat::make(
-                'Clicked',
+                UiText::get('analytics.clicked', 'Clicked'),
                 number_format($stats->clicked)
             )
-                ->description(
-                    "{$stats->clickRate}% click rate"
-                )
-                ->descriptionIcon(
-                    'heroicon-o-cursor-arrow-rays'
-                ),
+                ->description(UiText::get(
+                    'analytics.click_rate',
+                    ':rate% click rate',
+                    ['rate' => $stats->clickRate]
+                ))
+                ->descriptionIcon('heroicon-o-cursor-arrow-rays'),
 
             Stat::make(
-                'Unsubscribed from campaign',
+                UiText::get('analytics.unsubscribed', 'Unsubscribed from campaign'),
                 number_format($stats->unsubscribed)
             )
-                ->description(
-                    "{$stats->unsubscribeRate}% historical unsubscribe rate"
-                )
-                ->descriptionIcon(
-                    'heroicon-o-user-minus'
-                ),
+                ->description(UiText::get(
+                    'analytics.unsubscribe_rate',
+                    ':rate% historical unsubscribe rate',
+                    ['rate' => $stats->unsubscribeRate]
+                ))
+                ->descriptionIcon('heroicon-o-user-minus'),
         ];
     }
 }
