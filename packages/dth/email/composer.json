@@ -1,0 +1,36 @@
+{
+  "name": "dth/email",
+  "description": "Reusable email delivery, campaign, template, tracking and suppression module for DTH business applications.",
+  "type": "library",
+  "license": "proprietary",
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^12.0"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^10.0",
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Dth\\Email\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Dth\\Email\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Dth\\Email\\EmailServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "suggest": {
+    "filament/filament": "Provides the optional DTH Email administration UI."
+  }
+}
