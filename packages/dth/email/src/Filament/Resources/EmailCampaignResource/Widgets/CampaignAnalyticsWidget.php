@@ -17,7 +17,10 @@ class CampaignAnalyticsWidget extends StatsOverviewWidget
 
     protected function getColumns(): int|array
     {
-        return 1;
+        return [
+            'md' => 2,
+            'xl' => 4,
+        ];
     }
 
     protected function getStats(): array

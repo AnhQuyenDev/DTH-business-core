@@ -1,0 +1,15 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*.php';
+@source '../../../../resources/views/**/*.blade.php';
+@source '../../../../packages/dth/email/src/Filament/**/*.php';
+@source '../../../../packages/dth/email/resources/**/*.blade.php';
+
+/* Keep chart cards stretched to the same grid-row height. */
+.fi-wi-chart {
+    height: 100%;
+}
+
+.fi-wi-chart > .fi-section {
+    height: 100%;
+}

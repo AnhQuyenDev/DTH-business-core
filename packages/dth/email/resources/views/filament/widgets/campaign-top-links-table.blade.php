@@ -1,3 +1,4 @@
+<x-filament-widgets::widget class="fi-wi-campaign-top-links">
 <x-filament::section
     :heading="\Dth\Email\Support\UiText::get('reports.top_links', 'Link performance')"
     icon="heroicon-o-link"
@@ -136,3 +137,5 @@
         </div>
     @endif
 </x-filament::section>
+
+</x-filament-widgets::widget>

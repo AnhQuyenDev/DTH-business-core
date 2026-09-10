@@ -17,6 +17,7 @@ class CampaignInsightsWidget extends Widget
     {
         return [
             'report' => app(EmailInsightService::class)->campaign($this->campaignId),
+            'compact' => false,
         ];
     }
 }

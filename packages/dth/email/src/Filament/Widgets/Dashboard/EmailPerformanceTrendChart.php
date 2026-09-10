@@ -14,11 +14,11 @@ class EmailPerformanceTrendChart extends ChartWidget
 
     protected static bool $isLazy = false;
     protected ?string $pollingInterval = null;
-    protected ?string $maxHeight = '360px';
+    protected ?string $maxHeight = '340px';
     protected bool $isCollapsible = true;
     protected int|string|array $columnSpan = [
         'md' => 6,
-        'xl' => 8,
+        'xl' => 6,
     ];
 
     public function getHeading(): string

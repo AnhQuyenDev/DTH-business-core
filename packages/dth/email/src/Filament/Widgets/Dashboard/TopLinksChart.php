@@ -14,7 +14,7 @@ class TopLinksChart extends ChartWidget
 
     protected static bool $isLazy = false;
     protected ?string $pollingInterval = null;
-    protected ?string $maxHeight = '390px';
+    protected ?string $maxHeight = '340px';
     protected bool $isCollapsible = true;
     protected int|string|array $columnSpan = [
         'md' => 6,

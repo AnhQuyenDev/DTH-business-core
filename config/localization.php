@@ -185,6 +185,19 @@ return [
                 'insights' => [
                     'heading' => 'Phân tích thống kê',
                     'health_score' => 'Điểm sức khỏe',
+                    'executive_summary' => 'Tóm tắt điều hành',
+                    'quick_review' => 'Tổng hợp nhanh từ dữ liệu hiệu suất Email hiện tại.',
+                    'key_findings' => 'Điểm đáng chú ý',
+                    'key_findings_description' => 'Các tín hiệu quan trọng được rút ra từ dữ liệu hiện tại.',
+                    'findings' => 'nhận định',
+                    'related_metric' => 'Chỉ số',
+                    'more_findings' => '+:count nhận định khác trong báo cáo chi tiết.',
+                    'status' => [
+                        'strong' => 'Tốt',
+                        'watch' => 'Cần theo dõi',
+                        'risk' => 'Cần xem xét',
+                        'none' => 'Chưa có điểm',
+                    ],
                     'no_findings' => 'Không có cảnh báo thống kê đáng kể với dữ liệu hiện tại.',
                     'severity' => [
                         'positive' => 'Tích cực',
