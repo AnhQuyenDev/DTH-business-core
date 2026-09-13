@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Http\Middleware\ApplyLocale;
 use Dth\Email\Filament\EmailPlugin;
+use Dth\Marketing\Filament\MarketingPlugin;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -30,7 +31,6 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
             ->sidebarCollapsibleOnDesktop()
             ->colors([
@@ -77,6 +77,9 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugin(
                 EmailPlugin::make()
+            )
+            ->plugin(
+                MarketingPlugin::make()
             );
     }
 }

@@ -1,0 +1,37 @@
+{
+  "name": "dth/marketing",
+  "description": "Reusable marketing campaign, acquisition, audience, attribution and analytics module for DTH business applications.",
+  "type": "library",
+  "license": "proprietary",
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^12.0"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^10.0",
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Dth\\Marketing\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Dth\\Marketing\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Dth\\Marketing\\MarketingServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "suggest": {
+    "filament/filament": "Host application should use Filament 4.13.x for the optional DTH Marketing administration UI.",
+    "dth/email": "Provides Email Campaign integration through EmailMarketingBridge when an adapter is enabled."
+  }
+}
