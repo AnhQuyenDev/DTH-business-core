@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\CompanyMatchCandidateResource\Pages; use Dth\Crm\Filament\Resources\CompanyMatchCandidateResource; use Filament\Resources\Pages\ListRecords; use Filament\Actions\CreateAction; class ListCompanyMatchCandidates extends ListRecords {protected static string $resource=CompanyMatchCandidateResource::class; protected function getHeaderActions():array{return [CreateAction::make()];}}

@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\StaffResource\Pages; use Dth\Crm\Filament\Resources\StaffResource; use Filament\Resources\Pages\ViewRecord; use Filament\Actions\EditAction; class ViewStaff extends ViewRecord {protected static string $resource=StaffResource::class; protected function getHeaderActions():array{return [EditAction::make()];}}

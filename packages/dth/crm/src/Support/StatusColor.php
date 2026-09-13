@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Support; final class StatusColor {public static function for(mixed $s):string{$s=$s instanceof \BackedEnum?$s->value:(string)$s;return match($s){'active','working','qualified','converted','customer','accepted'=>'success','spam','unqualified','rejected','inactive'=>'danger','duplicate','follow_up','pending'=>'warning','assigned','contacting','prospect'=>'info',default=>'gray'};}}

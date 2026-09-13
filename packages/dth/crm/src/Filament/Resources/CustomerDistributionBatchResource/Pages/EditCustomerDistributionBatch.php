@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\CustomerDistributionBatchResource\Pages; use Dth\Crm\Filament\Resources\CustomerDistributionBatchResource; use Filament\Resources\Pages\EditRecord; use Filament\Actions\DeleteAction; class EditCustomerDistributionBatch extends EditRecord {protected static string $resource=CustomerDistributionBatchResource::class; protected function getHeaderActions():array{return [DeleteAction::make()];}}

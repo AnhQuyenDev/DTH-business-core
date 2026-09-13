@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\StaffResource\Pages; use Dth\Crm\Filament\Resources\StaffResource; use Filament\Resources\Pages\ListRecords; use Filament\Actions\CreateAction; class ListStaffs extends ListRecords {protected static string $resource=StaffResource::class; protected function getHeaderActions():array{return [CreateAction::make()];}}

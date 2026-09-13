@@ -1,0 +1,3 @@
+<?php
+namespace Dth\Crm\Services; use Dth\Crm\Contracts\TaxVerificationProvider; use Dth\Crm\Models\{BusinessContactProfile,Company}; use Dth\Crm\Support\Normalizer;
+final class CompanyTaxVerificationSyncService {public function __construct(private TaxVerificationProvider $provider,private Normalizer $n){} public function verify(BusinessContactProfile $profile):array{$tax=$this->n->taxCode($profile->tax_code);if(!$tax)return ['status'=>'not_found','data'=>[],'message'=>'Thiếu mã số thuế.'];$r=$this->provider->verify($tax);$profile->update(['tax_verification_status'=>$r['status'],'tax_verification_data'=>$r['data']??[]]);if($profile->company_id&&$r['status']==='verified')Company::whereKey($profile->company_id)->update(['tax_code'=>$tax]);return $r;}}

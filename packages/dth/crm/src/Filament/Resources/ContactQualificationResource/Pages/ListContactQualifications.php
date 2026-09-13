@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\ContactQualificationResource\Pages; use Dth\Crm\Filament\Resources\ContactQualificationResource; use Filament\Resources\Pages\ListRecords; use Filament\Actions\CreateAction; class ListContactQualifications extends ListRecords {protected static string $resource=ContactQualificationResource::class; protected function getHeaderActions():array{return [CreateAction::make()];}}

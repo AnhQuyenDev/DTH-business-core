@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\CompanyResource\Pages; use Dth\Crm\Filament\Resources\CompanyResource; use Filament\Resources\Pages\ViewRecord; use Filament\Actions\EditAction; class ViewCompany extends ViewRecord {protected static string $resource=CompanyResource::class; protected function getHeaderActions():array{return [EditAction::make()];}}

@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\CustomerDistributionBatchResource\Pages; use Dth\Crm\Filament\Resources\CustomerDistributionBatchResource; use Filament\Resources\Pages\ViewRecord; use Filament\Actions\EditAction; class ViewCustomerDistributionBatch extends ViewRecord {protected static string $resource=CustomerDistributionBatchResource::class; protected function getHeaderActions():array{return [EditAction::make()];}}

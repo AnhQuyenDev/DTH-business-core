@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f7de25a4fe8487792bc2bc1e1516e7db",
+    "content-hash": "5df1addc90ba280fd7a00a3a132ff699",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -1084,6 +1084,54 @@
             "time": "2025-10-31T18:51:33+00:00"
         },
         {
+            "name": "dth/crm",
+            "version": "dev-dth-core",
+            "dist": {
+                "type": "path",
+                "url": "packages/dth/crm",
+                "reference": "1cae60cf1332f82fce1f1c9e3bf5146d210690cc"
+            },
+            "require": {
+                "laravel/framework": "^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^10.0",
+                "phpunit/phpunit": "^11.5"
+            },
+            "suggest": {
+                "dth/marketing": "Enables Marketing AudienceProvider and LeadProvider integration.",
+                "dth/sales": "Enables qualified-lead handoff to Sales when available.",
+                "filament/filament": "Host application should use Filament 4.13.x for the CRM admin UI."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Dth\\Crm\\CrmServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Dth\\Crm\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Dth\\Crm\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "DTH CRM module: contacts, companies, leads, qualification, distribution and customer lifecycle.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
             "name": "dth/email",
             "version": "dev-dth-core",
             "dist": {
@@ -1126,53 +1174,6 @@
                 "proprietary"
             ],
             "description": "Reusable email delivery, campaign, template, tracking and suppression module for DTH business applications.",
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
-        },
-        {
-            "name": "dth/marketing",
-            "version": "dev-dth-core",
-            "dist": {
-                "type": "path",
-                "url": "packages/dth/marketing",
-                "reference": "c37acc4901e850565cfacde00a45a253555c981d"
-            },
-            "require": {
-                "laravel/framework": "^12.0",
-                "php": "^8.2"
-            },
-            "require-dev": {
-                "orchestra/testbench": "^10.0",
-                "phpunit/phpunit": "^11.5"
-            },
-            "suggest": {
-                "dth/email": "Provides Email Campaign integration through EmailMarketingBridge when an adapter is enabled.",
-                "filament/filament": "Host application should use Filament 4.13.x for the optional DTH Marketing administration UI."
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Dth\\Marketing\\MarketingServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Dth\\Marketing\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Dth\\Marketing\\Tests\\": "tests/"
-                }
-            },
-            "license": [
-                "proprietary"
-            ],
-            "description": "Reusable marketing campaign, acquisition, audience, attribution and analytics module for DTH business applications.",
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -11566,10 +11567,10 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "stability-flags": {
-        "dth/email": 20,
-        "dth/marketing": 20
+        "dth/crm": 20,
+        "dth/email": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,

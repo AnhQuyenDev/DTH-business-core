@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\ContactQualificationResource\Pages; use Dth\Crm\Filament\Resources\ContactQualificationResource; use Filament\Resources\Pages\ViewRecord; use Filament\Actions\EditAction; class ViewContactQualification extends ViewRecord {protected static string $resource=ContactQualificationResource::class; protected function getHeaderActions():array{return [EditAction::make()];}}

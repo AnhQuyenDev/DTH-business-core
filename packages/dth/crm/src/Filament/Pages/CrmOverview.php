@@ -1,0 +1,3 @@
+<?php
+namespace Dth\Crm\Filament\Pages; use Filament\Pages\Page; use Dth\Crm\Services\CrmAnalyticsService; use Dth\Crm\Filament\Navigation\CrmNavigationGroup;
+class CrmOverview extends Page {protected string $view='dth-crm::filament.pages.crm-overview'; protected static string|\BackedEnum|null $navigationIcon='heroicon-o-chart-bar-square'; protected static string|\UnitEnum|null $navigationGroup=CrmNavigationGroup::Crm; protected static ?string $navigationLabel='Tổng quan CRM'; protected static ?int $navigationSort=1; public array $snapshot=[]; public function mount():void{$this->snapshot=app(CrmAnalyticsService::class)->snapshot();} public static function canAccess():bool{return app(\Dth\Crm\Support\CrmAuthorization::class)->allows('crm.view');}}

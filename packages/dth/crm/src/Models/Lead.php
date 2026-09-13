@@ -1,0 +1,6 @@
+<?php
+namespace Dth\Crm\Models;
+use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\SoftDeletes; use Illuminate\Database\Eloquent\Relations\{BelongsTo,HasOne,HasMany}; use Dth\Crm\Support\CodeGenerator;
+class Lead extends Model {use SoftDeletes;protected $table='crm_leads';protected $guarded=[];protected function casts():array{return ['estimated_value'=>'decimal:2','assigned_at'=>'datetime','converted_to_opportunity_at'=>'datetime','attribution'=>'array','form_answers'=>'array','metadata'=>'array'];}
+ protected static function booted():void{static::creating(function(self $m){if(blank($m->lead_code)){$m->lead_code=app(CodeGenerator::class)->make('LD');}});}
+ public function contact():BelongsTo{return $this->belongsTo(Contact::class);} public function company():BelongsTo{return $this->belongsTo(Company::class);} public function assignedStaff():BelongsTo{return $this->belongsTo(Staff::class,'assigned_staff_id');} public function qualification():HasOne{return $this->hasOne(ContactQualification::class);} public function activities():HasMany{return $this->hasMany(LeadActivity::class)->orderByDesc('activity_at');} public function distributionEvents():HasMany{return $this->hasMany(LeadDistributionEvent::class);} }

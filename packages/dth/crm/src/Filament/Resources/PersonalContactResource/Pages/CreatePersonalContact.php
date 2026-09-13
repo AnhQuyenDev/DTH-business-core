@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\PersonalContactResource\Pages;use Dth\Crm\Filament\Resources\PersonalContactResource;use Filament\Resources\Pages\CreateRecord;class CreatePersonalContact extends CreateRecord{protected static string $resource=PersonalContactResource::class;private array $profile=[];protected function mutateFormDataBeforeCreate(array $d):array{$this->profile=$d['profile']??[];unset($d['profile']);$d['type']='personal';return $d;}protected function afterCreate():void{$this->record->personalProfile()->create($this->profile);}}

@@ -1,0 +1,3 @@
+<?php
+namespace Dth\Crm\Services; use Dth\Crm\Models\{Company,Contact,CompanyContact}; use Illuminate\Support\Facades\DB;
+final class CompanyContactLinkService {public function link(Company $company,Contact $contact,array $pivot=[]):CompanyContact{return DB::transaction(function()use($company,$contact,$pivot){if(($pivot['is_primary']??false)===true)CompanyContact::where('company_id',$company->id)->update(['is_primary'=>false]);return CompanyContact::updateOrCreate(['company_id'=>$company->id,'contact_id'=>$contact->id],['job_title'=>$pivot['job_title']??null,'department'=>$pivot['department']??null,'decision_role'=>$pivot['decision_role']??null,'is_primary'=>(bool)($pivot['is_primary']??false),'is_active'=>(bool)($pivot['is_active']??true)]);});}}

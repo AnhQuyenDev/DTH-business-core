@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\ContactQualificationResource\Pages; use Dth\Crm\Filament\Resources\ContactQualificationResource; use Filament\Resources\Pages\EditRecord; use Filament\Actions\DeleteAction; class EditContactQualification extends EditRecord {protected static string $resource=ContactQualificationResource::class; protected function getHeaderActions():array{return [DeleteAction::make()];}}

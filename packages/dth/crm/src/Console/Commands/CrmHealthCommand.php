@@ -1,0 +1,3 @@
+<?php
+namespace Dth\Crm\Console\Commands; use Illuminate\Console\Command; use Illuminate\Support\Facades\Schema;
+class CrmHealthCommand extends Command {protected $signature='crm:health';protected $description='Validate DTH CRM runtime readiness.';public function handle():int{$tables=['crm_contacts','crm_companies','crm_leads','crm_contact_qualifications','crm_customers'];$ok=true;foreach($tables as $t){$v=Schema::hasTable($t);$this->line(($v?'PASS ':'FAIL ').$t);$ok=$ok&&$v;}$this->line('Marketing LeadProvider: '.(interface_exists(\Dth\Marketing\Contracts\LeadProvider::class)?'available':'not installed'));return $ok?self::SUCCESS:self::FAILURE;}}

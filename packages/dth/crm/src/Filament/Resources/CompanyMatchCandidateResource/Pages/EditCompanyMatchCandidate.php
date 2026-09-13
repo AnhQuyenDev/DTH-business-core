@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\CompanyMatchCandidateResource\Pages; use Dth\Crm\Filament\Resources\CompanyMatchCandidateResource; use Filament\Resources\Pages\EditRecord; use Filament\Actions\DeleteAction; class EditCompanyMatchCandidate extends EditRecord {protected static string $resource=CompanyMatchCandidateResource::class; protected function getHeaderActions():array{return [DeleteAction::make()];}}

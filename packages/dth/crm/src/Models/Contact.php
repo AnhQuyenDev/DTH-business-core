@@ -1,0 +1,6 @@
+<?php
+namespace Dth\Crm\Models;
+use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\SoftDeletes; use Illuminate\Database\Eloquent\Relations\{HasOne,HasMany,BelongsToMany}; use Dth\Crm\Support\{Normalizer,CodeGenerator};
+class Contact extends Model {use SoftDeletes; protected $table='crm_contacts'; protected $guarded=[]; protected function casts():array{return ['tags'=>'array','metadata'=>'array'];}
+ protected static function booted():void{static::saving(function(self $m){$n=app(Normalizer::class);if(blank($m->contact_code)){$m->contact_code=app(CodeGenerator::class)->make('CT');}$m->normalized_email=$n->email($m->email);$m->normalized_phone=$n->phone($m->phone);$m->display_name=trim((string)$m->display_name)?:($m->email?:$m->phone?:'Contact');});}
+ public function personalProfile():HasOne{return $this->hasOne(PersonalContactProfile::class);} public function businessProfile():HasOne{return $this->hasOne(BusinessContactProfile::class);} public function companies():BelongsToMany{return $this->belongsToMany(Company::class,'crm_company_contacts','contact_id','company_id')->withPivot(['job_title','department','decision_role','is_primary','is_active'])->withTimestamps();} public function leads():HasMany{return $this->hasMany(Lead::class);} public function customers():HasMany{return $this->hasMany(Customer::class);} }
