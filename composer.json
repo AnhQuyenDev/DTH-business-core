@@ -16,6 +16,7 @@
     "php": "^8.2",
     "dth/crm": "@dev",
     "dth/email": "@dev",
+    "dth/marketing": "@dev",
     "filament/filament": "^4.0",
     "laravel/framework": "^12.0",
     "laravel/tinker": "^2.10.1"

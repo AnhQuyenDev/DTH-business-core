@@ -548,6 +548,29 @@ return [
                     'history_unchanged' => 'Chỉ số lịch sử của chiến dịch không thay đổi.',
                 ],
             ],
+            'crm' => [
+                'navigation' => [
+                    'group' => 'CRM',
+                    'dashboard' => 'Tổng quan CRM',
+                    'contacts' => 'Liên hệ',
+                    'personal_contacts' => 'Liên hệ Cá nhân',
+                    'business_contacts' => 'Liên hệ Doanh nghiệp',
+                    'companies' => 'Doanh nghiệp',
+                    'leads' => 'Lead',
+                    'qualifications' => 'Đánh giá Lead',
+                    'customers' => 'Khách hàng',
+                    'staff' => 'Nhân viên CRM',
+                    'distribution' => 'Phân phối khách hàng',
+                    'match_candidates' => 'Đối chiếu doanh nghiệp',
+                ],
+                'models' => [
+                    'contact' => 'Liên hệ',
+                    'company' => 'Doanh nghiệp',
+                    'customer' => 'Khách hàng',
+                    'staff' => 'Nhân viên CRM',
+                    'distribution' => 'Phân phối khách hàng',
+                ],
+            ],
             'marketing' => [
                 'navigation' => [
                     'group' => 'Marketing',
