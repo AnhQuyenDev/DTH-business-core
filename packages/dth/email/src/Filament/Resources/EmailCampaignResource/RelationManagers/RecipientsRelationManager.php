@@ -179,31 +179,34 @@ class RecipientsRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->visible(fn (): bool => $this->getOwnerRecord()->status === EmailCampaignStatus::Draft)
-                    ->using(fn (CampaignRecipient $record, array $data): CampaignRecipient => app(CampaignRecipientService::class)
-                        ->update($record, $data)),
+                \Filament\Actions\ActionGroup::make([
+                    EditAction::make()
+                        ->visible(fn (): bool => $this->getOwnerRecord()->status === EmailCampaignStatus::Draft)
+                        ->using(fn (CampaignRecipient $record, array $data): CampaignRecipient => app(CampaignRecipientService::class)
+                            ->update($record, $data)),
 
-                DeleteAction::make()
-                    ->visible(fn (): bool => $this->getOwnerRecord()->status === EmailCampaignStatus::Draft)
-                    ->before(function (DeleteAction $action, CampaignRecipient $record): void {
-                        $record->loadMissing('campaign');
+                    DeleteAction::make()
+                        ->visible(fn (): bool => $this->getOwnerRecord()->status === EmailCampaignStatus::Draft)
+                        ->before(function (DeleteAction $action, CampaignRecipient $record): void {
+                            $record->loadMissing('campaign');
 
-                        if ($record->campaign->status === EmailCampaignStatus::Draft) {
-                            return;
-                        }
+                            if ($record->campaign->status === EmailCampaignStatus::Draft) {
+                                return;
+                            }
 
-                        Notification::make()
-                            ->title(UiText::get('recipient.cannot_delete', 'Recipient cannot be deleted'))
-                            ->body(UiText::get(
-                                'recipient.frozen',
-                                'Recipients are frozen after the campaign leaves Draft status.'
-                            ))
-                            ->danger()
-                            ->send();
+                            Notification::make()
+                                ->title(UiText::get('recipient.cannot_delete', 'Recipient cannot be deleted'))
+                                ->body(UiText::get(
+                                    'recipient.frozen',
+                                    'Recipients are frozen after the campaign leaves Draft status.'
+                                ))
+                                ->danger()
+                                ->send();
 
-                        $action->halt();
-                    }),
+                            $action->halt();
+                        }),
+            
+                ]),
             ]);
     }
 }

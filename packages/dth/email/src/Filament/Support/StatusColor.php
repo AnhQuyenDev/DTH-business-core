@@ -16,7 +16,7 @@ final class StatusColor
             'processing', 'sending', 'suppressed', 'pending' => 'warning',
             'completed', 'sent', 'delivered', 'clicked', 'active', 'success', 'subscribed', 'verified', 'healthy', 'positive' => 'success',
             'failed', 'bounced', 'complained', 'complaint', 'bounce', 'inactive', 'error', 'critical', 'unhealthy' => 'danger',
-            'opened' => 'primary',
+            'opened' => 'info',
             'warning' => 'warning',
             'neutral', 'unknown', 'not_required' => 'gray',
             default => 'gray',

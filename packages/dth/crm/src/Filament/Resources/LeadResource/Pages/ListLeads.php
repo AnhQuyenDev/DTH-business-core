@@ -1,2 +1,2 @@
 <?php
-namespace Dth\Crm\Filament\Resources\LeadResource\Pages; use Dth\Crm\Filament\Resources\LeadResource; use Filament\Resources\Pages\ListRecords; use Filament\Actions\CreateAction; class ListLeads extends ListRecords {protected static string $resource=LeadResource::class; protected function getHeaderActions():array{return [CreateAction::make()];}}
+namespace Dth\Crm\Filament\Resources\LeadResource\Pages; use Dth\Crm\Filament\Resources\LeadResource; use Filament\Resources\Pages\ListRecords; use Filament\Actions\CreateAction; class ListLeads extends ListRecords {protected static string $resource=LeadResource::class; protected function getHeaderActions():array{return [CreateAction::make()->label(\Dth\Crm\Support\UiText::get('common.actions.add', 'Add'))];}}

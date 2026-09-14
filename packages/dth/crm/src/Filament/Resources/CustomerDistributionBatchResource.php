@@ -1,9 +1,135 @@
 <?php
+
 namespace Dth\Crm\Filament\Resources;
+
+use Dth\Crm\Filament\Navigation\CrmNavigationGroup;
 use Dth\Crm\Filament\Resources\CustomerDistributionBatchResource\Pages;
-use Dth\Crm\Models\CustomerDistributionBatch; use Dth\Crm\Filament\Navigation\CrmNavigationGroup; use Dth\Crm\Support\StatusColor; use Filament\Resources\Resource; use Filament\Schemas\Schema; use Filament\Schemas\Components\Section; use Filament\Forms\Components\{TextInput,Select,Textarea}; use Filament\Tables\Table; use Filament\Tables\Columns\TextColumn; use Filament\Actions;
-class CustomerDistributionBatchResource extends Resource {protected static ?string $model=CustomerDistributionBatch::class; protected static string|\BackedEnum|null $navigationIcon='heroicon-o-arrows-right-left'; protected static string|\UnitEnum|null $navigationGroup=CrmNavigationGroup::Crm; public static function getNavigationLabel():string{return \Dth\Crm\Support\UiText::get('navigation.distribution','Customer distribution',context:'navigation');} public static function canCreate():bool{return true;} public static function getModelLabel():string{return \Dth\Crm\Support\UiText::get('models.distribution','Customer distribution',context:'model');}
- public static function form(Schema $schema):Schema{return $schema->components([Section::make('Phân phối khách hàng')->schema([TextInput::make('batch_code')->label('Mã đợt'),TextInput::make('batch_type')->label('Loại'),Select::make('strategy')->label('Chiến lược')->options(['round_robin'=>'Luân phiên','least_loaded'=>'Ít tải nhất','manual'=>'Thủ công'])->native(false),Select::make('status')->label('Trạng thái')->options(['draft'=>'Nháp','processing'=>'Đang xử lý','completed'=>'Hoàn tất','failed'=>'Lỗi'])->native(false)])->columns(2)->columnSpanFull()]);}
- public static function table(Table $table):Table{return $table->columns([TextColumn::make('batch_code')->label('Mã đợt')->searchable()->sortable(),TextColumn::make('strategy')->label('Chiến lược')->searchable()->sortable(),TextColumn::make('status')->label('Trạng thái')->searchable()->sortable()->badge()->formatStateUsing(fn($state):string=>\Dth\Crm\Support\UiText::status($state))->color(fn($state)=>StatusColor::for($state)),TextColumn::make('total_items')->label('Tổng')->searchable()->sortable(),TextColumn::make('processed_items')->label('Đã xử lý')->searchable()->sortable()])->recordActions([Actions\ViewAction::make(),Actions\EditAction::make(),Actions\DeleteAction::make()])->bulkActions([Actions\BulkActionGroup::make([Actions\DeleteBulkAction::make()->authorizeIndividualRecords()])])->defaultSort('id','desc');}
- public static function getPages():array{return ['index'=>Pages\ListCustomerDistributionBatchs::route('/'),'create'=>Pages\CreateCustomerDistributionBatch::route('/create'),'view'=>Pages\ViewCustomerDistributionBatch::route('/{record}'),'edit'=>Pages\EditCustomerDistributionBatch::route('/{record}/edit')];}
+use Dth\Crm\Models\CustomerDistributionBatch;
+use Dth\Crm\Support\CrmOptions;
+use Dth\Crm\Support\StatusColor;
+use Dth\Crm\Support\UiText;
+use Filament\Actions;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+
+class CustomerDistributionBatchResource extends Resource
+{
+    protected static ?string $model = CustomerDistributionBatch::class;
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrows-right-left';
+    protected static string|\UnitEnum|null $navigationGroup = CrmNavigationGroup::Crm;
+    protected static ?int $navigationSort = 80;
+
+    public static function getNavigationLabel(): string
+    {
+        return UiText::get('navigation.distribution', 'Customer distribution', context: 'navigation');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return UiText::get('models.distribution', 'Customer distribution batch', context: 'model');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return UiText::get('models.distributions', 'Customer distribution batches', context: 'model');
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make(UiText::get('sections.distribution', 'Customer distribution'))
+                ->schema([
+                    TextInput::make('batch_code')
+                        ->label(UiText::get('fields.batch_code', 'Batch code')),
+                    Select::make('batch_type')
+                        ->label(UiText::get('fields.batch_type', 'Batch type'))
+                        ->options(CrmOptions::batchTypes())
+                        ->native(false),
+                    Select::make('strategy')
+                        ->label(UiText::get('fields.strategy', 'Strategy'))
+                        ->options(CrmOptions::distributionStrategies())
+                        ->native(false),
+                    Select::make('status')
+                        ->label(UiText::get('common.fields.status', 'Status'))
+                        ->options(CrmOptions::batchStatuses())
+                        ->native(false),
+                ])
+                ->columns(2)
+                ->columnSpanFull(),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('batch_code')
+                    ->label(UiText::get('fields.batch_code', 'Batch code'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('strategy')
+                    ->label(UiText::get('fields.strategy', 'Strategy'))
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => CrmOptions::label('distribution_strategy', $state))
+                    ->color('info')
+                    ->sortable(),
+                TextColumn::make('status')
+                    ->label(UiText::get('common.fields.status', 'Status'))
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => CrmOptions::label('batch_status', $state))
+                    ->color(fn ($state): string => StatusColor::for($state, 'batch_status')),
+                TextColumn::make('total_items')
+                    ->label(UiText::get('fields.total_items', 'Total'))
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('processed_items')
+                    ->label(UiText::get('fields.processed_items', 'Processed'))
+                    ->numeric()
+                    ->sortable(),
+            ])
+            ->filters([
+                SelectFilter::make('strategy')
+                    ->label(UiText::get('fields.strategy', 'Strategy'))
+                    ->options(CrmOptions::distributionStrategies()),
+                SelectFilter::make('status')
+                    ->label(UiText::get('common.fields.status', 'Status'))
+                    ->options(CrmOptions::batchStatuses()),
+            ])
+            ->recordActions([
+                Actions\ActionGroup::make([
+                    Actions\ViewAction::make()
+                        ->label(UiText::get('common.actions.view', 'View')),
+                    Actions\EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit')),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete')),
+                ]),
+            ])
+            ->bulkActions([
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete'))
+                        ->authorizeIndividualRecords(),
+                ]),
+            ])
+            ->defaultSort('id', 'desc');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListCustomerDistributionBatchs::route('/'),
+            'create' => Pages\CreateCustomerDistributionBatch::route('/create'),
+            'view' => Pages\ViewCustomerDistributionBatch::route('/{record}'),
+            'edit' => Pages\EditCustomerDistributionBatch::route('/{record}/edit'),
+        ];
+    }
 }

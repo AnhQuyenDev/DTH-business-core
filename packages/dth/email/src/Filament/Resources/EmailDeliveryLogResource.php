@@ -101,9 +101,12 @@ class EmailDeliveryLogResource extends Resource
                     ->preload(),
             ])
             ->recordActions([
-                ViewAction::make()
-                    ->label(UiText::get('common.actions.view', 'View'))
-                    ->icon('heroicon-o-eye'),
+                \Filament\Actions\ActionGroup::make([
+                    ViewAction::make()
+                        ->label(UiText::get('common.actions.view', 'View'))
+                        ->icon('heroicon-o-eye'),
+            
+                ]),
             ])
             ->defaultSort('id', 'desc');
     }

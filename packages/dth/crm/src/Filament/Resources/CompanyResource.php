@@ -1,10 +1,150 @@
 <?php
+
 namespace Dth\Crm\Filament\Resources;
-use Dth\Crm\Filament\Resources\CompanyResource\Pages; use Dth\Crm\Filament\Resources\CompanyResource\RelationManagers\ContactsRelationManager; use Dth\Crm\Filament\Resources\CompanyResource\RelationManagers\AssignmentsRelationManager;
-use Dth\Crm\Models\Company; use Dth\Crm\Filament\Navigation\CrmNavigationGroup; use Dth\Crm\Support\StatusColor; use Filament\Resources\Resource; use Filament\Schemas\Schema; use Filament\Schemas\Components\Section; use Filament\Forms\Components\{TextInput,Select,Textarea}; use Filament\Tables\Table; use Filament\Tables\Columns\TextColumn; use Filament\Actions;
-class CompanyResource extends Resource {protected static ?string $model=Company::class; protected static string|\BackedEnum|null $navigationIcon='heroicon-o-building-office'; protected static string|\UnitEnum|null $navigationGroup=CrmNavigationGroup::Crm; public static function getNavigationLabel():string{return \Dth\Crm\Support\UiText::get('navigation.companies','Companies',context:'navigation');} public static function getModelLabel():string{return \Dth\Crm\Support\UiText::get('models.company','Company',context:'model');}
- public static function form(Schema $schema):Schema{return $schema->components([Section::make('Doanh nghiệp')->schema([TextInput::make('company_code')->label('Mã công ty'),TextInput::make('legal_name')->label('Tên pháp lý'),TextInput::make('tax_code')->label('Mã số thuế'),TextInput::make('email_domain')->label('Tên miền Email'),TextInput::make('phone')->label('Điện thoại'),TextInput::make('industry')->label('Ngành'),Textarea::make('address')->label('Địa chỉ')->rows(3)->columnSpanFull(),Select::make('lifecycle_stage')->label('Giai đoạn')->options(['prospect'=>'Tiềm năng','qualified'=>'Đã xác nhận','customer'=>'Khách hàng','inactive'=>'Ngừng hoạt động'])->native(false)])->columns(2)->columnSpanFull()]);}
- public static function table(Table $table):Table{return $table->columns([TextColumn::make('company_code')->label('Mã công ty')->searchable()->sortable(),TextColumn::make('legal_name')->label('Tên doanh nghiệp')->searchable()->sortable(),TextColumn::make('tax_code')->label('Mã số thuế')->searchable()->sortable(),TextColumn::make('industry')->label('Ngành')->searchable()->sortable(),TextColumn::make('lifecycle_stage')->label('Giai đoạn')->searchable()->sortable()->badge()->formatStateUsing(fn($state):string=>\Dth\Crm\Support\UiText::status($state))->color(fn($state)=>StatusColor::for($state))])->recordActions([Actions\ViewAction::make(),Actions\EditAction::make(),Actions\DeleteAction::make()])->bulkActions([Actions\BulkActionGroup::make([Actions\DeleteBulkAction::make()->authorizeIndividualRecords()])])->defaultSort('id','desc');}
- public static function getPages():array{return ['index'=>Pages\ListCompanys::route('/'),'create'=>Pages\CreateCompany::route('/create'),'view'=>Pages\ViewCompany::route('/{record}'),'edit'=>Pages\EditCompany::route('/{record}/edit')];}
- public static function getRelations():array{return [ContactsRelationManager::class,AssignmentsRelationManager::class];}
+
+use Dth\Crm\Enums\CompanyLifecycleStage;
+use Dth\Crm\Filament\Navigation\CrmNavigationGroup;
+use Dth\Crm\Filament\Resources\CompanyResource\Pages;
+use Dth\Crm\Filament\Resources\CompanyResource\RelationManagers\AssignmentsRelationManager;
+use Dth\Crm\Filament\Resources\CompanyResource\RelationManagers\ContactsRelationManager;
+use Dth\Crm\Models\Company;
+use Dth\Crm\Support\CrmOptions;
+use Dth\Crm\Support\StatusColor;
+use Dth\Crm\Support\UiText;
+use Filament\Actions;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+
+class CompanyResource extends Resource
+{
+    protected static ?string $model = Company::class;
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-office';
+    protected static string|\UnitEnum|null $navigationGroup = CrmNavigationGroup::Crm;
+    protected static ?int $navigationSort = 20;
+
+    public static function getNavigationLabel(): string
+    {
+        return UiText::get('navigation.companies', 'Companies', context: 'navigation');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return UiText::get('models.company', 'Company', context: 'model');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return UiText::get('models.companies', 'Companies', context: 'model');
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make(UiText::get('sections.company', 'Company'))
+                ->schema([
+                    TextInput::make('company_code')
+                        ->label(UiText::get('fields.company_code', 'Company code')),
+                    TextInput::make('legal_name')
+                        ->label(UiText::get('fields.legal_name', 'Legal name'))
+                        ->required(),
+                    TextInput::make('tax_code')
+                        ->label(UiText::get('fields.tax_code', 'Tax code')),
+                    TextInput::make('email_domain')
+                        ->label(UiText::get('fields.email_domain', 'Email domain')),
+                    TextInput::make('phone')
+                        ->label(UiText::get('fields.phone', 'Phone'))
+                        ->tel(),
+                    TextInput::make('industry')
+                        ->label(UiText::get('fields.industry', 'Industry')),
+                    Textarea::make('address')
+                        ->label(UiText::get('fields.address', 'Address'))
+                        ->rows(3)
+                        ->columnSpanFull(),
+                    Select::make('lifecycle_stage')
+                        ->label(UiText::get('fields.lifecycle_stage', 'Lifecycle stage'))
+                        ->options(CompanyLifecycleStage::options())
+                        ->native(false),
+                ])
+                ->columns(2)
+                ->columnSpanFull(),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('company_code')
+                    ->label(UiText::get('fields.company_code', 'Company code'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('legal_name')
+                    ->label(UiText::get('fields.company_name', 'Company name'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('tax_code')
+                    ->label(UiText::get('fields.tax_code', 'Tax code'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('industry')
+                    ->label(UiText::get('fields.industry', 'Industry'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('lifecycle_stage')
+                    ->label(UiText::get('fields.lifecycle_stage', 'Lifecycle stage'))
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => CrmOptions::label('company_lifecycle', $state))
+                    ->color(fn ($state): string => StatusColor::for($state, 'company_lifecycle')),
+            ])
+            ->filters([
+                SelectFilter::make('lifecycle_stage')
+                    ->label(UiText::get('fields.lifecycle_stage', 'Lifecycle stage'))
+                    ->options(CompanyLifecycleStage::options()),
+            ])
+            ->recordActions([
+                Actions\ActionGroup::make([
+                    Actions\ViewAction::make()
+                        ->label(UiText::get('common.actions.view', 'View')),
+                    Actions\EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit')),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete')),
+                ]),
+            ])
+            ->bulkActions([
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete'))
+                        ->authorizeIndividualRecords(),
+                ]),
+            ])
+            ->defaultSort('id', 'desc');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListCompanys::route('/'),
+            'create' => Pages\CreateCompany::route('/create'),
+            'view' => Pages\ViewCompany::route('/{record}'),
+            'edit' => Pages\EditCompany::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            ContactsRelationManager::class,
+            AssignmentsRelationManager::class,
+        ];
+    }
 }

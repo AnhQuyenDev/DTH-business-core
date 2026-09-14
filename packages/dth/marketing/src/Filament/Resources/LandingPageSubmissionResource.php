@@ -62,7 +62,8 @@ class LandingPageSubmissionResource extends Resource
                         'personal' => UiText::get('form.audience.personal', 'Personal'),
                         'business' => UiText::get('form.audience.business', 'Business'),
                         default => $state ?: UiText::get('common.fields.not_available', 'N/A'),
-                    }),
+                    })
+                    ->color(fn ($state): string => StatusColor::for($state)),
                 TextColumn::make('display_name')
                     ->label(UiText::get('submission.name', 'Name'))
                     ->searchable()
@@ -118,42 +119,45 @@ class LandingPageSubmissionResource extends Resource
                     ->preload(),
             ])
             ->recordActions([
-                ViewAction::make()
-                    ->label(UiText::get('common.actions.view', 'View'))
-                    ->icon('heroicon-o-eye'),
-                Actions\Action::make('retry')
-                    ->label(UiText::get('submission.retry', 'Retry'))
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->visible(fn (LandingPageSubmission $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->processSubmissions(auth()->user()) && in_array(
-                        self::statusValue($record),
-                        [LandingPageSubmissionStatus::Failed->value, LandingPageSubmissionStatus::Received->value],
-                        true,
-                    ))
-                    ->action(function (LandingPageSubmission $record): void {
-                        try {
-                            app(LandingPageSubmissionService::class)->retry($record);
-                            Notification::make()
-                                ->title(UiText::get('submission.retry_success', 'Submission processed'))
-                                ->success()
-                                ->send();
-                        } catch (Throwable $exception) {
-                            report($exception);
-                            Notification::make()
-                                ->title(UiText::get('submission.retry_failed', 'Submission could not be processed'))
-                                ->body($exception->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-                Actions\Action::make('mark_spam')
-                    ->label(UiText::get('submission.mark_spam', 'Mark spam'))
-                    ->icon('heroicon-o-shield-exclamation')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->visible(fn (LandingPageSubmission $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->processSubmissions(auth()->user()) && self::statusValue($record) !== LandingPageSubmissionStatus::Spam->value)
-                    ->action(fn (LandingPageSubmission $record) => app(LandingPageSubmissionService::class)->markSpamByAdmin($record)),
+                \Filament\Actions\ActionGroup::make([
+                    ViewAction::make()
+                        ->label(UiText::get('common.actions.view', 'View'))
+                        ->icon('heroicon-o-eye'),
+                    Actions\Action::make('retry')
+                        ->label(UiText::get('submission.retry', 'Retry'))
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->visible(fn (LandingPageSubmission $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->processSubmissions(auth()->user()) && in_array(
+                            self::statusValue($record),
+                            [LandingPageSubmissionStatus::Failed->value, LandingPageSubmissionStatus::Received->value],
+                            true,
+                        ))
+                        ->action(function (LandingPageSubmission $record): void {
+                            try {
+                                app(LandingPageSubmissionService::class)->retry($record);
+                                Notification::make()
+                                    ->title(UiText::get('submission.retry_success', 'Submission processed'))
+                                    ->success()
+                                    ->send();
+                            } catch (Throwable $exception) {
+                                report($exception);
+                                Notification::make()
+                                    ->title(UiText::get('submission.retry_failed', 'Submission could not be processed'))
+                                    ->body($exception->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+                    Actions\Action::make('mark_spam')
+                        ->label(UiText::get('submission.mark_spam', 'Mark spam'))
+                        ->icon('heroicon-o-shield-exclamation')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->visible(fn (LandingPageSubmission $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->processSubmissions(auth()->user()) && self::statusValue($record) !== LandingPageSubmissionStatus::Spam->value)
+                        ->action(fn (LandingPageSubmission $record) => app(LandingPageSubmissionService::class)->markSpamByAdmin($record)),
+            
+                ]),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([

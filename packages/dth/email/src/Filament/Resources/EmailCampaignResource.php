@@ -226,90 +226,93 @@ class EmailCampaignResource extends Resource
             ])
             ->defaultSort('id', 'desc')
             ->recordActions([
-                ViewAction::make()
-                    ->label(UiText::get('common.actions.view', 'View'))
-                    ->icon('heroicon-o-eye'),
+                \Filament\Actions\ActionGroup::make([
+                    ViewAction::make()
+                        ->label(UiText::get('common.actions.view', 'View'))
+                        ->icon('heroicon-o-eye'),
 
-                EditAction::make()
-                    ->label(UiText::get('common.actions.edit', 'Edit'))
-                    ->icon('heroicon-o-pencil-square')
-                    ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Draft),
+                    EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit'))
+                        ->icon('heroicon-o-pencil-square')
+                        ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Draft),
 
-                Action::make('send')
-                    ->label(UiText::get('campaign.send', 'Send'))
-                    ->icon('heroicon-o-paper-airplane')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->visible(fn (EmailCampaign $record): bool => in_array(
-                        $record->status,
-                        [EmailCampaignStatus::Draft, EmailCampaignStatus::Scheduled],
-                        true,
-                    ))
-                    ->action(function (EmailCampaign $record): void {
-                        try {
-                            app(CampaignService::class)->start($record);
+                    Action::make('send')
+                        ->label(UiText::get('campaign.send', 'Send'))
+                        ->icon('heroicon-o-paper-airplane')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->visible(fn (EmailCampaign $record): bool => in_array(
+                            $record->status,
+                            [EmailCampaignStatus::Draft, EmailCampaignStatus::Scheduled],
+                            true,
+                        ))
+                        ->action(function (EmailCampaign $record): void {
+                            try {
+                                app(CampaignService::class)->start($record);
+
+                                Notification::make()
+                                    ->title(UiText::get('campaign.queued_title', 'Campaign queued'))
+                                    ->success()
+                                    ->send();
+                            } catch (Throwable $e) {
+                                Notification::make()
+                                    ->title(UiText::get('campaign.cannot_send', 'Campaign cannot be sent'))
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+
+                    Action::make('schedule')
+                        ->label(UiText::get('campaign.schedule', 'Schedule'))
+                        ->icon('heroicon-o-calendar-days')
+                        ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Draft)
+                        ->schema([
+                            DateTimePicker::make('scheduled_at')
+                                ->label(UiText::get('campaign.send_at', 'Send at'))
+                                ->required()
+                                ->seconds(false)
+                                ->minDate(now()->startOfMinute()),
+                        ])
+                        ->action(function (EmailCampaign $record, array $data): void {
+                            try {
+                                app(CampaignService::class)->schedule(
+                                    $record,
+                                    new \DateTimeImmutable($data['scheduled_at']),
+                                );
+
+                                Notification::make()
+                                    ->title(UiText::get('campaign.scheduled_title', 'Campaign scheduled'))
+                                    ->success()
+                                    ->send();
+                            } catch (Throwable $e) {
+                                Notification::make()
+                                    ->title(UiText::get('campaign.cannot_schedule', 'Campaign cannot be scheduled'))
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+
+                    Action::make('unschedule')
+                        ->label(UiText::get('campaign.unschedule', 'Unschedule'))
+                        ->icon('heroicon-o-arrow-uturn-left')
+                        ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Scheduled)
+                        ->action(function (EmailCampaign $record): void {
+                            app(CampaignService::class)->unschedule($record);
 
                             Notification::make()
-                                ->title(UiText::get('campaign.queued_title', 'Campaign queued'))
+                                ->title(UiText::get('campaign.returned_draft', 'Campaign returned to draft'))
                                 ->success()
                                 ->send();
-                        } catch (Throwable $e) {
-                            Notification::make()
-                                ->title(UiText::get('campaign.cannot_send', 'Campaign cannot be sent'))
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
+                        }),
 
-                Action::make('schedule')
-                    ->label(UiText::get('campaign.schedule', 'Schedule'))
-                    ->icon('heroicon-o-calendar-days')
-                    ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Draft)
-                    ->schema([
-                        DateTimePicker::make('scheduled_at')
-                            ->label(UiText::get('campaign.send_at', 'Send at'))
-                            ->required()
-                            ->seconds(false)
-                            ->minDate(now()->startOfMinute()),
-                    ])
-                    ->action(function (EmailCampaign $record, array $data): void {
-                        try {
-                            app(CampaignService::class)->schedule(
-                                $record,
-                                new \DateTimeImmutable($data['scheduled_at']),
-                            );
-
-                            Notification::make()
-                                ->title(UiText::get('campaign.scheduled_title', 'Campaign scheduled'))
-                                ->success()
-                                ->send();
-                        } catch (Throwable $e) {
-                            Notification::make()
-                                ->title(UiText::get('campaign.cannot_schedule', 'Campaign cannot be scheduled'))
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('unschedule')
-                    ->label(UiText::get('campaign.unschedule', 'Unschedule'))
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Scheduled)
-                    ->action(function (EmailCampaign $record): void {
-                        app(CampaignService::class)->unschedule($record);
-
-                        Notification::make()
-                            ->title(UiText::get('campaign.returned_draft', 'Campaign returned to draft'))
-                            ->success()
-                            ->send();
-                    }),
-
-                DeleteAction::make()
-                    ->label(UiText::get('campaign.delete', 'Delete'))
-                    ->icon('heroicon-o-trash')
-                    ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Draft),
+                    DeleteAction::make()
+                        ->label(UiText::get('campaign.delete', 'Delete'))
+                        ->icon('heroicon-o-trash')
+                        ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Draft),
+            
+                ]),
             ]);
     }
 

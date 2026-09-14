@@ -285,7 +285,8 @@ class FormTemplateResource extends Resource
                 TextColumn::make('audience_type')
                     ->label(UiText::get('form.audience_type', 'Audience type'))
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => FormAudienceType::labelFor($state)),
+                    ->formatStateUsing(fn ($state): string => FormAudienceType::labelFor($state))
+                    ->color(fn ($state): string => StatusColor::for($state)),
                 TextColumn::make('status')
                     ->label(UiText::get('common.fields.status', 'Status'))
                     ->badge()
@@ -305,23 +306,26 @@ class FormTemplateResource extends Resource
             ])
             ->defaultSort('updated_at', 'desc')
             ->recordActions([
-                Actions\Action::make('preview')
-                    ->label(UiText::get('form.preview', 'Preview'))
-                    ->icon('heroicon-o-eye')
-                    ->url(fn (FormTemplate $record): string => route(
-                        'marketing.form-templates.preview',
-                        ['formTemplate' => $record],
-                    ))
-                    ->openUrlInNewTab(),
-                Actions\EditAction::make()
-                    ->label(UiText::get('common.actions.edit', 'Edit'))
-                    ->icon('heroicon-o-pencil-square')
-                    ->visible(fn (FormTemplate $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status !== FormTemplateStatus::Archived),
-                self::statusAction('activate', FormTemplateStatus::Active, 'heroicon-o-check-badge', 'success'),
-                self::statusAction('archive', FormTemplateStatus::Archived, 'heroicon-o-archive-box', 'gray', true),
-                Actions\DeleteAction::make()
-                    ->label(UiText::get('common.actions.delete', 'Delete'))
-                    ->icon('heroicon-o-trash'),
+                \Filament\Actions\ActionGroup::make([
+                    Actions\Action::make('preview')
+                        ->label(UiText::get('form.preview', 'Preview'))
+                        ->icon('heroicon-o-eye')
+                        ->url(fn (FormTemplate $record): string => route(
+                            'marketing.form-templates.preview',
+                            ['formTemplate' => $record],
+                        ))
+                        ->openUrlInNewTab(),
+                    Actions\EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit'))
+                        ->icon('heroicon-o-pencil-square')
+                        ->visible(fn (FormTemplate $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status !== FormTemplateStatus::Archived),
+                    self::statusAction('activate', FormTemplateStatus::Active, 'heroicon-o-check-badge', 'success'),
+                    self::statusAction('archive', FormTemplateStatus::Archived, 'heroicon-o-archive-box', 'gray', true),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete'))
+                        ->icon('heroicon-o-trash'),
+            
+                ]),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([

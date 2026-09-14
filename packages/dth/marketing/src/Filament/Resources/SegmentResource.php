@@ -144,31 +144,34 @@ class SegmentResource extends Resource
                 ]),
             ])
             ->recordActions([
-                Actions\Action::make('preview_count')
-                    ->label(UiText::get('segment.preview_count', 'Count'))
-                    ->icon('heroicon-o-calculator')
-                    ->action(function (Segment $record): void {
-                        try {
-                            $count = app(SegmentQueryService::class)->countForSegment($record);
+                \Filament\Actions\ActionGroup::make([
+                    Actions\Action::make('preview_count')
+                        ->label(UiText::get('segment.preview_count', 'Count'))
+                        ->icon('heroicon-o-calculator')
+                        ->action(function (Segment $record): void {
+                            try {
+                                $count = app(SegmentQueryService::class)->countForSegment($record);
+                                $record->forceFill(['last_evaluated_at' => now()])->saveQuietly();
+                                Notification::make()->title(UiText::get('segment.preview', 'Segment preview'))->body(UiText::get('segment.matching_contacts', 'Matching contacts: :count', ['count' => $count]))->success()->send();
+                            } catch (Throwable $exception) {
+                                Notification::make()->title(UiText::get('segment.preview_failed', 'Segment preview failed'))->body($exception->getMessage())->danger()->send();
+                            }
+                        }),
+                    Actions\Action::make('preview_sample')
+                        ->label(UiText::get('segment.preview_sample', 'Sample'))
+                        ->icon('heroicon-o-list-bullet')
+                        ->modalHeading(UiText::get('segment.preview_sample', 'Segment sample'))
+                        ->modalWidth('3xl')
+                        ->modalSubmitAction(false)
+                        ->modalContent(function (Segment $record) {
+                            $sample = app(SegmentQueryService::class)->sampleForSegment($record, 10);
                             $record->forceFill(['last_evaluated_at' => now()])->saveQuietly();
-                            Notification::make()->title(UiText::get('segment.preview', 'Segment preview'))->body(UiText::get('segment.matching_contacts', 'Matching contacts: :count', ['count' => $count]))->success()->send();
-                        } catch (Throwable $exception) {
-                            Notification::make()->title(UiText::get('segment.preview_failed', 'Segment preview failed'))->body($exception->getMessage())->danger()->send();
-                        }
-                    }),
-                Actions\Action::make('preview_sample')
-                    ->label(UiText::get('segment.preview_sample', 'Sample'))
-                    ->icon('heroicon-o-list-bullet')
-                    ->modalHeading(UiText::get('segment.preview_sample', 'Segment sample'))
-                    ->modalWidth('3xl')
-                    ->modalSubmitAction(false)
-                    ->modalContent(function (Segment $record) {
-                        $sample = app(SegmentQueryService::class)->sampleForSegment($record, 10);
-                        $record->forceFill(['last_evaluated_at' => now()])->saveQuietly();
-                        return view('dth-marketing::filament.segment-sample', ['sample' => $sample]);
-                    }),
-                Actions\EditAction::make()->label(UiText::get('common.actions.edit', 'Edit'))->visible(fn (Segment $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && ! $record->is_automatic),
-                Actions\DeleteAction::make()->label(UiText::get('common.actions.delete', 'Delete')),
+                            return view('dth-marketing::filament.segment-sample', ['sample' => $sample]);
+                        }),
+                    Actions\EditAction::make()->label(UiText::get('common.actions.edit', 'Edit'))->visible(fn (Segment $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && ! $record->is_automatic),
+                    Actions\DeleteAction::make()->label(UiText::get('common.actions.delete', 'Delete')),
+            
+                ]),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([

@@ -85,18 +85,21 @@ class EmailCampaignsRelationManager extends RelationManager
                         ->createManualLink($this->getOwnerRecord(), $data, auth()->id())),
             ])
             ->recordActions([
-                Actions\Action::make('open_email')
-                    ->label(UiText::get('email_bridge.open', 'Open Email'))
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (MarketingCampaignEmailLink $record): ?string => app(EmailMarketingLinkService::class)->adminUrl($record))
-                    ->openUrlInNewTab()
-                    ->visible(fn (MarketingCampaignEmailLink $record): bool => filled(app(EmailMarketingLinkService::class)->adminUrl($record))),
-                Actions\EditAction::make()
-                    ->label(UiText::get('common.actions.edit', 'Edit'))
-                    ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user()) && ! $this->getOwnerRecord()->isTerminal()),
-                Actions\DeleteAction::make()
-                    ->label(UiText::get('common.actions.delete', 'Delete'))
-                    ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user()) && ! $this->getOwnerRecord()->isTerminal()),
+                \Filament\Actions\ActionGroup::make([
+                    Actions\Action::make('open_email')
+                        ->label(UiText::get('email_bridge.open', 'Open Email'))
+                        ->icon('heroicon-o-arrow-top-right-on-square')
+                        ->url(fn (MarketingCampaignEmailLink $record): ?string => app(EmailMarketingLinkService::class)->adminUrl($record))
+                        ->openUrlInNewTab()
+                        ->visible(fn (MarketingCampaignEmailLink $record): bool => filled(app(EmailMarketingLinkService::class)->adminUrl($record))),
+                    Actions\EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit'))
+                        ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user()) && ! $this->getOwnerRecord()->isTerminal()),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete'))
+                        ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user()) && ! $this->getOwnerRecord()->isTerminal()),
+            
+                ]),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([

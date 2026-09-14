@@ -3,6 +3,7 @@
 namespace Dth\Marketing\Filament\Resources\ContactListResource\RelationManagers;
 
 use Dth\Marketing\Filament\Support\StatusColor;
+use Dth\Marketing\Enums\FormAudienceType;
 use Dth\Marketing\Models\ContactListMember;
 use Dth\Marketing\Support\MarketingAuthorizationService;
 use Dth\Marketing\Support\UiText;
@@ -84,7 +85,8 @@ class MembersRelationManager extends RelationManager
                 TextColumn::make('audience_type')
                     ->label(UiText::get('audience.customer_type', 'Customer type'))
                     ->badge()
-                    ->placeholder('—'),
+                    ->formatStateUsing(fn ($state): string => FormAudienceType::labelFor($state))
+                    ->color(fn ($state): string => StatusColor::for($state)),
                 TextColumn::make('status')
                     ->label(UiText::get('common.fields.status', 'Status'))
                     ->badge()
@@ -115,12 +117,15 @@ class MembersRelationManager extends RelationManager
                     ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user())),
             ])
             ->recordActions([
-                Actions\EditAction::make()
-                    ->label(UiText::get('common.actions.edit', 'Edit'))
-                    ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user())),
-                Actions\DeleteAction::make()
-                    ->label(UiText::get('common.actions.delete', 'Delete'))
-                    ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user())),
+                \Filament\Actions\ActionGroup::make([
+                    Actions\EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit'))
+                        ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user())),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete'))
+                        ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user())),
+            
+                ]),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([

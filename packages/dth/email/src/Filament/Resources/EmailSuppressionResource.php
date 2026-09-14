@@ -127,69 +127,72 @@ class EmailSuppressionResource extends Resource
                     ]),
             ])
             ->recordActions([
-                Action::make('release')
-                    ->label(fn (EmailSuppression $record): string =>
-                        $record->reason === SuppressionReason::Unsubscribe
-                            ? UiText::get('suppression.resubscribe', 'Resubscribe')
-                            : UiText::get('suppression.release', 'Release')
-                    )
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->visible(fn (EmailSuppression $record): bool =>
-                        app(SuppressionService::class)->canRelease($record)
-                    )
-                    ->modalDescription(fn (EmailSuppression $record): string =>
-                        $record->reason === SuppressionReason::Unsubscribe
-                            ? UiText::get(
-                                'suppression.resubscribe_description',
-                                'This only changes the current subscription state. The original campaign will still keep its historical Unsubscribed metric.'
-                            )
-                            : UiText::get(
-                                'suppression.release_description',
-                                'Release this manual suppression while keeping its audit history?'
-                            )
-                    )
-                    ->schema([
-                        Select::make('release_source')
-                            ->label(UiText::get('suppression.reason_source', 'Reason / source'))
-                            ->options([
-                                'customer_opt_in' => UiText::get('suppression.customer_opt_in', 'Customer opted in again'),
-                                'customer_request' => UiText::get('suppression.customer_request', 'Customer requested resubscription'),
-                                'admin_correction' => UiText::get('suppression.admin_correction', 'Administrative correction'),
-                                'other' => UiText::get('suppression.other', 'Other'),
-                            ])
-                            ->native(false)
-                            ->required(),
-                        Textarea::make('release_note')
-                            ->label(UiText::get('suppression.note_evidence', 'Note / evidence'))
-                            ->rows(3)
-                            ->required(),
-                    ])
-                    ->action(function (EmailSuppression $record, array $data): void {
-                        app(SuppressionService::class)->release(
-                            suppression: $record,
-                            releasedBy: auth()->id(),
-                            source: $data['release_source'],
-                            note: $data['release_note'],
-                        );
+                \Filament\Actions\ActionGroup::make([
+                    Action::make('release')
+                        ->label(fn (EmailSuppression $record): string =>
+                            $record->reason === SuppressionReason::Unsubscribe
+                                ? UiText::get('suppression.resubscribe', 'Resubscribe')
+                                : UiText::get('suppression.release', 'Release')
+                        )
+                        ->icon('heroicon-o-arrow-uturn-left')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->visible(fn (EmailSuppression $record): bool =>
+                            app(SuppressionService::class)->canRelease($record)
+                        )
+                        ->modalDescription(fn (EmailSuppression $record): string =>
+                            $record->reason === SuppressionReason::Unsubscribe
+                                ? UiText::get(
+                                    'suppression.resubscribe_description',
+                                    'This only changes the current subscription state. The original campaign will still keep its historical Unsubscribed metric.'
+                                )
+                                : UiText::get(
+                                    'suppression.release_description',
+                                    'Release this manual suppression while keeping its audit history?'
+                                )
+                        )
+                        ->schema([
+                            Select::make('release_source')
+                                ->label(UiText::get('suppression.reason_source', 'Reason / source'))
+                                ->options([
+                                    'customer_opt_in' => UiText::get('suppression.customer_opt_in', 'Customer opted in again'),
+                                    'customer_request' => UiText::get('suppression.customer_request', 'Customer requested resubscription'),
+                                    'admin_correction' => UiText::get('suppression.admin_correction', 'Administrative correction'),
+                                    'other' => UiText::get('suppression.other', 'Other'),
+                                ])
+                                ->native(false)
+                                ->required(),
+                            Textarea::make('release_note')
+                                ->label(UiText::get('suppression.note_evidence', 'Note / evidence'))
+                                ->rows(3)
+                                ->required(),
+                        ])
+                        ->action(function (EmailSuppression $record, array $data): void {
+                            app(SuppressionService::class)->release(
+                                suppression: $record,
+                                releasedBy: auth()->id(),
+                                source: $data['release_source'],
+                                note: $data['release_note'],
+                            );
 
-                        Notification::make()
-                            ->title(
-                                $record->reason === SuppressionReason::Unsubscribe
-                                    ? UiText::get(
-                                        'suppression.resubscribed_title',
-                                        'Address resubscribed for future campaigns'
-                                    )
-                                    : UiText::get('suppression.released_title', 'Suppression released')
-                            )
-                            ->body(UiText::get(
-                                'suppression.history_unchanged',
-                                'Historical campaign metrics were not changed.'
-                            ))
-                            ->success()
-                            ->send();
-                    }),
+                            Notification::make()
+                                ->title(
+                                    $record->reason === SuppressionReason::Unsubscribe
+                                        ? UiText::get(
+                                            'suppression.resubscribed_title',
+                                            'Address resubscribed for future campaigns'
+                                        )
+                                        : UiText::get('suppression.released_title', 'Suppression released')
+                                )
+                                ->body(UiText::get(
+                                    'suppression.history_unchanged',
+                                    'Historical campaign metrics were not changed.'
+                                ))
+                                ->success()
+                                ->send();
+                        }),
+            
+                ]),
             ])
             ->defaultSort('created_at', 'desc');
     }

@@ -120,12 +120,15 @@ class ContactListResource extends Resource
                     ]),
             ])
             ->recordActions([
-                Actions\EditAction::make()
-                    ->label(UiText::get('common.actions.edit', 'Edit'))
-                    ->icon('heroicon-o-pencil-square'),
-                Actions\DeleteAction::make()
-                    ->label(UiText::get('common.actions.delete', 'Delete'))
-                    ->icon('heroicon-o-trash'),
+                \Filament\Actions\ActionGroup::make([
+                    Actions\EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit'))
+                        ->icon('heroicon-o-pencil-square'),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete'))
+                        ->icon('heroicon-o-trash'),
+            
+                ]),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([

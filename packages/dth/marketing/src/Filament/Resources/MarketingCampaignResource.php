@@ -162,46 +162,49 @@ class MarketingCampaignResource extends Resource
             ])
             ->defaultSort('id', 'desc')
             ->recordActions([
-                Actions\Action::make('report')
-                    ->label(UiText::get('analytics.campaign_report', 'Report'))
-                    ->icon('heroicon-o-presentation-chart-line')
-                    ->url(fn (MarketingCampaign $record): string => static::getUrl('view', ['record' => $record]))
-                    ->visible(fn (): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->reports(auth()->user())),
-                Actions\Action::make('email_campaigns')
-                    ->label(UiText::get('email_bridge.campaigns', 'Email Campaigns'))
-                    ->icon('heroicon-o-envelope')
-                    ->modalHeading(UiText::get('email_bridge.campaigns', 'Email Campaigns'))
-                    ->modalWidth('5xl')
-                    ->modalSubmitAction(false)
-                    ->modalContent(function (MarketingCampaign $record) {
-                        $service = app(EmailMarketingLinkService::class);
-                        if ($service->available()) {
-                            try {
-                                $service->refreshFromBridge($record);
-                            } catch (Throwable $exception) {
-                                report($exception);
+                \Filament\Actions\ActionGroup::make([
+                    Actions\Action::make('report')
+                        ->label(UiText::get('analytics.campaign_report', 'Report'))
+                        ->icon('heroicon-o-presentation-chart-line')
+                        ->url(fn (MarketingCampaign $record): string => static::getUrl('view', ['record' => $record]))
+                        ->visible(fn (): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->reports(auth()->user())),
+                    Actions\Action::make('email_campaigns')
+                        ->label(UiText::get('email_bridge.campaigns', 'Email Campaigns'))
+                        ->icon('heroicon-o-envelope')
+                        ->modalHeading(UiText::get('email_bridge.campaigns', 'Email Campaigns'))
+                        ->modalWidth('5xl')
+                        ->modalSubmitAction(false)
+                        ->modalContent(function (MarketingCampaign $record) {
+                            $service = app(EmailMarketingLinkService::class);
+                            if ($service->available()) {
+                                try {
+                                    $service->refreshFromBridge($record);
+                                } catch (Throwable $exception) {
+                                    report($exception);
+                                }
                             }
-                        }
 
-                        return view('dth-marketing::filament.email-campaign-links', [
-                            'links' => $record->emailLinks()->latest()->get(),
-                            'service' => $service,
-                            'available' => $service->available(),
-                        ]);
-                    })
-                    ->visible(fn (): bool => config('dth-marketing.features.email_bridge', false) && app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->view(auth()->user())),
-                Actions\EditAction::make()
-                    ->label(UiText::get('common.actions.edit', 'Edit'))
-                    ->icon('heroicon-o-pencil-square')
-                    ->visible(fn (MarketingCampaign $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && ! $record->isTerminal()),
-                self::transitionAction('activate', MarketingCampaignStatus::Active, 'heroicon-o-play', 'success'),
-                self::transitionAction('pause', MarketingCampaignStatus::Paused, 'heroicon-o-pause', 'warning'),
-                self::transitionAction('complete', MarketingCampaignStatus::Completed, 'heroicon-o-check-circle', 'success'),
-                self::transitionAction('cancel', MarketingCampaignStatus::Cancelled, 'heroicon-o-x-circle', 'danger', true),
-                Actions\DeleteAction::make()
-                    ->label(UiText::get('common.actions.delete', 'Delete'))
-                    ->icon('heroicon-o-trash')
-                    ->visible(fn (MarketingCampaign $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status === MarketingCampaignStatus::Draft),
+                            return view('dth-marketing::filament.email-campaign-links', [
+                                'links' => $record->emailLinks()->latest()->get(),
+                                'service' => $service,
+                                'available' => $service->available(),
+                            ]);
+                        })
+                        ->visible(fn (): bool => config('dth-marketing.features.email_bridge', false) && app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->view(auth()->user())),
+                    Actions\EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit'))
+                        ->icon('heroicon-o-pencil-square')
+                        ->visible(fn (MarketingCampaign $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && ! $record->isTerminal()),
+                    self::transitionAction('activate', MarketingCampaignStatus::Active, 'heroicon-o-play', 'success'),
+                    self::transitionAction('pause', MarketingCampaignStatus::Paused, 'heroicon-o-pause', 'warning'),
+                    self::transitionAction('complete', MarketingCampaignStatus::Completed, 'heroicon-o-check-circle', 'success'),
+                    self::transitionAction('cancel', MarketingCampaignStatus::Cancelled, 'heroicon-o-x-circle', 'danger', true),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete'))
+                        ->icon('heroicon-o-trash')
+                        ->visible(fn (MarketingCampaign $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status === MarketingCampaignStatus::Draft),
+            
+                ]),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([

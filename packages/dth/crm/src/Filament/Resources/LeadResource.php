@@ -1,9 +1,220 @@
 <?php
+
 namespace Dth\Crm\Filament\Resources;
-use Dth\Crm\Filament\Resources\LeadResource\Pages; use Dth\Crm\Filament\Resources\LeadResource\RelationManagers\ActivitiesRelationManager;
-use Dth\Crm\Models\{Lead,Staff}; use Dth\Crm\Filament\Navigation\CrmNavigationGroup; use Dth\Crm\Support\StatusColor; use Dth\Crm\Services\{LeadDistributionService,LeadActivityService,CustomerService}; use Filament\Resources\Resource; use Filament\Schemas\Schema; use Filament\Schemas\Components\Section; use Filament\Forms\Components\{TextInput,Select,Textarea,DateTimePicker}; use Filament\Tables\Table; use Filament\Tables\Columns\TextColumn; use Filament\Tables\Filters\SelectFilter; use Filament\Actions; use Filament\Notifications\Notification;
-class LeadResource extends Resource {protected static ?string $model=Lead::class;protected static string|\BackedEnum|null $navigationIcon='heroicon-o-funnel';protected static string|\UnitEnum|null $navigationGroup=CrmNavigationGroup::Crm;public static function getNavigationLabel():string{return \Dth\Crm\Support\UiText::get('navigation.leads','Leads',context:'navigation');}
- public static function form(Schema $schema):Schema{return $schema->components([Section::make('Lead')->schema([TextInput::make('lead_code')->label('Mã Lead')->disabledOn('edit'),TextInput::make('title')->label('Tiêu đề'),TextInput::make('source')->label('Nguồn'),TextInput::make('service_interest')->label('Dịch vụ quan tâm'),TextInput::make('service_reference')->label('Mã dịch vụ'),TextInput::make('estimated_value')->numeric()->label('Giá trị dự kiến'),Select::make('assigned_staff_id')->label('Nhân viên phụ trách')->options(fn()=>Staff::where('employment_status','active')->pluck('name','id')->all())->searchable(),Select::make('intake_status')->label('Trạng thái')->options(\Dth\Crm\Enums\LeadIntakeStatus::options())->native(false)])->columns(2)]);}
- public static function table(Table $table):Table{return $table->columns([TextColumn::make('lead_code')->label('Mã Lead')->searchable()->sortable(),TextColumn::make('contact.display_name')->label('Liên hệ')->searchable(),TextColumn::make('company.legal_name')->label('Doanh nghiệp')->searchable(),TextColumn::make('service_interest')->label('Dịch vụ'),TextColumn::make('intake_status')->label('Trạng thái')->badge()->color(fn($state)=>StatusColor::for($state)),TextColumn::make('assignedStaff.name')->label('Phụ trách')])->filters([SelectFilter::make('intake_status')->label('Trạng thái')->options(\Dth\Crm\Enums\LeadIntakeStatus::options())])->recordActions([Actions\ViewAction::make(),Actions\Action::make('distribute')->label('Phân phối')->icon('heroicon-o-paper-airplane')->visible(fn(Lead $r)=>$r->assigned_staff_id===null&&!in_array($r->intake_status,['duplicate','spam','closed','converted_to_opportunity'],true))->action(function(Lead $r){app(LeadDistributionService::class)->distribute($r,auth()->id());Notification::make()->success()->title('Đã phân phối Lead')->send();}),Actions\Action::make('accept')->label('Xác nhận nhận')->icon('heroicon-o-check')->visible(fn(Lead $r)=>$r->assigned_staff_id!==null&&Staff::where('user_id',auth()->id())->whereKey($r->assigned_staff_id)->exists())->action(function(Lead $r){$s=Staff::where('user_id',auth()->id())->firstOrFail();app(LeadDistributionService::class)->accept($r,$s->id);Notification::make()->success()->title('Đã xác nhận nhận Lead')->send();}),Actions\Action::make('activity')->label('Ghi hoạt động')->icon('heroicon-o-chat-bubble-left-right')->form([Select::make('type')->options(\Dth\Crm\Enums\LeadActivityType::options())->required(),TextInput::make('subject')->label('Chủ đề'),Textarea::make('content')->label('Nội dung')->rows(3),DateTimePicker::make('next_follow_up_at')->label('Theo dõi tiếp')])->action(function(Lead $r,array $d){$s=Staff::where('user_id',auth()->id())->first();app(LeadActivityService::class)->record($r,$d+['staff_id'=>$s?->id]);Notification::make()->success()->title('Đã ghi hoạt động')->send();}),Actions\EditAction::make(),Actions\DeleteAction::make()])->bulkActions([Actions\BulkActionGroup::make([Actions\BulkAction::make('distribute')->label('Phân phối Lead')->action(fn($records)=>$records->each(fn($r)=>$r->assigned_staff_id?:app(LeadDistributionService::class)->distribute($r,auth()->id()))),Actions\DeleteBulkAction::make()->authorizeIndividualRecords()])])->defaultSort('id','desc');}
- public static function getPages():array{return ['index'=>Pages\ListLeads::route('/'),'create'=>Pages\CreateLead::route('/create'),'view'=>Pages\ViewLead::route('/{record}'),'edit'=>Pages\EditLead::route('/{record}/edit')];} public static function getRelations():array{return [ActivitiesRelationManager::class];}
+
+use Dth\Crm\Enums\LeadActivityType;
+use Dth\Crm\Enums\LeadIntakeStatus;
+use Dth\Crm\Filament\Navigation\CrmNavigationGroup;
+use Dth\Crm\Filament\Resources\LeadResource\Pages;
+use Dth\Crm\Filament\Resources\LeadResource\RelationManagers\ActivitiesRelationManager;
+use Dth\Crm\Models\Lead;
+use Dth\Crm\Models\Staff;
+use Dth\Crm\Services\LeadActivityService;
+use Dth\Crm\Services\LeadDistributionService;
+use Dth\Crm\Support\CrmOptions;
+use Dth\Crm\Support\StatusColor;
+use Dth\Crm\Support\UiText;
+use Filament\Actions;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+
+class LeadResource extends Resource
+{
+    protected static ?string $model = Lead::class;
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-funnel';
+    protected static string|\UnitEnum|null $navigationGroup = CrmNavigationGroup::Crm;
+    protected static ?int $navigationSort = 30;
+
+    public static function getNavigationLabel(): string
+    {
+        return UiText::get('navigation.leads', 'Leads', context: 'navigation');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return UiText::get('models.lead', 'Lead', context: 'model');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return UiText::get('models.leads', 'Leads', context: 'model');
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            Section::make(UiText::get('sections.lead', 'Lead'))
+                ->schema([
+                    TextInput::make('lead_code')
+                        ->label(UiText::get('fields.lead_code', 'Lead code'))
+                        ->disabledOn('edit'),
+                    TextInput::make('title')
+                        ->label(UiText::get('fields.title', 'Title')),
+                    TextInput::make('source')
+                        ->label(UiText::get('common.fields.source', 'Source')),
+                    TextInput::make('service_interest')
+                        ->label(UiText::get('fields.service_interest', 'Service interest')),
+                    TextInput::make('service_reference')
+                        ->label(UiText::get('fields.service_reference', 'Service reference')),
+                    TextInput::make('estimated_value')
+                        ->label(UiText::get('fields.estimated_value', 'Estimated value'))
+                        ->numeric(),
+                    Select::make('assigned_staff_id')
+                        ->label(UiText::get('fields.assigned_staff', 'Assigned staff'))
+                        ->options(fn (): array => Staff::query()
+                            ->where('employment_status', 'active')
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all())
+                        ->searchable()
+                        ->preload(),
+                    Select::make('intake_status')
+                        ->label(UiText::get('common.fields.status', 'Status'))
+                        ->options(LeadIntakeStatus::options())
+                        ->native(false),
+                ])
+                ->columns(2),
+        ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('lead_code')
+                    ->label(UiText::get('fields.lead_code', 'Lead code'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('contact.display_name')
+                    ->label(UiText::get('models.contact', 'Contact'))
+                    ->searchable(),
+                TextColumn::make('company.legal_name')
+                    ->label(UiText::get('models.company', 'Company'))
+                    ->searchable(),
+                TextColumn::make('service_interest')
+                    ->label(UiText::get('fields.service', 'Service'))
+                    ->placeholder('—'),
+                TextColumn::make('intake_status')
+                    ->label(UiText::get('common.fields.status', 'Status'))
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => CrmOptions::label('lead_status', $state))
+                    ->color(fn ($state): string => StatusColor::for($state, 'lead_status')),
+                TextColumn::make('assignedStaff.name')
+                    ->label(UiText::get('fields.owner', 'Owner'))
+                    ->placeholder(UiText::get('fields.unassigned', 'Unassigned')),
+            ])
+            ->filters([
+                SelectFilter::make('intake_status')
+                    ->label(UiText::get('common.fields.status', 'Status'))
+                    ->options(LeadIntakeStatus::options()),
+                SelectFilter::make('assigned_staff_id')
+                    ->label(UiText::get('fields.assigned_staff', 'Assigned staff'))
+                    ->options(fn (): array => Staff::query()->orderBy('name')->pluck('name', 'id')->all())
+                    ->searchable(),
+            ])
+            ->recordActions([
+                Actions\ActionGroup::make([
+                    Actions\ViewAction::make()
+                        ->label(UiText::get('common.actions.view', 'View')),
+                    Actions\Action::make('distribute')
+                        ->label(UiText::get('actions.distribute_lead', 'Distribute Lead'))
+                        ->icon('heroicon-o-paper-airplane')
+                        ->visible(fn (Lead $record): bool => $record->assigned_staff_id === null
+                            && ! in_array($record->intake_status, ['duplicate', 'spam', 'closed', 'converted_to_opportunity'], true))
+                        ->action(function (Lead $record): void {
+                            app(LeadDistributionService::class)->distribute($record, auth()->id());
+
+                            Notification::make()
+                                ->success()
+                                ->title(UiText::get('notifications.lead_distributed', 'Lead distributed'))
+                                ->send();
+                        }),
+                    Actions\Action::make('accept')
+                        ->label(UiText::get('actions.accept_lead', 'Accept Lead'))
+                        ->icon('heroicon-o-check')
+                        ->visible(fn (Lead $record): bool => $record->assigned_staff_id !== null
+                            && Staff::query()
+                                ->where('user_id', auth()->id())
+                                ->whereKey($record->assigned_staff_id)
+                                ->exists())
+                        ->action(function (Lead $record): void {
+                            $staff = Staff::query()->where('user_id', auth()->id())->firstOrFail();
+                            app(LeadDistributionService::class)->accept($record, $staff->id);
+
+                            Notification::make()
+                                ->success()
+                                ->title(UiText::get('notifications.lead_accepted', 'Lead accepted'))
+                                ->send();
+                        }),
+                    Actions\Action::make('activity')
+                        ->label(UiText::get('actions.log_activity', 'Log activity'))
+                        ->icon('heroicon-o-chat-bubble-left-right')
+                        ->form([
+                            Select::make('type')
+                                ->label(UiText::get('fields.activity_type', 'Activity type'))
+                                ->options(LeadActivityType::options())
+                                ->required(),
+                            TextInput::make('subject')
+                                ->label(UiText::get('fields.subject', 'Subject')),
+                            Textarea::make('content')
+                                ->label(UiText::get('fields.content', 'Content'))
+                                ->rows(3),
+                            DateTimePicker::make('next_follow_up_at')
+                                ->label(UiText::get('fields.next_follow_up', 'Next follow up')),
+                        ])
+                        ->action(function (Lead $record, array $data): void {
+                            $staff = Staff::query()->where('user_id', auth()->id())->first();
+                            app(LeadActivityService::class)->record($record, $data + ['staff_id' => $staff?->id]);
+
+                            Notification::make()
+                                ->success()
+                                ->title(UiText::get('notifications.activity_logged', 'Activity logged'))
+                                ->send();
+                        }),
+                    Actions\EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit')),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete')),
+                ]),
+            ])
+            ->bulkActions([
+                Actions\BulkActionGroup::make([
+                    Actions\BulkAction::make('distribute')
+                        ->label(UiText::get('actions.distribute_leads', 'Distribute Leads'))
+                        ->icon('heroicon-o-paper-airplane')
+                        ->action(fn ($records) => $records->each(
+                            fn (Lead $record) => $record->assigned_staff_id
+                                ?: app(LeadDistributionService::class)->distribute($record, auth()->id())
+                        )),
+                    Actions\DeleteBulkAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete'))
+                        ->authorizeIndividualRecords(),
+                ]),
+            ])
+            ->defaultSort('id', 'desc');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListLeads::route('/'),
+            'create' => Pages\CreateLead::route('/create'),
+            'view' => Pages\ViewLead::route('/{record}'),
+            'edit' => Pages\EditLead::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [ActivitiesRelationManager::class];
+    }
 }

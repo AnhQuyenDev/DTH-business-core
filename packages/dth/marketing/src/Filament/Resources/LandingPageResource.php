@@ -335,126 +335,129 @@ class LandingPageResource extends Resource
             ])
             ->defaultSort('id', 'desc')
             ->recordActions([
-                Actions\Action::make('preview')
-                    ->label(UiText::get('landing.preview', 'Preview'))
-                    ->icon('heroicon-o-eye')
-                    ->url(fn (LandingPage $record): string => route('marketing.landing-pages.preview', ['landingPage' => $record]))
-                    ->openUrlInNewTab(),
-                Actions\Action::make('public')
-                    ->label(UiText::get('landing.public_link', 'Public'))
-                    ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn (LandingPage $record): string => $record->publicUrl())
-                    ->openUrlInNewTab()
-                    ->visible(fn (LandingPage $record): bool => $record->status === LandingPageStatus::Published),
-                Actions\Action::make('copy_link')
-                    ->label(UiText::get('landing.copy_link', 'Copy link'))
-                    ->icon('heroicon-o-clipboard-document')
-                    ->modalHeading(UiText::get('landing.copy_link', 'Copy link'))
-                    ->modalWidth('2xl')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel(UiText::get('common.actions.close', 'Close'))
-                    ->modalContent(fn (LandingPage $record) => view('dth-marketing::filament.copy-link', [
-                        'url' => $record->publicUrl(),
-                    ]))
-                    ->visible(fn (LandingPage $record): bool => $record->status === LandingPageStatus::Published),
-                Actions\Action::make('generate_utm')
-                    ->label(UiText::get('landing.generate_utm', 'Generate UTM'))
-                    ->icon('heroicon-o-link')
-                    ->modalHeading(UiText::get('landing.generate_utm', 'Generate UTM'))
-                    ->schema([
-                        TextInput::make('name')
-                            ->label(UiText::get('landing.utm_name', 'Link name'))
-                            ->placeholder(UiText::get('landing.utm_name_placeholder', 'Ví dụ: Facebook - VPS tháng 9'))
-                            ->helperText(UiText::get('landing.utm_name_help', 'Tên nội bộ để dễ tìm và phân biệt liên kết UTM.'))
-                            ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_name_help', 'Tên nội bộ để dễ tìm và phân biệt liên kết UTM.'))
-                            ->maxLength(255),
-                        Select::make('source')
-                            ->label(UiText::get('landing.utm_source', 'Source'))
-                            ->options([
-                                'facebook' => 'Facebook',
-                                'instagram' => 'Instagram',
-                                'youtube' => 'YouTube',
-                                'google' => 'Google',
-                                'tiktok' => 'TikTok',
-                                'linkedin' => 'LinkedIn',
-                                'email' => 'Email',
-                                'zalo' => 'Zalo',
-                                'website' => UiText::get('landing.utm_source_website', 'Website'),
-                                'other' => UiText::get('landing.utm_source_other', 'Khác'),
-                            ])
-                            ->placeholder(UiText::get('landing.utm_source_placeholder', 'Chọn nguồn truy cập'))
-                            ->helperText(UiText::get('landing.utm_source_help', 'Nguồn đưa người dùng đến Landing Page, ví dụ Facebook hoặc Google.'))
-                            ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_source_help', 'Nguồn đưa người dùng đến Landing Page, ví dụ Facebook hoặc Google.'))
-                            ->required()
-                            ->native(false),
-                        Select::make('medium')
-                            ->label(UiText::get('landing.utm_medium', 'Medium'))
-                            ->options([
-                                'social' => UiText::get('landing.utm_medium_social', 'Mạng xã hội'),
-                                'cpc' => 'CPC / quảng cáo trả phí',
-                                'display' => UiText::get('landing.utm_medium_display', 'Quảng cáo hiển thị'),
-                                'email' => 'Email',
-                                'organic' => UiText::get('landing.utm_medium_organic', 'Tìm kiếm tự nhiên'),
-                                'referral' => UiText::get('landing.utm_medium_referral', 'Giới thiệu từ website khác'),
-                                'other' => UiText::get('landing.utm_medium_other', 'Khác'),
-                            ])
-                            ->placeholder(UiText::get('landing.utm_medium_placeholder', 'Chọn cách người dùng truy cập'))
-                            ->helperText(UiText::get('landing.utm_medium_help', 'Kênh hoặc hình thức tiếp cận, ví dụ mạng xã hội, quảng cáo trả phí hoặc email.'))
-                            ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_medium_help', 'Kênh hoặc hình thức tiếp cận, ví dụ mạng xã hội, quảng cáo trả phí hoặc email.'))
-                            ->required()
-                            ->native(false),
-                        TextInput::make('campaign')
-                            ->label(UiText::get('landing.utm_campaign', 'Campaign'))
-                            ->placeholder(UiText::get('landing.utm_campaign_placeholder', 'Ví dụ: khuyen-mai-vps-thang-9'))
-                            ->helperText(UiText::get('landing.utm_campaign_help', 'Tên chiến dịch đang chạy để gom các lượt truy cập cùng một chương trình.'))
-                            ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_campaign_help', 'Tên chiến dịch đang chạy để gom các lượt truy cập cùng một chương trình.'))
-                            ->maxLength(150),
-                        TextInput::make('content')
-                            ->label(UiText::get('landing.utm_content', 'Content'))
-                            ->placeholder(UiText::get('landing.utm_content_placeholder', 'Ví dụ: banner-header hoặc nut-dang-ky'))
-                            ->helperText(UiText::get('landing.utm_content_help', 'Phân biệt các nội dung hoặc vị trí quảng cáo trong cùng một chiến dịch.'))
-                            ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_content_help', 'Phân biệt các nội dung hoặc vị trí quảng cáo trong cùng một chiến dịch.'))
-                            ->maxLength(150),
-                        TextInput::make('term')
-                            ->label(UiText::get('landing.utm_term', 'Term'))
-                            ->placeholder(UiText::get('landing.utm_term_placeholder', 'Ví dụ: hosting-vps'))
-                            ->helperText(UiText::get('landing.utm_term_help', 'Từ khóa dùng cho quảng cáo tìm kiếm; có thể để trống nếu không chạy tìm kiếm.'))
-                            ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_term_help', 'Từ khóa dùng cho quảng cáo tìm kiếm; có thể để trống nếu không chạy tìm kiếm.'))
-                            ->maxLength(150),
-                    ])
-                    ->action(function (LandingPage $record, array $data): void {
-                        $utm = app(LandingPageUtmService::class)->create($record, $data, auth()->id());
+                \Filament\Actions\ActionGroup::make([
+                    Actions\Action::make('preview')
+                        ->label(UiText::get('landing.preview', 'Preview'))
+                        ->icon('heroicon-o-eye')
+                        ->url(fn (LandingPage $record): string => route('marketing.landing-pages.preview', ['landingPage' => $record]))
+                        ->openUrlInNewTab(),
+                    Actions\Action::make('public')
+                        ->label(UiText::get('landing.public_link', 'Public'))
+                        ->icon('heroicon-o-arrow-top-right-on-square')
+                        ->url(fn (LandingPage $record): string => $record->publicUrl())
+                        ->openUrlInNewTab()
+                        ->visible(fn (LandingPage $record): bool => $record->status === LandingPageStatus::Published),
+                    Actions\Action::make('copy_link')
+                        ->label(UiText::get('landing.copy_link', 'Copy link'))
+                        ->icon('heroicon-o-clipboard-document')
+                        ->modalHeading(UiText::get('landing.copy_link', 'Copy link'))
+                        ->modalWidth('2xl')
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel(UiText::get('common.actions.close', 'Close'))
+                        ->modalContent(fn (LandingPage $record) => view('dth-marketing::filament.copy-link', [
+                            'url' => $record->publicUrl(),
+                        ]))
+                        ->visible(fn (LandingPage $record): bool => $record->status === LandingPageStatus::Published),
+                    Actions\Action::make('generate_utm')
+                        ->label(UiText::get('landing.generate_utm', 'Generate UTM'))
+                        ->icon('heroicon-o-link')
+                        ->modalHeading(UiText::get('landing.generate_utm', 'Generate UTM'))
+                        ->schema([
+                            TextInput::make('name')
+                                ->label(UiText::get('landing.utm_name', 'Link name'))
+                                ->placeholder(UiText::get('landing.utm_name_placeholder', 'Ví dụ: Facebook - VPS tháng 9'))
+                                ->helperText(UiText::get('landing.utm_name_help', 'Tên nội bộ để dễ tìm và phân biệt liên kết UTM.'))
+                                ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_name_help', 'Tên nội bộ để dễ tìm và phân biệt liên kết UTM.'))
+                                ->maxLength(255),
+                            Select::make('source')
+                                ->label(UiText::get('landing.utm_source', 'Source'))
+                                ->options([
+                                    'facebook' => 'Facebook',
+                                    'instagram' => 'Instagram',
+                                    'youtube' => 'YouTube',
+                                    'google' => 'Google',
+                                    'tiktok' => 'TikTok',
+                                    'linkedin' => 'LinkedIn',
+                                    'email' => 'Email',
+                                    'zalo' => 'Zalo',
+                                    'website' => UiText::get('landing.utm_source_website', 'Website'),
+                                    'other' => UiText::get('landing.utm_source_other', 'Khác'),
+                                ])
+                                ->placeholder(UiText::get('landing.utm_source_placeholder', 'Chọn nguồn truy cập'))
+                                ->helperText(UiText::get('landing.utm_source_help', 'Nguồn đưa người dùng đến Landing Page, ví dụ Facebook hoặc Google.'))
+                                ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_source_help', 'Nguồn đưa người dùng đến Landing Page, ví dụ Facebook hoặc Google.'))
+                                ->required()
+                                ->native(false),
+                            Select::make('medium')
+                                ->label(UiText::get('landing.utm_medium', 'Medium'))
+                                ->options([
+                                    'social' => UiText::get('landing.utm_medium_social', 'Mạng xã hội'),
+                                    'cpc' => 'CPC / quảng cáo trả phí',
+                                    'display' => UiText::get('landing.utm_medium_display', 'Quảng cáo hiển thị'),
+                                    'email' => 'Email',
+                                    'organic' => UiText::get('landing.utm_medium_organic', 'Tìm kiếm tự nhiên'),
+                                    'referral' => UiText::get('landing.utm_medium_referral', 'Giới thiệu từ website khác'),
+                                    'other' => UiText::get('landing.utm_medium_other', 'Khác'),
+                                ])
+                                ->placeholder(UiText::get('landing.utm_medium_placeholder', 'Chọn cách người dùng truy cập'))
+                                ->helperText(UiText::get('landing.utm_medium_help', 'Kênh hoặc hình thức tiếp cận, ví dụ mạng xã hội, quảng cáo trả phí hoặc email.'))
+                                ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_medium_help', 'Kênh hoặc hình thức tiếp cận, ví dụ mạng xã hội, quảng cáo trả phí hoặc email.'))
+                                ->required()
+                                ->native(false),
+                            TextInput::make('campaign')
+                                ->label(UiText::get('landing.utm_campaign', 'Campaign'))
+                                ->placeholder(UiText::get('landing.utm_campaign_placeholder', 'Ví dụ: khuyen-mai-vps-thang-9'))
+                                ->helperText(UiText::get('landing.utm_campaign_help', 'Tên chiến dịch đang chạy để gom các lượt truy cập cùng một chương trình.'))
+                                ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_campaign_help', 'Tên chiến dịch đang chạy để gom các lượt truy cập cùng một chương trình.'))
+                                ->maxLength(150),
+                            TextInput::make('content')
+                                ->label(UiText::get('landing.utm_content', 'Content'))
+                                ->placeholder(UiText::get('landing.utm_content_placeholder', 'Ví dụ: banner-header hoặc nut-dang-ky'))
+                                ->helperText(UiText::get('landing.utm_content_help', 'Phân biệt các nội dung hoặc vị trí quảng cáo trong cùng một chiến dịch.'))
+                                ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_content_help', 'Phân biệt các nội dung hoặc vị trí quảng cáo trong cùng một chiến dịch.'))
+                                ->maxLength(150),
+                            TextInput::make('term')
+                                ->label(UiText::get('landing.utm_term', 'Term'))
+                                ->placeholder(UiText::get('landing.utm_term_placeholder', 'Ví dụ: hosting-vps'))
+                                ->helperText(UiText::get('landing.utm_term_help', 'Từ khóa dùng cho quảng cáo tìm kiếm; có thể để trống nếu không chạy tìm kiếm.'))
+                                ->hintIcon('heroicon-m-question-mark-circle', UiText::get('landing.utm_term_help', 'Từ khóa dùng cho quảng cáo tìm kiếm; có thể để trống nếu không chạy tìm kiếm.'))
+                                ->maxLength(150),
+                        ])
+                        ->action(function (LandingPage $record, array $data): void {
+                            $utm = app(LandingPageUtmService::class)->create($record, $data, auth()->id());
 
-                        Notification::make()
-                            ->title(UiText::get('landing.utm_generated', 'UTM URL generated'))
-                            ->body($utm->url)
-                            ->success()
-                            ->persistent()
-                            ->send();
-                    })
-                    ->visible(fn (LandingPage $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status === LandingPageStatus::Published),
-                Actions\Action::make('utm_report')
-                    ->label(UiText::get('landing.utm_report', 'UTM report'))
-                    ->icon('heroicon-o-chart-bar')
-                    ->modalHeading(UiText::get('landing.utm_report', 'UTM report'))
-                    ->modalWidth('6xl')
-                    ->modalSubmitAction(false)
-                    ->modalContent(fn (LandingPage $record) => view('dth-marketing::filament.utm-report', [
-                        'report' => app(UtmReportService::class)->forLandingPage($record),
-                        'links' => $record->utmUrls()->latest()->limit(100)->get(),
-                    ]))
-                    ->visible(fn (LandingPage $record): bool => config('dth-marketing.features.utm', false)),
-                Actions\EditAction::make()
-                    ->label(UiText::get('common.actions.edit', 'Edit'))
-                    ->icon('heroicon-o-pencil-square')
-                    ->visible(fn (LandingPage $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status === LandingPageStatus::Draft),
-                self::statusAction('publish', LandingPageStatus::Published, 'heroicon-o-check-badge', 'success'),
-                self::statusAction('unpublish', LandingPageStatus::Draft, 'heroicon-o-no-symbol', 'warning'),
-                self::statusAction('archive', LandingPageStatus::Archived, 'heroicon-o-archive-box', 'gray', true),
-                Actions\DeleteAction::make()
-                    ->label(UiText::get('common.actions.delete', 'Delete'))
-                    ->icon('heroicon-o-trash')
-                    ->visible(fn (LandingPage $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status === LandingPageStatus::Draft),
+                            Notification::make()
+                                ->title(UiText::get('landing.utm_generated', 'UTM URL generated'))
+                                ->body($utm->url)
+                                ->success()
+                                ->persistent()
+                                ->send();
+                        })
+                        ->visible(fn (LandingPage $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status === LandingPageStatus::Published),
+                    Actions\Action::make('utm_report')
+                        ->label(UiText::get('landing.utm_report', 'UTM report'))
+                        ->icon('heroicon-o-chart-bar')
+                        ->modalHeading(UiText::get('landing.utm_report', 'UTM report'))
+                        ->modalWidth('6xl')
+                        ->modalSubmitAction(false)
+                        ->modalContent(fn (LandingPage $record) => view('dth-marketing::filament.utm-report', [
+                            'report' => app(UtmReportService::class)->forLandingPage($record),
+                            'links' => $record->utmUrls()->latest()->limit(100)->get(),
+                        ]))
+                        ->visible(fn (LandingPage $record): bool => config('dth-marketing.features.utm', false)),
+                    Actions\EditAction::make()
+                        ->label(UiText::get('common.actions.edit', 'Edit'))
+                        ->icon('heroicon-o-pencil-square')
+                        ->visible(fn (LandingPage $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status === LandingPageStatus::Draft),
+                    self::statusAction('publish', LandingPageStatus::Published, 'heroicon-o-check-badge', 'success'),
+                    self::statusAction('unpublish', LandingPageStatus::Draft, 'heroicon-o-no-symbol', 'warning'),
+                    self::statusAction('archive', LandingPageStatus::Archived, 'heroicon-o-archive-box', 'gray', true),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Delete'))
+                        ->icon('heroicon-o-trash')
+                        ->visible(fn (LandingPage $record): bool => app(\Dth\Marketing\Support\MarketingAuthorizationService::class)->manage(auth()->user()) && $record->status === LandingPageStatus::Draft),
+            
+                ]),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
