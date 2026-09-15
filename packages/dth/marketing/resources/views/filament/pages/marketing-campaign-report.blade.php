@@ -27,7 +27,7 @@
             <div><label class="text-sm font-medium">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.start','Start date') }}</label><x-filament::input.wrapper><x-filament::input type="date" name="start" value="{{ $filter->start->toDateString() }}" required /></x-filament::input.wrapper></div>
             <div><label class="text-sm font-medium">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.end','End date') }}</label><x-filament::input.wrapper><x-filament::input type="date" name="end" value="{{ $filter->end->toDateString() }}" required /></x-filament::input.wrapper></div>
             <div><label class="text-sm font-medium">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.source','Source') }}</label><x-filament::input.wrapper><x-filament::input type="text" name="source" value="{{ $filter->source }}" placeholder="{{ \Dth\Marketing\Support\UiText::get('analytics.filters.all_sources','All sources') }}" /></x-filament::input.wrapper></div>
-            <x-filament::button type="submit" icon="heroicon-o-funnel">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.apply','Apply filters') }}</x-filament::button>
+            <x-filament::button type="submit" icon="heroicon-o-funnel" class="dth-mkt-filter-submit">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.apply','Apply') }}</x-filament::button>
         </form>
     </x-filament::section>
 

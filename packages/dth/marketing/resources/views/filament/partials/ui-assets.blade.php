@@ -78,10 +78,18 @@
     .fi-header-actions .fi-btn, .fi-fo-actions .fi-btn, .fi-ta-header-toolbar .fi-btn, .fi-modal-footer-actions .fi-btn {
         min-height:42px; border-radius:12px !important; font-weight:720 !important;
     }
-    .fi-btn-color-primary {
+    .fi-btn-color-primary,
+    .fi-ac-btn-action[data-color="primary"] {
         background:linear-gradient(180deg,#6969f6 0%,#5657e8 100%) !important;
         border-color:#5b5cf0 !important; color:#fff !important;
         box-shadow:0 9px 20px rgba(91,92,240,.18) !important;
+    }
+
+    .fi-btn-color-primary svg,
+    .fi-btn-color-primary span,
+    .fi-ac-btn-action[data-color="primary"] svg,
+    .fi-ac-btn-action[data-color="primary"] span {
+        color: currentColor !important;
     }
     .fi-btn-color-gray, .fi-btn-outlined {
         background:#fff !important; color:var(--dth-mkt-text) !important;
@@ -136,6 +144,29 @@
     .dth-mkt-export-action.fi-btn svg {
         width: 17px;
         height: 17px;
+    }
+
+    .dth-mkt-filter-submit.fi-btn {
+        height: 39px !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+        border: 0 !important;
+        border-radius: 10px !important;
+        background: linear-gradient(180deg, #6869f5, #5557e8) !important;
+        color: #fff !important;
+        font-size: .76rem !important;
+        font-weight: 760 !important;
+        box-shadow: 0 8px 18px rgba(91, 92, 240, .18) !important;
+        cursor: pointer;
+    }
+
+    .dth-mkt-filter-submit.fi-btn svg,
+    .dth-mkt-filter-submit.fi-btn span {
+        width: 16px;
+        height: 16px;
+        color: #fff !important;
     }
 
     /* Keep Filament form/search/filter controls visibly bounded. Filament v4 often

@@ -67,7 +67,7 @@
 
         <button type="submit" class="dth-mkt-filter-submit">
             <x-filament::icon icon="heroicon-o-funnel" />
-            {{ \Dth\Marketing\Support\UiText::get('analytics.filters.apply', 'Apply filters') }}
+            {{ \Dth\Marketing\Support\UiText::get('analytics.filters.apply', 'Apply') }}
         </button>
     </form>
 

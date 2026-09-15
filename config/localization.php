@@ -1511,7 +1511,7 @@ return [
                         'status' => 'Trạng thái chiến dịch',
                         'all_statuses' => 'Tất cả trạng thái',
                         'reset' => 'Đặt lại',
-                        'apply' => 'Áp dụng bộ lọc',
+                        'apply' => 'Áp dụng',
                     ],
                     'labels' => [
                         'campaign' => 'Chiến dịch',
