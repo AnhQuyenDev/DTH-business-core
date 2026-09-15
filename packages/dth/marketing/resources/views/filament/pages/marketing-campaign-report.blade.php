@@ -4,6 +4,12 @@
     $metric = static fn($value) => $value === null ? 'N/A' : number_format((float)$value, 0, ',', '.');
     $serviceNames = collect((array)($campaign->service_snapshot ?? []))->pluck('name')->filter()->values();
     if ($serviceNames->isEmpty()) { $serviceNames = collect((array)($campaign->service_references ?? []))->filter()->values(); }
+    $sources = collect((array)($report['sources'] ?? []))
+        ->pluck('source')
+        ->filter()
+        ->unique()
+        ->sort()
+        ->values();
 @endphp
 
 <style>
@@ -13,7 +19,7 @@
     .dth-camp-card:first-child{background:linear-gradient(135deg,#f0f1ff,#fff)}
     .dth-camp-card span{font-size:.68rem;color:#7e899b;text-transform:uppercase;font-weight:760;letter-spacing:.035em}.dth-camp-card strong{display:block;font-size:1.28rem;margin-top:.3rem;color:#172033;font-weight:820;letter-spacing:-.025em}
     .dth-camp-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-    .dth-camp-filter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;align-items:end}.dth-camp-filter label{display:block;margin-bottom:.35rem;color:#59667c;font-size:.7rem;font-weight:700}
+    .dth-camp-filter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;align-items:end}.dth-camp-filter label{display:block;margin-bottom:.35rem;color:#59667c;font-size:.7rem;font-weight:700}.dth-camp-source-select{width:100%;height:39px;border:1px solid #dce3ed;border-radius:10px;background:#fff;padding:0 .72rem;color:#344054;font-size:.78rem;outline:none}.dth-camp-source-select:focus{border-color:#8b8cf7;box-shadow:0 0 0 3px rgba(91,92,240,.1)}
     .dth-camp-table-wrap{overflow-x:auto}.dth-camp-table{width:100%;border-collapse:collapse;font-size:.76rem}.dth-camp-table th{padding:.62rem .65rem;border-bottom:1px solid #edf1f6;text-align:left;white-space:nowrap;color:#8a95a8;font-size:.64rem;text-transform:uppercase;letter-spacing:.035em;font-weight:760}.dth-camp-table td{padding:.68rem .65rem;border-bottom:1px solid #f0f3f7;text-align:left;white-space:nowrap;color:#475467}.dth-camp-table tr:last-child td{border-bottom:0}.dth-camp-table strong{color:#253047}.dth-camp-num{text-align:right!important}
     .dth-camp-insight{position:relative;padding:.72rem .8rem .72rem 1rem;margin:.5rem 0;border:1px solid #edf0f5;border-radius:11px;background:#fbfcfe;color:#475467}.dth-camp-insight:before{content:"";position:absolute;left:0;top:.6rem;bottom:.6rem;width:4px;border-radius:999px;background:#5b5cf0}.dth-camp-insight strong{display:block;color:#273143;font-size:.73rem;margin-bottom:.15rem}.dth-camp-insight .text-sm{font-size:.67rem!important;line-height:1.4}
     @media(max-width:1100px){.dth-camp-head{grid-template-columns:repeat(2,minmax(0,1fr))}.dth-camp-grid2{grid-template-columns:1fr}.dth-camp-filter{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -26,8 +32,11 @@
             <input type="hidden" name="period" value="custom">
             <div><label class="text-sm font-medium">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.start','Start date') }}</label><x-filament::input.wrapper><x-filament::input type="date" name="start" value="{{ $filter->start->toDateString() }}" required /></x-filament::input.wrapper></div>
             <div><label class="text-sm font-medium">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.end','End date') }}</label><x-filament::input.wrapper><x-filament::input type="date" name="end" value="{{ $filter->end->toDateString() }}" required /></x-filament::input.wrapper></div>
-            <div><label class="text-sm font-medium">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.source','Source') }}</label><x-filament::input.wrapper><x-filament::input type="text" name="source" value="{{ $filter->source }}" placeholder="{{ \Dth\Marketing\Support\UiText::get('analytics.filters.all_sources','All sources') }}" /></x-filament::input.wrapper></div>
-            <x-filament::button type="submit" icon="heroicon-o-funnel" class="dth-mkt-filter-submit">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.apply','Apply') }}</x-filament::button>
+            <div><label class="text-sm font-medium">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.source','Source') }}</label><select name="source" class="dth-camp-source-select"><option value="">{{ \Dth\Marketing\Support\UiText::get('analytics.filters.all_sources','All sources') }}</option>@foreach($sources as $source)<option value="{{ $source }}" @selected($filter->source === $source)>{{ $source }}</option>@endforeach</select></div>
+            <button type="submit" class="dth-mkt-filter-submit">
+                <x-filament::icon icon="heroicon-o-funnel" />
+                {{ \Dth\Marketing\Support\UiText::get('analytics.filters.apply','Apply filters') }}
+            </button>
         </form>
     </x-filament::section>
 

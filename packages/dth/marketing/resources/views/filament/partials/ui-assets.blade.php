@@ -78,18 +78,10 @@
     .fi-header-actions .fi-btn, .fi-fo-actions .fi-btn, .fi-ta-header-toolbar .fi-btn, .fi-modal-footer-actions .fi-btn {
         min-height:42px; border-radius:12px !important; font-weight:720 !important;
     }
-    .fi-btn-color-primary,
-    .fi-ac-btn-action[data-color="primary"] {
+    .fi-btn-color-primary {
         background:linear-gradient(180deg,#6969f6 0%,#5657e8 100%) !important;
         border-color:#5b5cf0 !important; color:#fff !important;
         box-shadow:0 9px 20px rgba(91,92,240,.18) !important;
-    }
-
-    .fi-btn-color-primary svg,
-    .fi-btn-color-primary span,
-    .fi-ac-btn-action[data-color="primary"] svg,
-    .fi-ac-btn-action[data-color="primary"] span {
-        color: currentColor !important;
     }
     .fi-btn-color-gray, .fi-btn-outlined {
         background:#fff !important; color:var(--dth-mkt-text) !important;
@@ -98,6 +90,7 @@
 
     /* Report export actions mirror the Email module buttons. */
     .dth-mkt-export-action.fi-btn {
+        display: inline-flex !important;
         min-height: 38px !important;
         align-items: center;
         justify-content: center;
@@ -114,59 +107,75 @@
         transition: border-color .15s ease, background .15s ease, transform .15s ease;
     }
 
+    .dth-mkt-export-action.fi-btn > span,
+    .dth-mkt-export-action.fi-btn > svg,
+    .dth-mkt-export-action.fi-btn .fi-btn-icon,
+    .dth-mkt-export-action.fi-btn .fi-btn-icon * {
+        color: inherit !important;
+    }
+
     .dth-mkt-export-action.fi-btn:hover {
         transform: translateY(-1px);
         background: #fbfcfe !important;
         border-color: #d4dce8 !important;
     }
 
+    .dth-mkt-export-action.fi-btn:hover > span,
+    .dth-mkt-export-action.fi-btn:hover > svg,
+    .dth-mkt-export-action.fi-btn:hover .fi-btn-icon,
+    .dth-mkt-export-action.fi-btn:hover .fi-btn-icon * {
+        color: inherit !important;
+    }
+
     /* PDF */
     .dth-mkt-export-action--pdf.fi-btn,
     .dth-mkt-export-action--pdf.fi-btn svg,
-    .dth-mkt-export-action--pdf.fi-btn span {
+    .dth-mkt-export-action--pdf.fi-btn span,
+    .dth-mkt-export-action--pdf.fi-btn * {
         color: #c87500 !important;
     }
 
     /* Excel */
     .dth-mkt-export-action--excel.fi-btn,
     .dth-mkt-export-action--excel.fi-btn svg,
-    .dth-mkt-export-action--excel.fi-btn span {
+    .dth-mkt-export-action--excel.fi-btn span,
+    .dth-mkt-export-action--excel.fi-btn * {
         color: #15803d !important;
     }
 
     /* CSV */
     .dth-mkt-export-action--csv.fi-btn,
     .dth-mkt-export-action--csv.fi-btn svg,
-    .dth-mkt-export-action--csv.fi-btn span {
+    .dth-mkt-export-action--csv.fi-btn span,
+    .dth-mkt-export-action--csv.fi-btn * {
         color: #344054 !important;
+    }
+
+    .dth-mkt-filter-submit {
+        height: 39px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+        border: 0;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #6869f5, #5557e8) !important;
+        color: #fff !important;
+        font-size: .76rem;
+        font-weight: 760;
+        box-shadow: 0 8px 18px rgba(91, 92, 240, .18);
+        cursor: pointer;
+    }
+
+    .dth-mkt-filter-submit svg {
+        width: 16px;
+        height: 16px;
+        color: currentColor !important;
     }
 
     .dth-mkt-export-action.fi-btn svg {
         width: 17px;
         height: 17px;
-    }
-
-    .dth-mkt-filter-submit.fi-btn {
-        height: 39px !important;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: .4rem;
-        border: 0 !important;
-        border-radius: 10px !important;
-        background: linear-gradient(180deg, #6869f5, #5557e8) !important;
-        color: #fff !important;
-        font-size: .76rem !important;
-        font-weight: 760 !important;
-        box-shadow: 0 8px 18px rgba(91, 92, 240, .18) !important;
-        cursor: pointer;
-    }
-
-    .dth-mkt-filter-submit.fi-btn svg,
-    .dth-mkt-filter-submit.fi-btn span {
-        width: 16px;
-        height: 16px;
-        color: #fff !important;
     }
 
     /* Keep Filament form/search/filter controls visibly bounded. Filament v4 often

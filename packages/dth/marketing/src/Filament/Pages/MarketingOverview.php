@@ -64,49 +64,23 @@ class MarketingOverview extends Dashboard
                 ->label(UiText::get('reports.export_pdf', 'PDF report'))
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('gray')
-                ->extraAttributes([
-                    'class' => 'dth-mkt-export-action dth-mkt-export-action--pdf',
-                ])
-                ->url(fn (): string => route(
-                    'dth.marketing.reports.dashboard',
-                    [...$query, 'format' => 'pdf']
-                ))
-                ->visible(
-                    fn (): bool => app(MarketingAuthorizationService::class)
-                        ->export(auth()->user())
-                ),
-
+                ->extraAttributes(['class' => 'dth-mkt-export-action dth-mkt-export-action--pdf'])
+                ->url(fn (): string => route('dth.marketing.reports.dashboard', [...$query, 'format' => 'pdf']))
+                ->visible(fn (): bool => app(MarketingAuthorizationService::class)->export(auth()->user())),
             Action::make('marketingReportXlsx')
                 ->label(UiText::get('reports.export_xlsx', 'Excel'))
                 ->icon('heroicon-o-table-cells')
                 ->color('gray')
-                ->extraAttributes([
-                    'class' => 'dth-mkt-export-action dth-mkt-export-action--excel',
-                ])
-                ->url(fn (): string => route(
-                    'dth.marketing.reports.dashboard',
-                    [...$query, 'format' => 'xlsx']
-                ))
-                ->visible(
-                    fn (): bool => app(MarketingAuthorizationService::class)
-                        ->export(auth()->user())
-                ),
-
+                ->extraAttributes(['class' => 'dth-mkt-export-action dth-mkt-export-action--excel'])
+                ->url(fn (): string => route('dth.marketing.reports.dashboard', [...$query, 'format' => 'xlsx']))
+                ->visible(fn (): bool => app(MarketingAuthorizationService::class)->export(auth()->user())),
             Action::make('marketingReportCsv')
                 ->label(UiText::get('reports.export_csv', 'CSV'))
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->extraAttributes([
-                    'class' => 'dth-mkt-export-action dth-mkt-export-action--csv',
-                ])
-                ->url(fn (): string => route(
-                    'dth.marketing.reports.dashboard',
-                    [...$query, 'format' => 'csv']
-                ))
-                ->visible(
-                    fn (): bool => app(MarketingAuthorizationService::class)
-                        ->export(auth()->user())
-                ),
+                ->extraAttributes(['class' => 'dth-mkt-export-action dth-mkt-export-action--csv'])
+                ->url(fn (): string => route('dth.marketing.reports.dashboard', [...$query, 'format' => 'csv']))
+                ->visible(fn (): bool => app(MarketingAuthorizationService::class)->export(auth()->user())),
         ];
     }
 
