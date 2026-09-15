@@ -4,13 +4,39 @@ namespace Dth\Email\Filament\Resources\EmailSuppressionResource\Pages;
 
 use Dth\Email\Enums\SuppressionReason;
 use Dth\Email\Filament\Resources\EmailSuppressionResource;
+use Dth\Email\Filament\Support\EmailPageUi;
 use Dth\Email\Services\SuppressionService;
+use Dth\Email\Support\UiText;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 
 class CreateEmailSuppression extends CreateRecord
 {
     protected static string $resource = EmailSuppressionResource::class;
+
+    public function getTitle(): string|Htmlable
+    {
+        return EmailPageUi::title(UiText::get('suppression.create.title', 'Thêm Email vào danh sách chặn'), 'shield', 'red');
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return UiText::get('suppression.create.subheading', 'Khóa nhanh địa chỉ email không còn phù hợp để ngăn gửi chiến dịch trong tương lai.');
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getCreateFormAction()
+                ->label(UiText::get('common.actions.save', 'Lưu'))
+                ->icon('heroicon-o-check'),
+            $this->getCancelFormAction()
+                ->label(UiText::get('common.actions.cancel', 'Hủy'))
+                ->icon('heroicon-o-x-mark')
+                ->color('gray'),
+        ];
+    }
 
     protected function handleRecordCreation(array $data): Model
     {

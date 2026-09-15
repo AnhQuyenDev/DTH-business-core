@@ -148,6 +148,7 @@ return [
                 'dashboard' => [
                     'title' => 'Phân tích Email',
                     'subheading' => 'Hiệu suất từ :start đến :end.',
+                    'insights_action' => 'Phân tích',
                     'filters' => [
                         'action' => 'Bộ lọc',
                         'heading' => 'Bộ lọc báo cáo',
@@ -163,6 +164,8 @@ return [
                         'compare_no' => 'Không',
                         'reset' => 'Đặt lại',
                         'range_label' => 'Khoảng báo cáo',
+                        'choose_start_date' => 'Chọn từ ngày',
+                        'choose_end_date' => 'Chọn đến ngày',
                         'presets' => [
                             '7d' => '7 ngày',
                             '30d' => '30 ngày',
@@ -222,10 +225,29 @@ return [
                         'never_seen' => 'Chưa ghi nhận heartbeat',
                         'last_seen' => 'Ghi nhận gần nhất :time',
                     ],
+                    'tables' => [
+                        'campaign_name' => 'Tên chiến dịch',
+                        'view_all_campaigns' => 'Xem tất cả chiến dịch',
+                        'view_all_accounts' => 'Xem tất cả tài khoản',
+                        'links_footer' => 'Dữ liệu liên kết được tổng hợp từ các sự kiện email.',
+                    ],
                 ],
                 'insights' => [
                     'heading' => 'Phân tích thống kê',
                     'health_score' => 'Điểm sức khỏe',
+                    'modal_description' => 'Tóm tắt sức khỏe và các điểm đáng chú ý trong dữ liệu Email hiện tại.',
+                    'executive_summary' => 'Tổng quan điều hành',
+                    'key_findings' => 'Điểm đáng chú ý',
+                    'key_findings_description' => 'Các điểm quan trọng được rút ra từ tập dữ liệu hiện tại.',
+                    'findings' => 'phát hiện',
+                    'more_findings' => '+:count phát hiện bổ sung trong báo cáo chi tiết.',
+                    'related_metric' => 'Chỉ số',
+                    'status' => [
+                        'strong' => 'Tốt',
+                        'watch' => 'Theo dõi',
+                        'risk' => 'Cần chú ý',
+                        'none' => 'Chưa có điểm',
+                    ],
                     'no_findings' => 'Không có cảnh báo thống kê đáng kể với dữ liệu hiện tại.',
                     'severity' => [
                         'positive' => 'Tích cực',
@@ -376,6 +398,18 @@ return [
                     'verified_title' => 'Tên miền đã được xác minh',
                     'incomplete_title' => 'Xác minh chưa hoàn tất',
                     'verification_body' => 'SPF: :spf; DKIM: :dkim; DMARC: :dmarc',
+                    'create' => [
+                        'title' => 'Tạo / Chỉnh sửa Tên miền gửi',
+                        'subheading' => 'Khai báo tên miền gửi, DKIM selector và chuẩn bị thông tin để xác thực DNS.',
+                    ],
+                    'edit' => [
+                        'title' => 'Chỉnh sửa Tên miền gửi',
+                        'subheading' => 'Cập nhật thông tin tên miền, ghi chú triển khai và trạng thái xác thực bản ghi DNS.',
+                    ],
+                    'list' => [
+                        'title' => 'Hạ tầng gửi Email',
+                        'subheading' => 'Quản lý tên miền gửi và trạng thái xác thực DNS cho hệ thống Email.',
+                    ],
                 ],
                 'account' => [
                     'identity' => 'Danh tính gửi',
@@ -402,6 +436,18 @@ return [
                     'local_domain_help' => 'Tên miền EHLO/HELO tùy chọn. Để trống trừ khi nhà cung cấp SMTP yêu cầu.',
                     'test_sent' => 'Đã gửi email kiểm tra SMTP',
                     'test_failed' => 'Kiểm tra SMTP thất bại',
+                    'create' => [
+                        'title' => 'Tạo / Chỉnh sửa Tài khoản gửi',
+                        'subheading' => 'Khai báo thông tin định danh, cấu hình SMTP và giới hạn gửi cho tài khoản email mới.',
+                    ],
+                    'edit' => [
+                        'title' => 'Chỉnh sửa Tài khoản gửi',
+                        'subheading' => 'Cập nhật định danh, thông số SMTP và giới hạn gửi cho tài khoản đang hoạt động.',
+                    ],
+                    'list' => [
+                        'title' => 'Tài khoản gửi',
+                        'subheading' => 'Quản lý tài khoản SMTP và theo dõi trạng thái kết nối gửi Email.',
+                    ],
                 ],
                 'template_category' => [
                     'category' => 'Danh mục',
@@ -409,6 +455,18 @@ return [
                     'description' => 'Mô tả',
                     'system_slug' => 'Slug hệ thống',
                     'templates' => 'Mẫu Email',
+                    'create' => [
+                        'title' => 'Tạo danh mục Email',
+                        'subheading' => 'Tạo mới danh mục để tổ chức và quản lý template email theo nhóm nội dung.',
+                    ],
+                    'edit' => [
+                        'title' => 'Chỉnh sửa danh mục Email',
+                        'subheading' => 'Cập nhật thông tin danh mục mẫu email để đồng bộ với cấu trúc nội dung hiện tại.',
+                    ],
+                    'list' => [
+                        'title' => 'Danh mục mẫu Email',
+                        'subheading' => 'Quản lý danh mục, mô tả và trạng thái sử dụng cho hệ thống email template.',
+                    ],
                 ],
                 'variables' => [
                     'recipient_name' => 'Tên người nhận',
@@ -460,6 +518,29 @@ return [
                     'system_key' => 'Khóa hệ thống',
                     'preview' => 'Xem trước',
                     'preview_title' => 'Xem trước: :name',
+                    'status' => [
+                        'draft' => 'Bản nháp',
+                        'active' => 'Hoạt động',
+                        'inactive' => 'Không hoạt động',
+                    ],
+                    'create' => [
+                        'title' => 'Tạo mẫu Email',
+                        'subheading' => 'Soạn thảo nội dung, gắn biến cá nhân hóa và quản lý trạng thái của mẫu email.',
+                    ],
+                    'edit' => [
+                        'title' => 'Chỉnh sửa mẫu Email',
+                        'subheading' => 'Điều chỉnh nội dung, biến cá nhân hóa và trạng thái sử dụng của mẫu email.',
+                    ],
+                    'list' => [
+                        'title' => 'Mẫu Email',
+                        'subheading' => 'Quản lý mẫu email, trạng thái và nội dung theo từng giai đoạn marketing.',
+                        'manage_categories' => 'Quản lý danh mục',
+                        'create' => 'Tạo template',
+                        'stats' => [
+                            'total' => 'Tổng template',
+                            'compared_previous' => 'so với kỳ trước',
+                        ],
+                    ],
                 ],
                 'campaign' => [
                     'section' => 'Chiến dịch',
@@ -490,6 +571,45 @@ return [
                     'unschedule' => 'Bỏ lịch',
                     'returned_draft' => 'Chiến dịch đã trở về Bản nháp',
                     'delete' => 'Xóa',
+                    'status' => [
+                        'draft' => 'Bản nháp',
+                        'scheduled' => 'Đã lên lịch',
+                        'processing' => 'Đang gửi',
+                        'completed' => 'Hoàn tất',
+                        'failed' => 'Thất bại',
+                    ],
+                    'create' => [
+                        'title' => 'Tạo chiến dịch Email',
+                        'subheading' => 'Thiết lập thông tin chiến dịch, nội dung và mẫu gửi trước khi lên lịch hoặc gửi ngay.',
+                    ],
+                    'edit' => [
+                        'title' => 'Chỉnh sửa chiến dịch Email',
+                        'subheading' => 'Cập nhật tiêu đề, nội dung và cấu hình gửi cho chiến dịch đang được quản lý.',
+                    ],
+                    'list' => [
+                        'title' => 'Chiến dịch Email',
+                        'subheading' => 'Quản lý, theo dõi và tối ưu hiệu quả các chiến dịch email marketing.',
+                        'create' => 'Tạo chiến dịch',
+                        'search_placeholder' => 'Tìm kiếm chiến dịch, mẫu, tài khoản...',
+                        'recipients_count' => 'Số người nhận',
+                        'scheduled_at' => 'Thời gian lên lịch',
+                        'completed_at' => 'Thời gian hoàn tất',
+                        'performance' => 'Hiệu quả',
+                        'tabs' => [
+                            'all' => 'Tất cả',
+                        ],
+                        'filters' => [
+                            'account' => 'Tài khoản gửi',
+                            'all_accounts' => 'Tất cả tài khoản',
+                            'from' => 'Từ ngày',
+                            'until' => 'Đến ngày',
+                            'status' => 'Trạng thái',
+                        ],
+                        'stats' => [
+                            'total' => 'Tổng chiến dịch',
+                            'compared_previous' => 'so với kỳ trước',
+                        ],
+                    ],
                 ],
                 'recipient' => [
                     'title' => 'Người nhận',
@@ -544,6 +664,16 @@ return [
                     'time' => 'Thời gian',
                     'provider_event' => 'Sự kiện nhà cung cấp',
                 ],
+                'delivery_log' => [
+                    'list' => [
+                        'title' => 'Giám sát gửi Email',
+                        'subheading' => 'Theo dõi từng lượt gửi, trạng thái xử lý và các sự kiện phát sinh trong quá trình delivery.',
+                    ],
+                    'view' => [
+                        'title' => 'Chi tiết nhật ký gửi Email',
+                        'subheading' => 'Xem lại đầy đủ thông tin gửi, phản hồi máy chủ và kết quả xử lý cho email đã chọn.',
+                    ],
+                ],
                 'suppression' => [
                     'section' => 'Danh sách chặn',
                     'status' => 'Trạng thái',
@@ -568,6 +698,14 @@ return [
                     'resubscribed_title' => 'Địa chỉ đã được đăng ký lại cho các chiến dịch tương lai',
                     'released_title' => 'Đã gỡ chặn',
                     'history_unchanged' => 'Chỉ số lịch sử của chiến dịch không thay đổi.',
+                    'create' => [
+                        'title' => 'Thêm Email vào danh sách chặn',
+                        'subheading' => 'Khóa nhanh địa chỉ email không còn phù hợp để ngăn gửi chiến dịch trong tương lai.',
+                    ],
+                    'list' => [
+                        'title' => 'Danh sách chặn Email',
+                        'subheading' => 'Theo dõi địa chỉ bị chặn, lý do, nguồn và lịch sử gỡ chặn.',
+                    ],
                 ],
             ],
             'hr' => [

@@ -4,15 +4,27 @@ namespace Dth\Email\Filament\Resources\SendingAccountResource\Pages;
 
 use Dth\Email\DTO\SmtpAccountData;
 use Dth\Email\Filament\Resources\SendingAccountResource;
-use Dth\Email\Support\UiText;
+use Dth\Email\Filament\Support\EmailPageUi;
 use Dth\Email\Services\SendingAccountService;
+use Dth\Email\Support\UiText;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 
 class EditSendingAccount extends EditRecord
 {
     protected static string $resource = SendingAccountResource::class;
+
+    public function getTitle(): string|Htmlable
+    {
+        return EmailPageUi::title(UiText::get('account.edit.title', 'Tạo / Chỉnh sửa Tài khoản gửi'), 'account', 'green');
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return UiText::get('account.edit.subheading', 'Cập nhật định danh, thông số SMTP và giới hạn gửi cho tài khoản đang hoạt động.');
+    }
 
     protected function mutateFormDataBeforeFill(array $data): array
     {

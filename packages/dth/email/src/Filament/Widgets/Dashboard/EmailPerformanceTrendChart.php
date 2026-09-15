@@ -14,24 +14,34 @@ class EmailPerformanceTrendChart extends ChartWidget
 
     protected static bool $isLazy = false;
     protected ?string $pollingInterval = null;
-    protected ?string $maxHeight = '340px';
-    protected bool $isCollapsible = true;
+    protected ?string $maxHeight = '228px';
+    protected bool $isCollapsible = false;
     protected int|string|array $columnSpan = [
         'md' => 6,
-        'xl' => 6,
+        'xl' => 8,
     ];
+
+    public ?string $filter = 'day';
 
     public function getHeading(): string
     {
-        return UiText::get('dashboard.charts.performance_trend', 'Email performance over time');
+        return UiText::get('dashboard.charts.performance_trend', 'Hiệu suất email theo thời gian');
     }
 
     public function getDescription(): ?string
     {
         return UiText::get(
-            'dashboard.charts.performance_trend_description',
-            'Sent, unique opens and unique clicks by activity date.'
+                'dashboard.charts.performance_trend_description',
+            'Số email gửi, số lượt mở và số lượt nhấp theo ngày.'
         );
+    }
+
+    /** @return array<string, string>|null */
+    protected function getFilters(): ?array
+    {
+        return [
+            'day' => UiText::get('dashboard.charts.by_day', 'Theo ngày'),
+        ];
     }
 
     protected function getData(): array
@@ -45,26 +55,46 @@ class EmailPerformanceTrendChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => UiText::get('dashboard.metrics.sent', 'Sent'),
+                    'label' => UiText::get('dashboard.metrics.sent', 'Đã gửi'),
                     'data' => array_map(static fn ($point): int => $point->sent, $trend),
                     'borderColor' => '#f59e0b',
-                    'backgroundColor' => 'rgba(245, 158, 11, 0.12)',
-                    'tension' => 0.3,
-                    'fill' => true,
+                    'backgroundColor' => '#f59e0b',
+                    'pointBackgroundColor' => '#f59e0b',
+                    'pointBorderColor' => '#ffffff',
+                    'pointBorderWidth' => 1.2,
+                    'pointRadius' => 3,
+                    'pointHoverRadius' => 4,
+                    'borderWidth' => 2,
+                    'tension' => 0.22,
+                    'fill' => false,
                 ],
                 [
-                    'label' => UiText::get('dashboard.metrics.unique_opens', 'Unique opens'),
+                    'label' => UiText::get('dashboard.metrics.unique_opens', 'Lượt mở'),
                     'data' => array_map(static fn ($point): int => $point->uniqueOpened, $trend),
                     'borderColor' => '#3b82f6',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.08)',
-                    'tension' => 0.3,
+                    'backgroundColor' => '#3b82f6',
+                    'pointBackgroundColor' => '#3b82f6',
+                    'pointBorderColor' => '#ffffff',
+                    'pointBorderWidth' => 1.2,
+                    'pointRadius' => 3,
+                    'pointHoverRadius' => 4,
+                    'borderWidth' => 2,
+                    'tension' => 0.22,
+                    'fill' => false,
                 ],
                 [
-                    'label' => UiText::get('dashboard.metrics.unique_clicks', 'Unique clicks'),
+                    'label' => UiText::get('dashboard.metrics.unique_clicks', 'Lượt nhấp'),
                     'data' => array_map(static fn ($point): int => $point->uniqueClicked, $trend),
                     'borderColor' => '#10b981',
-                    'backgroundColor' => 'rgba(16, 185, 129, 0.08)',
-                    'tension' => 0.3,
+                    'backgroundColor' => '#10b981',
+                    'pointBackgroundColor' => '#10b981',
+                    'pointBorderColor' => '#ffffff',
+                    'pointBorderWidth' => 1.2,
+                    'pointRadius' => 3,
+                    'pointHoverRadius' => 4,
+                    'borderWidth' => 2,
+                    'tension' => 0.22,
+                    'fill' => false,
                 ],
             ],
             'labels' => array_map(
@@ -79,18 +109,84 @@ class EmailPerformanceTrendChart extends ChartWidget
     protected function getOptions(): array
     {
         return [
+            'responsive' => true,
+            'maintainAspectRatio' => false,
             'interaction' => [
                 'mode' => 'index',
                 'intersect' => false,
             ],
+            'layout' => [
+                'padding' => [
+                    'top' => 0,
+                    'right' => 4,
+                    'bottom' => 0,
+                    'left' => 0,
+                ],
+            ],
             'plugins' => [
                 'legend' => [
-                    'position' => 'bottom',
+                    'position' => 'top',
+                    'align' => 'end',
+                    'labels' => [
+                        'usePointStyle' => true,
+                        'pointStyle' => 'rectRounded',
+                        'boxWidth' => 8,
+                        'boxHeight' => 8,
+                        'padding' => 16,
+                        'color' => '#667085',
+                        'font' => [
+                            'size' => 10,
+                            'weight' => 500,
+                        ],
+                    ],
+                ],
+                'tooltip' => [
+                    'backgroundColor' => '#111827',
+                    'titleColor' => '#ffffff',
+                    'bodyColor' => '#e5e7eb',
+                    'padding' => 10,
+                    'cornerRadius' => 8,
+                    'displayColors' => true,
                 ],
             ],
             'scales' => [
+                'x' => [
+                    'grid' => [
+                        'display' => true,
+                        'color' => 'rgba(148, 163, 184, 0.12)',
+                        'drawBorder' => false,
+                    ],
+                    'border' => [
+                        'display' => false,
+                    ],
+                    'ticks' => [
+                        'autoSkip' => true,
+                        'maxTicksLimit' => 11,
+                        'maxRotation' => 0,
+                        'minRotation' => 0,
+                        'color' => '#7b879b',
+                        'font' => [
+                            'size' => 10,
+                        ],
+                    ],
+                ],
                 'y' => [
                     'beginAtZero' => true,
+                    'grace' => '8%',
+                    'grid' => [
+                        'color' => 'rgba(148, 163, 184, 0.18)',
+                        'drawBorder' => false,
+                    ],
+                    'border' => [
+                        'display' => false,
+                    ],
+                    'ticks' => [
+                        'precision' => 0,
+                        'color' => '#7b879b',
+                        'font' => [
+                            'size' => 10,
+                        ],
+                    ],
                 ],
             ],
         ];

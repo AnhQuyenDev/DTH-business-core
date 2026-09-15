@@ -3,15 +3,17 @@
 namespace Dth\Email\Filament;
 
 use Dth\Email\Filament\Pages\EmailDashboard;
+use Dth\Email\Filament\Resources\EmailCampaignResource;
 use Dth\Email\Filament\Resources\EmailDeliveryLogResource;
 use Dth\Email\Filament\Resources\EmailSuppressionResource;
 use Dth\Email\Filament\Resources\EmailTemplateCategoryResource;
 use Dth\Email\Filament\Resources\EmailTemplateResource;
 use Dth\Email\Filament\Resources\SendingAccountResource;
 use Dth\Email\Filament\Resources\SendingDomainResource;
-use Dth\Email\Filament\Resources\EmailCampaignResource;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 
 class EmailPlugin implements Plugin
 {
@@ -44,6 +46,9 @@ class EmailPlugin implements Plugin
 
     public function boot(Panel $panel): void
     {
-        // Reserved for future Email module panel hooks.
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::HEAD_END,
+            fn (): string => view('dth-email::filament.partials.ui-assets')->render(),
+        );
     }
 }

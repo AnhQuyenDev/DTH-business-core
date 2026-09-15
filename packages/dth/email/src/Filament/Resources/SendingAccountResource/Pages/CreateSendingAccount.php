@@ -4,14 +4,26 @@ namespace Dth\Email\Filament\Resources\SendingAccountResource\Pages;
 
 use Dth\Email\DTO\SmtpAccountData;
 use Dth\Email\Filament\Resources\SendingAccountResource;
-use Dth\Email\Support\UiText;
+use Dth\Email\Filament\Support\EmailPageUi;
 use Dth\Email\Services\SendingAccountService;
+use Dth\Email\Support\UiText;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 
 class CreateSendingAccount extends CreateRecord
 {
     protected static string $resource = SendingAccountResource::class;
+
+    public function getTitle(): string|Htmlable
+    {
+        return EmailPageUi::title(UiText::get('account.create.title', 'Tạo / Chỉnh sửa Tài khoản gửi'), 'account', 'green');
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return UiText::get('account.create.subheading', 'Khai báo thông tin định danh, cấu hình SMTP và giới hạn gửi cho tài khoản email mới.');
+    }
 
     protected function handleRecordCreation(array $data): Model
     {

@@ -4,11 +4,9 @@ namespace Dth\Email\Filament\Pages;
 
 use Carbon\CarbonImmutable;
 use Dth\Email\Enums\EmailCampaignStatus;
-use Dth\Email\Filament\Resources\EmailCampaignResource;
 use Dth\Email\Filament\Navigation\EmailNavigationGroup;
+use Dth\Email\Filament\Resources\EmailCampaignResource;
 use Dth\Email\Filament\Widgets\Dashboard\EmailEngagementFunnelChart;
-use Dth\Email\Filament\Widgets\Dashboard\EmailInfrastructureOverview;
-use Dth\Email\Filament\Widgets\Dashboard\EmailInsightsWidget;
 use Dth\Email\Filament\Widgets\Dashboard\EmailOverviewStats;
 use Dth\Email\Filament\Widgets\Dashboard\EmailPerformanceTrendChart;
 use Dth\Email\Filament\Widgets\Dashboard\SendingAccountPerformanceChart;
@@ -16,9 +14,11 @@ use Dth\Email\Filament\Widgets\Dashboard\TopCampaignsChart;
 use Dth\Email\Filament\Widgets\Dashboard\TopLinksChart;
 use Dth\Email\Models\SendingAccount;
 use Dth\Email\Services\EmailDashboardFilterResolver;
+use Dth\Email\Services\EmailInsightService;
 use Dth\Email\Support\UiText;
-use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
@@ -37,12 +37,12 @@ class EmailDashboard extends Dashboard
 
     public static function getNavigationLabel(): string
     {
-        return UiText::get('navigation.dashboard', 'Dashboard', context: 'navigation');
+        return UiText::get('navigation.dashboard', 'Tổng quan Email', context: 'navigation');
     }
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('dashboard.title', 'Email Analytics');
+        return UiText::get('dashboard.title', 'Tổng quan Email');
     }
 
     public function getSubheading(): string|Htmlable|null
@@ -51,41 +51,12 @@ class EmailDashboard extends Dashboard
 
         return UiText::get(
             'dashboard.subheading',
-            'Performance from :start to :end.',
+            'Theo dõi hiệu suất email marketing từ :start đến :end.',
             [
                 'start' => $filters->range->start->format('d/m/Y'),
                 'end' => $filters->range->end->format('d/m/Y'),
             ],
         );
-    }
-
-    protected function getHeaderActions(): array
-    {
-        $query = array_filter(
-            request()->query(),
-            static fn (mixed $value): bool => ! ($value === null || $value === ''),
-        );
-
-        return [
-            Action::make('emailReportPdf')
-                ->label(UiText::get('reports.export_pdf', 'PDF report'))
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('primary')
-                ->url(fn (): string => route('dth.email.reports.dashboard.pdf', $query))
-                ->visible(fn (): bool => (bool) config('dth-email.reports.pdf.enabled', true)),
-
-            Action::make('emailReportXlsx')
-                ->label(UiText::get('reports.export_xlsx', 'Excel'))
-                ->icon('heroicon-o-table-cells')
-                ->color('gray')
-                ->url(fn (): string => route('dth.email.reports.dashboard.xlsx', $query)),
-
-            Action::make('emailReportCsv')
-                ->label(UiText::get('reports.export_csv', 'CSV'))
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('gray')
-                ->url(fn (): string => route('dth.email.reports.dashboard.csv', $query)),
-        ];
     }
 
     /** @return array<class-string<\Filament\Widgets\Widget>> */
@@ -98,8 +69,6 @@ class EmailDashboard extends Dashboard
             TopCampaignsChart::class,
             TopLinksChart::class,
             SendingAccountPerformanceChart::class,
-            EmailInsightsWidget::class,
-            EmailInfrastructureOverview::class,
         ];
     }
 
@@ -109,6 +78,13 @@ class EmailDashboard extends Dashboard
             'md' => 6,
             'xl' => 12,
         ];
+    }
+
+    public function getWidgetsContentComponent(): Component
+    {
+        return Grid::make($this->getColumns())
+            ->schema(fn (): array => $this->getWidgetsSchemaComponents($this->getWidgets()))
+            ->extraAttributes(['class' => 'dth-email-widgets-grid']);
     }
 
     /** @return array<string, mixed> */
@@ -129,11 +105,15 @@ class EmailDashboard extends Dashboard
             ]);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private function filterViewData(): array
     {
+        $filters = app(EmailDashboardFilterResolver::class)->resolveRequest(request());
+        $query = array_filter(
+            request()->query(),
+            static fn (mixed $value): bool => ! ($value === null || $value === ''),
+        );
+
         return [
             'actionUrl' => static::getUrl(),
             'resetUrl' => static::getUrl(),
@@ -149,6 +129,13 @@ class EmailDashboard extends Dashboard
                     $status->value => UiText::status($status),
                 ])
                 ->all(),
+            'exportUrls' => [
+                'pdf' => route('dth.email.reports.dashboard.pdf', $query),
+                'xlsx' => route('dth.email.reports.dashboard.xlsx', $query),
+                'csv' => route('dth.email.reports.dashboard.csv', $query),
+            ],
+            'pdfEnabled' => (bool) config('dth-email.reports.pdf.enabled', true),
+            'insightReport' => app(EmailInsightService::class)->dashboard($filters),
         ];
     }
 
@@ -166,37 +153,35 @@ class EmailDashboard extends Dashboard
         ];
     }
 
-    /**
-     * @return array<string, array{label: string, url: string}>
-     */
+    /** @return array<string, array{label: string, url: string}> */
     private function presetLinks(): array
     {
         $today = CarbonImmutable::today();
 
         return [
             '7d' => [
-                'label' => UiText::get('dashboard.filters.presets.7d', '7 days'),
+                'label' => UiText::get('dashboard.filters.presets.7d', '7 ngày qua'),
                 'url' => $this->buildFilterUrl([
                     'start_date' => $today->subDays(6)->format('Y-m-d'),
                     'end_date' => $today->format('Y-m-d'),
                 ]),
             ],
             '30d' => [
-                'label' => UiText::get('dashboard.filters.presets.30d', '30 days'),
+                'label' => UiText::get('dashboard.filters.presets.30d', '30 ngày qua'),
                 'url' => $this->buildFilterUrl([
                     'start_date' => $today->subDays(29)->format('Y-m-d'),
                     'end_date' => $today->format('Y-m-d'),
                 ]),
             ],
             '90d' => [
-                'label' => UiText::get('dashboard.filters.presets.90d', '90 days'),
+                'label' => UiText::get('dashboard.filters.presets.90d', '90 ngày qua'),
                 'url' => $this->buildFilterUrl([
                     'start_date' => $today->subDays(89)->format('Y-m-d'),
                     'end_date' => $today->format('Y-m-d'),
                 ]),
             ],
             'month' => [
-                'label' => UiText::get('dashboard.filters.presets.month', 'This month'),
+                'label' => UiText::get('dashboard.filters.presets.month', 'Tháng này'),
                 'url' => $this->buildFilterUrl([
                     'start_date' => $today->startOfMonth()->format('Y-m-d'),
                     'end_date' => $today->format('Y-m-d'),
@@ -228,9 +213,7 @@ class EmailDashboard extends Dashboard
         return null;
     }
 
-    /**
-     * @param array<string, mixed> $overrides
-     */
+    /** @param array<string, mixed> $overrides */
     private function buildFilterUrl(array $overrides = []): string
     {
         $state = array_merge($this->normalizedFilterState(), $overrides);

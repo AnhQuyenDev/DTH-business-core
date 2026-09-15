@@ -5,94 +5,29 @@ namespace Dth\Email\Filament\Widgets\Dashboard;
 use Dth\Email\Filament\Widgets\Concerns\UsesEmailDashboardFilters;
 use Dth\Email\Services\EmailAnalyticsService;
 use Dth\Email\Support\UiText;
-use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Str;
+use Filament\Widgets\Widget;
 
-class TopLinksChart extends ChartWidget
+class TopLinksChart extends Widget
 {
     use UsesEmailDashboardFilters;
 
     protected static bool $isLazy = false;
-    protected ?string $pollingInterval = null;
-    protected ?string $maxHeight = '340px';
-    protected bool $isCollapsible = true;
+    protected string $view = 'dth-email::filament.widgets.dashboard.top-links-table';
     protected int|string|array $columnSpan = [
         'md' => 6,
-        'xl' => 6,
+        'xl' => 4,
     ];
 
-    public function getHeading(): string
+    /** @return array<string, mixed> */
+    protected function getViewData(): array
     {
-        return UiText::get('dashboard.charts.top_links', 'Top clicked links');
-    }
-
-    public function getDescription(): ?string
-    {
-        return UiText::get(
-            'dashboard.charts.top_links_description',
-            'Most engaging tracked destinations across the selected period.'
-        );
-    }
-
-    protected function getData(): array
-    {
-        $rows = app(EmailAnalyticsService::class)->topLinks($this->analyticsFilters(), 7);
-
         return [
-            'datasets' => [
-                [
-                    'label' => UiText::get('dashboard.metrics.total_clicks', 'Total clicks'),
-                    'data' => array_map(static fn ($row): int => $row->totalClicks, $rows),
-                    'backgroundColor' => '#f59e0b',
-                    'borderRadius' => 5,
-                ],
-                [
-                    'label' => UiText::get('dashboard.metrics.unique_clickers', 'Unique clickers'),
-                    'data' => array_map(static fn ($row): int => $row->uniqueClickers, $rows),
-                    'backgroundColor' => '#6366f1',
-                    'borderRadius' => 5,
-                ],
-            ],
-            'labels' => array_map(
-                static fn ($row): string => Str::limit($row->url, 42),
-                $rows,
+            'heading' => UiText::get('dashboard.charts.top_links', 'Liên kết được nhấp nhiều'),
+            'description' => UiText::get(
+                'dashboard.charts.top_links_description',
+                'Các liên kết thu hút nhiều lượt nhấp nhất.'
             ),
+            'rows' => app(EmailAnalyticsService::class)->topLinks($this->analyticsFilters(), 5),
         ];
-    }
-
-    public function isEmpty(): bool
-    {
-        return empty($this->getCachedData()['labels'] ?? []);
-    }
-
-    public function getEmptyStateHeading(): string
-    {
-        return UiText::get('dashboard.empty.heading', 'No data for this period');
-    }
-
-    public function getEmptyStateDescription(): ?string
-    {
-        return UiText::get(
-            'dashboard.empty.description',
-            'Try another date range or remove one of the dashboard filters.'
-        );
-    }
-
-    protected function getOptions(): array
-    {
-        return [
-            'indexAxis' => 'y',
-            'plugins' => [
-                'legend' => ['position' => 'bottom'],
-            ],
-            'scales' => [
-                'x' => ['beginAtZero' => true],
-            ],
-        ];
-    }
-
-    protected function getType(): string
-    {
-        return 'bar';
     }
 }

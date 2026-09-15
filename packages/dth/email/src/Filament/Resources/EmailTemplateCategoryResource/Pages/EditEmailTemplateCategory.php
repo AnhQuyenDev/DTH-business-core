@@ -3,13 +3,25 @@
 namespace Dth\Email\Filament\Resources\EmailTemplateCategoryResource\Pages;
 
 use Dth\Email\Filament\Resources\EmailTemplateCategoryResource;
+use Dth\Email\Filament\Support\EmailPageUi;
 use Dth\Email\Support\UiText;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
 
 class EditEmailTemplateCategory extends EditRecord
 {
     protected static string $resource = EmailTemplateCategoryResource::class;
+
+    public function getTitle(): string|Htmlable
+    {
+        return EmailPageUi::title(UiText::get('template_category.edit.title', 'Chỉnh sửa danh mục Email'), 'folder', 'violet');
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return UiText::get('template_category.edit.subheading', 'Cập nhật thông tin danh mục mẫu email để đồng bộ với cấu trúc nội dung hiện tại.');
+    }
 
     protected function getHeaderActions(): array
     {

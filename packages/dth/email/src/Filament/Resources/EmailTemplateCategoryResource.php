@@ -21,6 +21,11 @@ class EmailTemplateCategoryResource extends Resource
     protected static string|\UnitEnum|null $navigationGroup = EmailNavigationGroup::Email;
     protected static ?int $navigationSort = 30;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function getNavigationLabel(): string
     {
         return UiText::get('navigation.template_categories', 'Template Categories', context: 'navigation');
