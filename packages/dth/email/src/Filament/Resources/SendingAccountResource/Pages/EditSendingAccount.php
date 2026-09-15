@@ -18,12 +18,12 @@ class EditSendingAccount extends EditRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('account.edit.title', 'Tạo / Chỉnh sửa Tài khoản gửi'), 'account', 'green');
+        return EmailPageUi::title(UiText::get('account.edit.title', 'Edit Sending Account'), 'account', 'green');
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('account.edit.subheading', 'Cập nhật định danh, thông số SMTP và giới hạn gửi cho tài khoản đang hoạt động.');
+        return UiText::get('account.edit.subheading', 'Update sender identity, SMTP credentials, and sending limits.');
     }
 
     protected function mutateFormDataBeforeFill(array $data): array

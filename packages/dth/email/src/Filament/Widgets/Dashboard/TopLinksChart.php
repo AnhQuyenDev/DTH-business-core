@@ -22,10 +22,10 @@ class TopLinksChart extends Widget
     protected function getViewData(): array
     {
         return [
-            'heading' => UiText::get('dashboard.charts.top_links', 'Liên kết được nhấp nhiều'),
+            'heading' => UiText::get('dashboard.charts.top_links', 'Top clicked links'),
             'description' => UiText::get(
                 'dashboard.charts.top_links_description',
-                'Các liên kết thu hút nhiều lượt nhấp nhất.'
+                'Links with the most tracked clicks.'
             ),
             'rows' => app(EmailAnalyticsService::class)->topLinks($this->analyticsFilters(), 5),
         ];

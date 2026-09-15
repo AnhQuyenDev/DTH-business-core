@@ -14,7 +14,7 @@
                         <span>{{ $stat['deltaLabel'] }}</span>
                     </div>
                     <div class="dth-email-template-stat__hint">
-                        {{ \Dth\Email\Support\UiText::get('template.list.stats.compared_previous', 'so với kỳ trước') }}
+                        {{ trim(\Dth\Email\Support\UiText::get('dashboard.delta.compared_previous', ':change compared with previous period', ['change' => ''])) }}
                     </div>
                 </div>
 

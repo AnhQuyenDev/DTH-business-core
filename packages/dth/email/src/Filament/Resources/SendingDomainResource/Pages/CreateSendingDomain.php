@@ -14,12 +14,19 @@ class CreateSendingDomain extends CreateRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('domain.create.title', 'Tạo / Chỉnh sửa Tên miền gửi'), 'domain', 'blue');
+        return EmailPageUi::title(
+            UiText::get('domain.create.title', 'Create Sending Domain'),
+            'domain',
+            'blue',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('domain.create.subheading', 'Khai báo tên miền gửi, DKIM selector và chuẩn bị thông tin để xác thực DNS.');
+        return UiText::get(
+            'domain.create.subheading',
+            'Configure a sending domain and prepare its DNS verification records.'
+        );
     }
 
     protected function getFormActions(): array

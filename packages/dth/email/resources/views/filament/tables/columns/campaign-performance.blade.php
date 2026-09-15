@@ -10,11 +10,11 @@
 <div class="dth-campaign-performance">
     <div>
         <strong>{{ $openRate === null ? '—' : number_format($openRate, 1, ',', '.').'%' }}</strong>
-        <span>{{ \Dth\Email\Support\UiText::get('campaign.list.performance_open', 'Mở') }}</span>
+        <span>{{ \Dth\Email\Support\UiText::get('dashboard.metrics.open_rate', 'Open rate') }}</span>
     </div>
     <div>
         <strong>{{ $clickRate === null ? '—' : number_format($clickRate, 1, ',', '.').'%' }}</strong>
-        <span>{{ \Dth\Email\Support\UiText::get('campaign.list.performance_click', 'Nhấp') }}</span>
+        <span>{{ \Dth\Email\Support\UiText::get('dashboard.metrics.click_rate', 'Click rate') }}</span>
     </div>
 </div>
 

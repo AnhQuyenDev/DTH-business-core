@@ -13,15 +13,9 @@ final class CampaignUi
             ? $state->value
             : (string) $state;
 
-        return match ($value) {
-            EmailCampaignStatus::Draft->value => UiText::get('campaign.status.draft', 'Bản nháp'),
-            EmailCampaignStatus::Scheduled->value => UiText::get('campaign.status.scheduled', 'Đã lên lịch'),
-            EmailCampaignStatus::Processing->value => UiText::get('campaign.status.processing', 'Đang gửi'),
-            EmailCampaignStatus::Completed->value => UiText::get('campaign.status.completed', 'Hoàn tất'),
-            EmailCampaignStatus::Cancelled->value => UiText::get('campaign.status.cancelled', 'Đã hủy'),
-            EmailCampaignStatus::Failed->value => UiText::get('campaign.status.failed', 'Thất bại'),
-            default => UiText::status($state),
-        };
+        return $value === EmailCampaignStatus::Processing->value
+            ? UiText::status('sending')
+            : UiText::status($state);
     }
 
     public static function statusIcon(mixed $state): string

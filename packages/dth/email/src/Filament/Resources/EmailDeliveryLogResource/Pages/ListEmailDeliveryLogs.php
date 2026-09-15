@@ -14,11 +14,15 @@ class ListEmailDeliveryLogs extends ListRecords
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('delivery_log.list.title', 'Giám sát gửi Email'), 'log', 'blue');
+        return EmailPageUi::title(
+            UiText::get('models.delivery_messages', 'Delivery Log'),
+            'log',
+            'blue',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('delivery_log.list.subheading', 'Theo dõi từng lượt gửi, trạng thái xử lý và các sự kiện phát sinh trong quá trình delivery.');
+        return UiText::get('delivery.event_timeline', 'Event timeline');
     }
 }

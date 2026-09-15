@@ -12,10 +12,10 @@
     };
 
     $scoreStatusLabel = match ($scoreState) {
-        'healthy' => UiText::get('insights.status.strong', 'Healthy'),
-        'warning' => UiText::get('insights.status.watch', 'Monitor'),
-        'critical' => UiText::get('insights.status.risk', 'Needs review'),
-        default => UiText::get('insights.status.none', 'No score'),
+        'healthy' => UiText::status('healthy'),
+        'warning' => UiText::status('warning'),
+        'critical' => UiText::status('critical'),
+        default => UiText::status('unknown'),
     };
 
     $scoreBarClass = match ($scoreState) {
@@ -79,7 +79,7 @@
 
                             <div class="min-w-0">
                                 <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    {{ UiText::get('insights.executive_summary', 'Executive summary') }}
+                                    {{ UiText::get('insights.heading', 'Statistical insights') }}
                                 </p>
                                 <p class="mt-1 text-sm font-medium leading-6 text-gray-800 dark:text-gray-100">
                                     {{ $report->summary }}
@@ -118,10 +118,10 @@
                     <div class="space-y-2">
                         <div class="flex items-center justify-between gap-2">
                             <h3 class="text-sm font-semibold text-gray-950 dark:text-white">
-                                {{ UiText::get('insights.key_findings', 'Key findings') }}
+                                {{ UiText::get('insights.heading', 'Statistical insights') }}
                             </h3>
                             <span class="text-xs text-gray-500 dark:text-gray-400">
-                                {{ $items->count() }} {{ UiText::get('insights.findings', 'findings') }}
+                                {{ $items->count() }} {{ UiText::get('insights.heading', 'insights') }}
                             </span>
                         </div>
 
@@ -154,7 +154,7 @@
 
                         @if ($hiddenCount > 0)
                             <p class="pt-1 text-right text-xs font-medium text-gray-500 dark:text-gray-400">
-                                {{ UiText::get('insights.more_findings', '+:count additional findings in the detailed report.', ['count' => $hiddenCount]) }}
+                                {{ '+'.$hiddenCount.' '.UiText::get('insights.heading', 'additional insights') }}
                             </p>
                         @endif
                     </div>
@@ -174,7 +174,7 @@
                             </div>
                             <div>
                                 <p class="text-sm font-semibold text-gray-950 dark:text-white">
-                                    {{ UiText::get('insights.executive_summary', 'Executive summary') }}
+                                    {{ UiText::get('insights.heading', 'Statistical insights') }}
                                 </p>
                                 <p class="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-200">
                                     {{ $report->summary }}
@@ -207,10 +207,10 @@
                     <div class="space-y-3">
                         <div>
                             <h3 class="text-sm font-semibold text-gray-950 dark:text-white">
-                                {{ UiText::get('insights.key_findings', 'Key findings') }}
+                                {{ UiText::get('insights.heading', 'Statistical insights') }}
                             </h3>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {{ UiText::get('insights.key_findings_description', 'Important points extracted from the current dataset.') }}
+                                {{ UiText::get('insights.no_findings', 'No significant statistical warnings in the current data.') }}
                             </p>
                         </div>
 
@@ -229,7 +229,7 @@
                                                 </x-filament::badge>
                                                 @if (filled($item->metric))
                                                     <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                        {{ UiText::get('insights.related_metric', 'Metric') }}:
+                                                        {{ UiText::get('reports.executive_metrics', 'Executive metrics') }}:
                                                         {{ UiText::get('dashboard.metrics.'.$item->metric, str($item->metric)->replace('_', ' ')->title()->toString()) }}
                                                     </span>
                                                 @endif

@@ -16,7 +16,7 @@ class ListEmailCampaigns extends ListRecords
 
     public function getTitle(): string|Htmlable
     {
-        $title = e(UiText::get('campaign.list.title', 'Chiến dịch Email'));
+        $title = e(UiText::get('campaign.list.title', 'Email Campaigns'));
 
         return new HtmlString(<<<HTML
             <span class="dth-campaign-page-title">
@@ -33,18 +33,13 @@ class ListEmailCampaigns extends ListRecords
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get(
-            'campaign.list.subheading',
-            'Quản lý, theo dõi và tối ưu hiệu quả các chiến dịch email marketing.'
-        );
+        return UiText::get('campaign.list.subheading', 'Manage, monitor, and optimize email marketing campaign performance.');
     }
 
     /** @return array<class-string<\Filament\Widgets\Widget>> */
     protected function getHeaderWidgets(): array
     {
-        return [
-            CampaignListStats::class,
-        ];
+        return [CampaignListStats::class];
     }
 
     public function getHeaderWidgetsColumns(): int|array
@@ -56,7 +51,9 @@ class ListEmailCampaigns extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label(UiText::get('campaign.list.create', 'Tạo chiến dịch'))
+                ->label(
+                    UiText::get('campaign.list.create', 'Create campaign')
+                )
                 ->icon('heroicon-o-plus'),
         ];
     }

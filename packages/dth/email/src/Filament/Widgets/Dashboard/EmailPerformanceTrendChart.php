@@ -25,14 +25,14 @@ class EmailPerformanceTrendChart extends ChartWidget
 
     public function getHeading(): string
     {
-        return UiText::get('dashboard.charts.performance_trend', 'Hiệu suất email theo thời gian');
+        return UiText::get('dashboard.charts.performance_trend', 'Email performance over time');
     }
 
     public function getDescription(): ?string
     {
         return UiText::get(
                 'dashboard.charts.performance_trend_description',
-            'Số email gửi, số lượt mở và số lượt nhấp theo ngày.'
+            'Sent emails, opens, and clicks by day.'
         );
     }
 
@@ -40,7 +40,7 @@ class EmailPerformanceTrendChart extends ChartWidget
     protected function getFilters(): ?array
     {
         return [
-            'day' => UiText::get('dashboard.charts.by_day', 'Theo ngày'),
+            'day' => UiText::get('common.fields.time', 'Time'),
         ];
     }
 
@@ -55,7 +55,7 @@ class EmailPerformanceTrendChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => UiText::get('dashboard.metrics.sent', 'Đã gửi'),
+                    'label' => UiText::get('dashboard.metrics.sent', 'Sent'),
                     'data' => array_map(static fn ($point): int => $point->sent, $trend),
                     'borderColor' => '#f59e0b',
                     'backgroundColor' => '#f59e0b',
@@ -69,7 +69,7 @@ class EmailPerformanceTrendChart extends ChartWidget
                     'fill' => false,
                 ],
                 [
-                    'label' => UiText::get('dashboard.metrics.unique_opens', 'Lượt mở'),
+                    'label' => UiText::get('dashboard.metrics.unique_opens', 'Opens'),
                     'data' => array_map(static fn ($point): int => $point->uniqueOpened, $trend),
                     'borderColor' => '#3b82f6',
                     'backgroundColor' => '#3b82f6',
@@ -83,7 +83,7 @@ class EmailPerformanceTrendChart extends ChartWidget
                     'fill' => false,
                 ],
                 [
-                    'label' => UiText::get('dashboard.metrics.unique_clicks', 'Lượt nhấp'),
+                    'label' => UiText::get('dashboard.metrics.unique_clicks', 'Clicks'),
                     'data' => array_map(static fn ($point): int => $point->uniqueClicked, $trend),
                     'borderColor' => '#10b981',
                     'backgroundColor' => '#10b981',

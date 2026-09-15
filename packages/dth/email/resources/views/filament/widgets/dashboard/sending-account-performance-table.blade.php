@@ -12,10 +12,10 @@
                 <table class="dth-email-mini-table">
                     <thead>
                         <tr>
-                            <th>{{ \Dth\Email\Support\UiText::get('dashboard.infrastructure.accounts', 'Tài khoản gửi') }}</th>
-                            <th>{{ \Dth\Email\Support\UiText::get('dashboard.metrics.sent', 'Đã gửi') }}</th>
-                            <th>{{ \Dth\Email\Support\UiText::get('dashboard.metrics.open_rate', 'Tỷ lệ mở') }}</th>
-                            <th>{{ \Dth\Email\Support\UiText::get('dashboard.metrics.click_rate', 'Tỷ lệ nhấp') }}</th>
+                            <th>{{ \Dth\Email\Support\UiText::get('dashboard.infrastructure.accounts', 'Sending account') }}</th>
+                            <th>{{ \Dth\Email\Support\UiText::get('dashboard.metrics.sent', 'Sent') }}</th>
+                            <th>{{ \Dth\Email\Support\UiText::get('dashboard.metrics.open_rate', 'Open rate') }}</th>
+                            <th>{{ \Dth\Email\Support\UiText::get('dashboard.metrics.click_rate', 'Click rate') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -31,12 +31,12 @@
                 </table>
             </div>
         @else
-            <div class="dth-email-empty">{{ \Dth\Email\Support\UiText::get('dashboard.empty.heading', 'Không có dữ liệu trong giai đoạn này') }}</div>
+            <div class="dth-email-empty">{{ \Dth\Email\Support\UiText::get('dashboard.empty.heading', 'No data for this period') }}</div>
         @endif
 
         <footer class="dth-email-panel-footer">
             <a href="{{ $indexUrl }}">
-                {{ \Dth\Email\Support\UiText::get('dashboard.tables.view_all_accounts', 'Xem tất cả tài khoản') }}
+                {{ \Dth\Email\Support\UiText::get('models.sending_accounts', 'Sending Accounts') }}
                 <x-filament::icon icon="heroicon-m-arrow-right" />
             </a>
         </footer>

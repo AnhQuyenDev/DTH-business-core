@@ -15,19 +15,25 @@ class EditEmailCampaign extends EditRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('campaign.edit.title', 'Chỉnh sửa chiến dịch Email'), 'campaign');
+        return EmailPageUi::title(
+            UiText::get('campaign.edit.title', 'Edit Email Campaign'),
+            'campaign',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('campaign.edit.subheading', 'Cập nhật tiêu đề, nội dung và cấu hình gửi cho chiến dịch đang được quản lý.');
+        return UiText::get(
+            'campaign.edit.subheading',
+            'Update campaign content and sending configuration for the selected campaign.'
+        );
     }
 
     protected function getHeaderActions(): array
     {
         return [
             ViewAction::make()
-                ->label(UiText::get('common.actions.view', 'Xem'))
+                ->label(UiText::get('common.actions.view', 'View'))
                 ->icon('heroicon-o-eye'),
         ];
     }
@@ -36,10 +42,10 @@ class EditEmailCampaign extends EditRecord
     {
         return [
             $this->getSaveFormAction()
-                ->label(UiText::get('common.actions.save', 'Lưu'))
+                ->label(UiText::get('common.actions.save', 'Save'))
                 ->icon('heroicon-o-check'),
             $this->getCancelFormAction()
-                ->label(UiText::get('common.actions.cancel', 'Hủy'))
+                ->label(UiText::get('common.actions.cancel', 'Cancel'))
                 ->icon('heroicon-o-x-mark')
                 ->color('gray'),
         ];

@@ -15,12 +15,12 @@ class EditSendingDomain extends EditRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('domain.edit.title', 'Tạo / Chỉnh sửa Tên miền gửi'), 'domain', 'blue');
+        return EmailPageUi::title(UiText::get('domain.edit.title', 'Edit Sending Domain'), 'domain', 'blue');
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('domain.edit.subheading', 'Cập nhật thông tin tên miền, ghi chú triển khai và trạng thái xác thực bản ghi DNS.');
+        return UiText::get('domain.edit.subheading', 'Update the sending domain and review its DNS verification status.');
     }
 
     protected function getHeaderActions(): array

@@ -25,32 +25,32 @@ class EmailEngagementFunnelChart extends Widget
         $base = max(1, $funnel->sent);
 
         return [
-            'heading' => UiText::get('dashboard.charts.engagement_funnel', 'Phễu tương tác'),
+            'heading' => UiText::get('dashboard.charts.engagement_funnel', 'Engagement funnel'),
             'description' => UiText::get(
                 'dashboard.charts.engagement_funnel_description',
-                'Hành trình của người nhận từ gửi đến tương tác.'
+                'Recipient journey from sending to engagement.'
             ),
             'steps' => [
                 [
-                    'label' => UiText::get('dashboard.metrics.sent', 'Đã gửi'),
+                    'label' => UiText::get('dashboard.metrics.sent', 'Sent'),
                     'value' => $funnel->sent,
                     'percent' => $funnel->sent > 0 ? 100.0 : 0.0,
                     'tone' => 'navy',
                 ],
                 [
-                    'label' => UiText::get('dashboard.metrics.opened', 'Đã mở'),
+                    'label' => UiText::get('dashboard.metrics.opened', 'Opened'),
                     'value' => $funnel->opened,
                     'percent' => ($funnel->opened / $base) * 100,
                     'tone' => 'blue',
                 ],
                 [
-                    'label' => UiText::get('dashboard.metrics.clicked', 'Đã nhấp'),
+                    'label' => UiText::get('dashboard.metrics.clicked', 'Clicked'),
                     'value' => $funnel->clicked,
                     'percent' => ($funnel->clicked / $base) * 100,
                     'tone' => 'green',
                 ],
                 [
-                    'label' => UiText::get('dashboard.metrics.unsubscribed', 'Đã hủy đăng ký'),
+                    'label' => UiText::get('analytics.unsubscribed', 'Unsubscribed'),
                     'value' => $funnel->unsubscribed,
                     'percent' => ($funnel->unsubscribed / $base) * 100,
                     'tone' => 'mint',

@@ -17,12 +17,16 @@ class CreateSendingAccount extends CreateRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('account.create.title', 'Tạo / Chỉnh sửa Tài khoản gửi'), 'account', 'green');
+        return EmailPageUi::title(
+            UiText::get('account.create.title', 'Create Sending Account'),
+            'account',
+            'green',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('account.create.subheading', 'Khai báo thông tin định danh, cấu hình SMTP và giới hạn gửi cho tài khoản email mới.');
+        return UiText::get('account.create.subheading', 'Configure sender identity, SMTP credentials, and sending limits.');
     }
 
     protected function handleRecordCreation(array $data): Model

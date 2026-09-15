@@ -39,7 +39,7 @@ class CampaignListStats extends Widget
         $definitions = [
             [
                 'key' => 'total',
-                'label' => UiText::get('campaign.list.stats.total', 'Tổng chiến dịch'),
+                'label' => UiText::get('models.campaigns', 'Campaigns'),
                 'value' => array_sum($counts),
                 'icon' => 'heroicon-o-paper-airplane',
                 'tone' => 'amber',

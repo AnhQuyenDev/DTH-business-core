@@ -37,12 +37,12 @@ class EmailDashboard extends Dashboard
 
     public static function getNavigationLabel(): string
     {
-        return UiText::get('navigation.dashboard', 'Tổng quan Email', context: 'navigation');
+        return UiText::get('navigation.dashboard', 'Email Overview', context: 'navigation');
     }
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('dashboard.title', 'Tổng quan Email');
+        return UiText::get('dashboard.title', 'Email Overview');
     }
 
     public function getSubheading(): string|Htmlable|null
@@ -51,7 +51,7 @@ class EmailDashboard extends Dashboard
 
         return UiText::get(
             'dashboard.subheading',
-            'Theo dõi hiệu suất email marketing từ :start đến :end.',
+            'Track email marketing performance from :start to :end.',
             [
                 'start' => $filters->range->start->format('d/m/Y'),
                 'end' => $filters->range->end->format('d/m/Y'),
@@ -160,28 +160,28 @@ class EmailDashboard extends Dashboard
 
         return [
             '7d' => [
-                'label' => UiText::get('dashboard.filters.presets.7d', '7 ngày qua'),
+                'label' => UiText::get('dashboard.filters.presets.7d', 'Last 7 days'),
                 'url' => $this->buildFilterUrl([
                     'start_date' => $today->subDays(6)->format('Y-m-d'),
                     'end_date' => $today->format('Y-m-d'),
                 ]),
             ],
             '30d' => [
-                'label' => UiText::get('dashboard.filters.presets.30d', '30 ngày qua'),
+                'label' => UiText::get('dashboard.filters.presets.30d', 'Last 30 days'),
                 'url' => $this->buildFilterUrl([
                     'start_date' => $today->subDays(29)->format('Y-m-d'),
                     'end_date' => $today->format('Y-m-d'),
                 ]),
             ],
             '90d' => [
-                'label' => UiText::get('dashboard.filters.presets.90d', '90 ngày qua'),
+                'label' => UiText::get('dashboard.filters.presets.90d', 'Last 90 days'),
                 'url' => $this->buildFilterUrl([
                     'start_date' => $today->subDays(89)->format('Y-m-d'),
                     'end_date' => $today->format('Y-m-d'),
                 ]),
             ],
             'month' => [
-                'label' => UiText::get('dashboard.filters.presets.month', 'Tháng này'),
+                'label' => UiText::get('dashboard.filters.presets.month', 'This month'),
                 'url' => $this->buildFilterUrl([
                     'start_date' => $today->startOfMonth()->format('Y-m-d'),
                     'end_date' => $today->format('Y-m-d'),

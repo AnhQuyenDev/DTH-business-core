@@ -23,10 +23,10 @@ class TopCampaignsChart extends Widget
     protected function getViewData(): array
     {
         return [
-            'heading' => UiText::get('dashboard.charts.top_campaigns', 'Chiến dịch nổi bật'),
+            'heading' => UiText::get('dashboard.charts.top_campaigns', 'Top Campaigns'),
             'description' => UiText::get(
                 'dashboard.charts.top_campaigns_description',
-                'Top chiến dịch theo tỷ lệ nhấp, kèm tỷ lệ mở.'
+                'Top campaigns by click rate with open rate for comparison.'
             ),
             'rows' => app(EmailAnalyticsService::class)->topCampaigns($this->analyticsFilters(), 5),
             'indexUrl' => EmailCampaignResource::getUrl('index'),

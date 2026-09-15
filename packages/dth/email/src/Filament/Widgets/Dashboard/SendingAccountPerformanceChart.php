@@ -23,10 +23,10 @@ class SendingAccountPerformanceChart extends Widget
     protected function getViewData(): array
     {
         return [
-            'heading' => UiText::get('dashboard.charts.account_performance', 'Hiệu suất tài khoản gửi'),
+            'heading' => UiText::get('dashboard.charts.account_performance', 'Sending account performance'),
             'description' => UiText::get(
                 'dashboard.charts.account_performance_description',
-                'Tỷ lệ mở và nhấp theo từng tài khoản gửi.'
+                'Open and click rates by sending account.'
             ),
             'rows' => array_slice(
                 app(EmailAnalyticsService::class)->sendingAccountPerformance($this->analyticsFilters()),

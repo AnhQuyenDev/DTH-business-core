@@ -2,24 +2,24 @@
     use Illuminate\Support\Carbon;
 
     $rangeLabel = match ($activePreset) {
-        '7d' => \Dth\Email\Support\UiText::get('dashboard.filters.presets.7d', '7 ngày qua'),
-        '30d' => \Dth\Email\Support\UiText::get('dashboard.filters.presets.30d', '30 ngày qua'),
-        '90d' => \Dth\Email\Support\UiText::get('dashboard.filters.presets.90d', '90 ngày qua'),
-        'month' => \Dth\Email\Support\UiText::get('dashboard.filters.presets.month', 'Tháng này'),
+        '7d' => \Dth\Email\Support\UiText::get('dashboard.filters.presets.7d', 'Last 7 days'),
+        '30d' => \Dth\Email\Support\UiText::get('dashboard.filters.presets.30d', 'Last 30 days'),
+        '90d' => \Dth\Email\Support\UiText::get('dashboard.filters.presets.90d', 'Last 90 days'),
+        'month' => \Dth\Email\Support\UiText::get('dashboard.filters.presets.month', 'This month'),
         default => Carbon::parse($state['start_date'])->format('d/m/Y').' - '.Carbon::parse($state['end_date'])->format('d/m/Y'),
     };
 
     $scoreState = $insightReport->score >= 85
-        ? \Dth\Email\Support\UiText::get('insights.status.strong', 'Tốt')
+        ? \Dth\Email\Support\UiText::status('healthy')
         : ($insightReport->score >= 70
-            ? \Dth\Email\Support\UiText::get('insights.status.watch', 'Theo dõi')
-            : \Dth\Email\Support\UiText::get('insights.status.risk', 'Cần chú ý'));
+            ? \Dth\Email\Support\UiText::get('insights.severity.warning', 'Warning')
+            : \Dth\Email\Support\UiText::get('insights.severity.critical', 'Critical'));
     $scoreTone = $insightReport->score >= 85 ? 'success' : ($insightReport->score >= 70 ? 'warning' : 'danger');
     $severityMeta = [
-        'critical' => ['label' => \Dth\Email\Support\UiText::get('insights.severity.critical', 'Nghiêm trọng'), 'tone' => 'danger', 'icon' => 'heroicon-o-exclamation-triangle'],
-        'warning' => ['label' => \Dth\Email\Support\UiText::get('insights.severity.warning', 'Cần chú ý'), 'tone' => 'warning', 'icon' => 'heroicon-o-exclamation-circle'],
-        'positive' => ['label' => \Dth\Email\Support\UiText::get('insights.severity.positive', 'Tích cực'), 'tone' => 'success', 'icon' => 'heroicon-o-arrow-trending-up'],
-        'neutral' => ['label' => \Dth\Email\Support\UiText::get('insights.severity.neutral', 'Thông tin'), 'tone' => 'info', 'icon' => 'heroicon-o-information-circle'],
+        'critical' => ['label' => \Dth\Email\Support\UiText::get('insights.severity.critical', 'Critical'), 'tone' => 'danger', 'icon' => 'heroicon-o-exclamation-triangle'],
+        'warning' => ['label' => \Dth\Email\Support\UiText::get('insights.severity.warning', 'Needs attention'), 'tone' => 'warning', 'icon' => 'heroicon-o-exclamation-circle'],
+        'positive' => ['label' => \Dth\Email\Support\UiText::get('insights.severity.positive', 'Positive'), 'tone' => 'success', 'icon' => 'heroicon-o-arrow-trending-up'],
+        'neutral' => ['label' => \Dth\Email\Support\UiText::get('insights.severity.neutral', 'Information'), 'tone' => 'info', 'icon' => 'heroicon-o-information-circle'],
     ];
 @endphp
 
@@ -764,9 +764,9 @@
                 <x-filament::icon icon="heroicon-o-envelope" />
             </div>
             <div>
-                <h1 class="dth-email-dashboard-title">{{ \Dth\Email\Support\UiText::get('dashboard.title', 'Tổng quan Email') }}</h1>
+                <h1 class="dth-email-dashboard-title">{{ \Dth\Email\Support\UiText::get('dashboard.title', 'Email Overview') }}</h1>
                 <p class="dth-email-dashboard-subtitle">
-                    {{ \Dth\Email\Support\UiText::get('dashboard.subheading', 'Theo dõi hiệu suất email marketing từ :start đến :end.', [
+                    {{ \Dth\Email\Support\UiText::get('dashboard.subheading', 'Track email marketing performance from :start to :end.', [
                         'start' => Carbon::parse($state['start_date'])->format('d/m/Y'),
                         'end' => Carbon::parse($state['end_date'])->format('d/m/Y'),
                     ]) }}
@@ -777,24 +777,24 @@
         <div class="dth-email-dashboard-actions">
             <button type="button" class="dth-email-header-btn dth-email-header-btn--analysis" @click="insightsOpen = true">
                 <x-filament::icon icon="heroicon-o-light-bulb" />
-                <span>{{ \Dth\Email\Support\UiText::get('dashboard.insights_action', 'Phân tích') }}</span>
+                <span>{{ \Dth\Email\Support\UiText::get('insights.heading', 'Statistical insights') }}</span>
             </button>
 
             @if ($pdfEnabled)
                 <a class="dth-email-header-btn dth-email-header-btn--pdf" href="{{ $exportUrls['pdf'] }}">
                     <x-filament::icon icon="heroicon-o-document-arrow-down" />
-                    <span>{{ \Dth\Email\Support\UiText::get('reports.export_pdf', 'Xuất PDF') }}</span>
+                    <span>{{ \Dth\Email\Support\UiText::get('reports.export_pdf', 'Export PDF') }}</span>
                 </a>
             @endif
 
             <a class="dth-email-header-btn dth-email-header-btn--excel" href="{{ $exportUrls['xlsx'] }}">
                 <x-filament::icon icon="heroicon-o-table-cells" />
-                <span>{{ \Dth\Email\Support\UiText::get('reports.export_xlsx', 'Xuất Excel') }}</span>
+                <span>{{ \Dth\Email\Support\UiText::get('reports.export_xlsx', 'Export Excel') }}</span>
             </a>
 
             <a class="dth-email-header-btn" href="{{ $exportUrls['csv'] }}">
                 <x-filament::icon icon="heroicon-o-arrow-down-tray" />
-                <span>{{ \Dth\Email\Support\UiText::get('reports.export_csv', 'Xuất CSV') }}</span>
+                <span>{{ \Dth\Email\Support\UiText::get('reports.export_csv', 'Export CSV') }}</span>
             </a>
         </div>
     </header>
@@ -803,12 +803,12 @@
         <div class="dth-email-filter-header">
             <div class="dth-email-filter-title">
                 <x-filament::icon icon="heroicon-o-adjustments-horizontal" />
-                <span>{{ \Dth\Email\Support\UiText::get('dashboard.filters.heading', 'Bộ lọc') }}</span>
+                <span>{{ \Dth\Email\Support\UiText::get('dashboard.filters.heading', 'Filters') }}</span>
             </div>
 
             <a href="{{ $resetUrl }}" class="dth-email-reset">
                 <x-filament::icon icon="heroicon-o-arrow-path" />
-                {{ \Dth\Email\Support\UiText::get('dashboard.filters.reset', 'Đặt lại') }}
+                {{ \Dth\Email\Support\UiText::get('dashboard.filters.reset', 'Reset') }}
             </a>
         </div>
 
@@ -816,7 +816,7 @@
             <input type="hidden" name="compare_previous" value="{{ $state['compare_previous'] ? '1' : '0' }}" />
 
             <div class="dth-email-filter-field">
-                <label for="dth-email-range">{{ \Dth\Email\Support\UiText::get('dashboard.filters.range_label', 'Khoảng thời gian') }}</label>
+                <label for="dth-email-range">{{ \Dth\Email\Support\UiText::get('dashboard.filters.range_label', 'Date range') }}</label>
                 <select id="dth-email-range" class="dth-email-filter-control" onchange="if (this.value) window.location.href = this.value">
                     <option value="">{{ $rangeLabel }}</option>
                     @foreach ($presets as $key => $preset)
@@ -826,7 +826,7 @@
             </div>
 
             <div class="dth-email-filter-field">
-                <label>{{ \Dth\Email\Support\UiText::get('dashboard.filters.start_date', 'Từ ngày') }}</label>
+                <label>{{ \Dth\Email\Support\UiText::get('dashboard.filters.start_date', 'Start date') }}</label>
                 <div
                     class="dth-email-date-shell"
                     x-data="{
@@ -841,17 +841,17 @@
                         }
                     }"
                 >
-                    <input type="text" x-model="display" @change="toIso()" inputmode="numeric" aria-label="{{ \Dth\Email\Support\UiText::get('dashboard.filters.start_date', 'Từ ngày') }}" />
+                    <input type="text" x-model="display" @change="toIso()" inputmode="numeric" aria-label="{{ \Dth\Email\Support\UiText::get('dashboard.filters.start_date', 'Start date') }}" />
                     <input x-ref="picker" class="dth-email-date-native" type="date" x-model="iso" @change="fromIso()" max="{{ now()->toDateString() }}" />
                     <input type="hidden" name="start_date" :value="iso" />
-                    <button type="button" class="dth-email-date-button" @click="$refs.picker.showPicker ? $refs.picker.showPicker() : $refs.picker.click()" aria-label="{{ \Dth\Email\Support\UiText::get('dashboard.filters.choose_start_date', 'Chọn từ ngày') }}">
+                    <button type="button" class="dth-email-date-button" @click="$refs.picker.showPicker ? $refs.picker.showPicker() : $refs.picker.click()" aria-label="{{ \Dth\Email\Support\UiText::get('dashboard.filters.start_date', 'Start date') }}">
                         <x-filament::icon icon="heroicon-o-calendar-days" />
                     </button>
                 </div>
             </div>
 
             <div class="dth-email-filter-field">
-                <label>{{ \Dth\Email\Support\UiText::get('dashboard.filters.end_date', 'Đến ngày') }}</label>
+                <label>{{ \Dth\Email\Support\UiText::get('dashboard.filters.end_date', 'End date') }}</label>
                 <div
                     class="dth-email-date-shell"
                     x-data="{
@@ -866,19 +866,19 @@
                         }
                     }"
                 >
-                    <input type="text" x-model="display" @change="toIso()" inputmode="numeric" aria-label="{{ \Dth\Email\Support\UiText::get('dashboard.filters.end_date', 'Đến ngày') }}" />
+                    <input type="text" x-model="display" @change="toIso()" inputmode="numeric" aria-label="{{ \Dth\Email\Support\UiText::get('dashboard.filters.end_date', 'End date') }}" />
                     <input x-ref="picker" class="dth-email-date-native" type="date" x-model="iso" @change="fromIso()" max="{{ now()->toDateString() }}" />
                     <input type="hidden" name="end_date" :value="iso" />
-                    <button type="button" class="dth-email-date-button" @click="$refs.picker.showPicker ? $refs.picker.showPicker() : $refs.picker.click()" aria-label="{{ \Dth\Email\Support\UiText::get('dashboard.filters.choose_end_date', 'Chọn đến ngày') }}">
+                    <button type="button" class="dth-email-date-button" @click="$refs.picker.showPicker ? $refs.picker.showPicker() : $refs.picker.click()" aria-label="{{ \Dth\Email\Support\UiText::get('dashboard.filters.end_date', 'End date') }}">
                         <x-filament::icon icon="heroicon-o-calendar-days" />
                     </button>
                 </div>
             </div>
 
             <div class="dth-email-filter-field">
-                <label>{{ \Dth\Email\Support\UiText::get('dashboard.filters.sending_account', 'Tài khoản gửi') }}</label>
+                <label>{{ \Dth\Email\Support\UiText::get('dashboard.filters.sending_account', 'Sending account') }}</label>
                 <select class="dth-email-filter-control" name="sending_account_id">
-                    <option value="">{{ \Dth\Email\Support\UiText::get('dashboard.filters.all_accounts', 'Tất cả tài khoản') }}</option>
+                    <option value="">{{ \Dth\Email\Support\UiText::get('dashboard.filters.all_accounts', 'All accounts') }}</option>
                     @foreach ($sendingAccounts as $id => $name)
                         <option value="{{ $id }}" @selected((string) $state['sending_account_id'] === (string) $id)>{{ $name }}</option>
                     @endforeach
@@ -886,29 +886,29 @@
             </div>
 
             <div class="dth-email-filter-field">
-                <label>{{ \Dth\Email\Support\UiText::get('dashboard.filters.campaign_status', 'Trạng thái chiến dịch') }}</label>
+                <label>{{ \Dth\Email\Support\UiText::get('dashboard.filters.campaign_status', 'Campaign status') }}</label>
                 <select class="dth-email-filter-control" name="campaign_status">
-                    <option value="">{{ \Dth\Email\Support\UiText::get('dashboard.filters.all_statuses', 'Tất cả trạng thái') }}</option>
+                    <option value="">{{ \Dth\Email\Support\UiText::get('dashboard.filters.all_statuses', 'All statuses') }}</option>
                     @foreach ($campaignStatuses as $value => $label)
                         <option value="{{ $value }}" @selected((string) $state['campaign_status'] === (string) $value)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
 
-            <button type="submit" class="dth-email-filter-submit">{{ \Dth\Email\Support\UiText::get('dashboard.filters.apply', 'Áp dụng') }}</button>
+            <button type="submit" class="dth-email-filter-submit">{{ \Dth\Email\Support\UiText::get('dashboard.filters.apply', 'Apply') }}</button>
         </form>
     </section>
 
     <template x-teleport="body">
         <div x-cloak x-show="insightsOpen">
             <div class="dth-email-insights-backdrop" @click="insightsOpen = false" x-transition.opacity></div>
-            <section class="dth-email-insights-modal" role="dialog" aria-modal="true" aria-label="{{ \Dth\Email\Support\UiText::get('insights.heading', 'Phân tích thống kê') }}" x-transition>
+            <section class="dth-email-insights-modal" role="dialog" aria-modal="true" aria-label="{{ \Dth\Email\Support\UiText::get('insights.heading', 'Statistical analysis') }}" x-transition>
                 <header class="dth-email-insights-modal-header">
                     <div>
-                        <h3>{{ \Dth\Email\Support\UiText::get('insights.heading', 'Phân tích thống kê') }}</h3>
-                        <p>{{ \Dth\Email\Support\UiText::get('insights.modal_description', 'Tóm tắt sức khỏe và các điểm đáng chú ý trong dữ liệu Email hiện tại.') }}</p>
+                        <h3>{{ \Dth\Email\Support\UiText::get('insights.heading', 'Statistical analysis') }}</h3>
+                        <p>{{ \Dth\Email\Support\UiText::get('insights.heading', 'Statistical insights') }}</p>
                     </div>
-                    <button type="button" class="dth-email-insights-close" @click="insightsOpen = false" aria-label="{{ \Dth\Email\Support\UiText::get('common.actions.close', 'Đóng') }}">
+                    <button type="button" class="dth-email-insights-close" @click="insightsOpen = false" aria-label="{{ \Dth\Email\Support\UiText::get('common.actions.close', 'Close') }}">
                         <x-filament::icon icon="heroicon-o-x-mark" />
                     </button>
                 </header>
@@ -921,7 +921,7 @@
                             </div>
                         </div>
                         <div>
-                            <h4>{{ \Dth\Email\Support\UiText::get('insights.executive_summary', 'Tổng quan điều hành') }} · {{ $scoreState }}</h4>
+                            <h4>{{ \Dth\Email\Support\UiText::get('insights.heading', 'Statistical insights') }} · {{ $scoreState }}</h4>
                             <p>{{ $insightReport->summary }}</p>
                         </div>
                     </div>
@@ -940,7 +940,7 @@
                                 <span class="dth-email-insight-badge" data-tone="{{ $meta['tone'] }}">{{ $meta['label'] }}</span>
                             </article>
                         @empty
-                            <div class="dth-email-empty">{{ \Dth\Email\Support\UiText::get('insights.no_findings', 'Không có phát hiện thống kê đáng chú ý trong giai đoạn này.') }}</div>
+                            <div class="dth-email-empty">{{ \Dth\Email\Support\UiText::get('insights.no_findings', 'No notable statistical findings for this period.') }}</div>
                         @endforelse
                     </div>
                 </div>

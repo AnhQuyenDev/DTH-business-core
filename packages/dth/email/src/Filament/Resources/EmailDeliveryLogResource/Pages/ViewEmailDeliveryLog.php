@@ -14,11 +14,15 @@ class ViewEmailDeliveryLog extends ViewRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('delivery_log.view.title', 'Chi tiết nhật ký gửi Email'), 'log', 'blue');
+        return EmailPageUi::title(
+            UiText::get('common.actions.view', 'View').' '.UiText::get('models.delivery_message', 'Email Message'),
+            'log',
+            'blue',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('delivery_log.view.subheading', 'Xem lại đầy đủ thông tin gửi, phản hồi máy chủ và kết quả xử lý cho email đã chọn.');
+        return UiText::get('delivery.message', 'Message');
     }
 }

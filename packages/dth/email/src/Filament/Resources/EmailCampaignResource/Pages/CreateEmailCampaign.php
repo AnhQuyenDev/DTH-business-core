@@ -16,22 +16,28 @@ class CreateEmailCampaign extends CreateRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('campaign.create.title', 'Tạo chiến dịch Email'), 'campaign');
+        return EmailPageUi::title(
+            UiText::get('campaign.create.title', 'Create Email Campaign'),
+            'campaign',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('campaign.create.subheading', 'Thiết lập thông tin chiến dịch, nội dung và mẫu gửi trước khi lên lịch hoặc gửi ngay.');
+        return UiText::get(
+            'campaign.create.subheading',
+            'Configure campaign information, content, and sending settings before scheduling or sending.'
+        );
     }
 
     protected function getFormActions(): array
     {
         return [
             $this->getCreateFormAction()
-                ->label(UiText::get('common.actions.save', 'Lưu'))
+                ->label(UiText::get('common.actions.save', 'Save'))
                 ->icon('heroicon-o-check'),
             $this->getCancelFormAction()
-                ->label(UiText::get('common.actions.cancel', 'Hủy'))
+                ->label(UiText::get('common.actions.cancel', 'Cancel'))
                 ->icon('heroicon-o-x-mark')
                 ->color('gray'),
         ];

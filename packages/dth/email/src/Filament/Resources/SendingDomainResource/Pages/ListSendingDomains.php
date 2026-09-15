@@ -15,19 +15,28 @@ class ListSendingDomains extends ListRecords
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('domain.list.title', 'Hạ tầng gửi Email'), 'domain', 'blue');
+        return EmailPageUi::title(
+            UiText::get('domain.list.title', 'Email Sending Infrastructure'),
+            'domain',
+            'blue',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('domain.list.subheading', 'Quản lý tên miền gửi, theo dõi xác thực DNS và duy trì độ tin cậy hạ tầng email.');
+        return UiText::get(
+            'domain.list.subheading',
+            'Manage sending domains and monitor DNS verification status.'
+        );
     }
 
     protected function getHeaderActions(): array
     {
         return [
             Actions\CreateAction::make()
-                ->label(UiText::get('common.actions.new', 'Thêm tên miền'))
+                ->label(
+                    UiText::get('domain.create.title', 'Create Sending Domain')
+                )
                 ->icon('heroicon-o-plus'),
         ];
     }

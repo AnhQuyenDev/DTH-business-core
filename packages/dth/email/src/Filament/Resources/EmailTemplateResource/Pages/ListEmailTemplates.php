@@ -17,7 +17,7 @@ class ListEmailTemplates extends ListRecords
 
     public function getTitle(): string|Htmlable
     {
-        $title = e(UiText::get('template.list.title', 'Templates Email'));
+        $title = e(UiText::get('template.list.title', 'Email Template Library'));
 
         return new HtmlString(<<<HTML
             <span class="dth-template-page-title">
@@ -34,10 +34,7 @@ class ListEmailTemplates extends ListRecords
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get(
-            'template.list.subheading',
-            'Quản lý mẫu email, trạng thái và nội dung theo từng giai đoạn marketing.'
-        );
+        return UiText::get('template.list.subheading', 'Manage reusable email templates for marketing and customer communication.');
     }
 
     /** @return array<class-string<\Filament\Widgets\Widget>> */
@@ -57,12 +54,12 @@ class ListEmailTemplates extends ListRecords
     {
         return [
             Actions\Action::make('manageCategories')
-                ->label(UiText::get('template.list.manage_categories', 'Quản lý danh mục'))
+                ->label(UiText::get('navigation.template_categories', 'Template Categories'))
                 ->icon('heroicon-o-folder')
                 ->color('gray')
                 ->url(fn (): string => EmailTemplateCategoryResource::getUrl('index')),
             Actions\CreateAction::make()
-                ->label(UiText::get('common.actions.new', 'Tạo template'))
+                ->label(UiText::get('template.list.create', 'Create template'))
                 ->icon('heroicon-o-plus'),
         ];
     }

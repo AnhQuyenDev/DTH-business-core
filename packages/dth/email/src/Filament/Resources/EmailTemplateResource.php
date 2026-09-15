@@ -72,7 +72,7 @@ class EmailTemplateResource extends Resource
                             ->preload()
                             ->columnSpan(['default' => 1, 'md' => 4]),
                         Forms\Components\Select::make('status')
-                            ->label(UiText::get('template.status', 'Status'))
+                            ->label(UiText::get('template.status_label', 'Status'))
                             ->options([
                                 EmailTemplateStatus::Draft->value => UiText::status(EmailTemplateStatus::Draft),
                                 EmailTemplateStatus::Active->value => UiText::status(EmailTemplateStatus::Active),
@@ -235,7 +235,7 @@ class EmailTemplateResource extends Resource
                     ->label(UiText::get('template.subject', 'Subject'))
                     ->limit(60),
                 Tables\Columns\TextColumn::make('status')
-                    ->label(UiText::get('template.status', 'Status'))
+                    ->label(UiText::get('template.status_label', 'Status'))
                     ->badge()
                     ->formatStateUsing(fn ($state): string => UiText::status($state))
                     ->sortable()

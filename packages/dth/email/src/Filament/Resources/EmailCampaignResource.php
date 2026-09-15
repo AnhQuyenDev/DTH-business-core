@@ -54,17 +54,17 @@ class EmailCampaignResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return UiText::get('navigation.campaigns', 'Chiến dịch', context: 'navigation');
+        return UiText::get('navigation.campaigns', 'Campaign', context: 'navigation');
     }
 
     public static function getModelLabel(): string
     {
-        return UiText::get('models.campaign', 'Chiến dịch', context: 'model');
+        return UiText::get('models.campaign', 'Campaign', context: 'model');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return UiText::get('models.campaigns', 'Chiến dịch', context: 'model');
+        return UiText::get('models.campaigns', 'Campaign', context: 'model');
     }
 
     public static function form(Schema $schema): Schema
@@ -72,16 +72,16 @@ class EmailCampaignResource extends Resource
         $mergeTags = app(TemplateVariableRegistry::class)->mergeTagLabels();
 
         return $schema->components([
-            Section::make(UiText::get('campaign.section', 'Chiến dịch'))
+            Section::make(UiText::get('campaign.section', 'Campaign'))
                 ->icon('heroicon-o-envelope-open')
                 ->schema([
                     TextInput::make('name')
-                        ->label(UiText::get('campaign.name', 'Tên'))
+                        ->label(UiText::get('campaign.name', 'Name'))
                         ->required()
                         ->maxLength(255),
 
                     Select::make('sending_account_id')
-                        ->label(UiText::get('campaign.sending_account', 'Tài khoản gửi'))
+                        ->label(UiText::get('campaign.sending_account', 'Sending account'))
                         ->options(
                             fn (): array => SendingAccount::query()
                                 ->where('status', SendingAccountStatus::Active->value)
@@ -94,7 +94,7 @@ class EmailCampaignResource extends Resource
                         ->required(),
 
                     Select::make('email_template_id')
-                        ->label(UiText::get('campaign.template', 'Mẫu Email'))
+                        ->label(UiText::get('campaign.template', 'Email Template'))
                         ->options(
                             fn (): array => EmailTemplate::query()
                                 ->where('status', EmailTemplateStatus::Active->value)
@@ -109,7 +109,7 @@ class EmailCampaignResource extends Resource
                         ->afterLabel([
                             FormHelp::icon(UiText::get(
                                 'campaign.template_help',
-                                'Nội dung mẫu được sao chép vào chiến dịch. Sửa chiến dịch sẽ không làm thay đổi mẫu gốc.'
+                                'Template content is copied into the campaign. Editing the campaign does not change the original template.'
                             )),
                         ])
                         ->afterStateUpdated(function ($state, Set $set): void {
@@ -132,15 +132,15 @@ class EmailCampaignResource extends Resource
                 ->columns(2)
                 ->columnSpanFull(),
 
-            Section::make(UiText::get('campaign.content', 'Nội dung'))
+            Section::make(UiText::get('campaign.content', 'Content'))
                 ->icon('heroicon-o-code-bracket-square')
                 ->description(UiText::get(
                     'campaign.content_description',
-                    'Nội dung chiến dịch bị khóa khi rời trạng thái Bản nháp. Các biến được kiểm tra với dữ liệu người nhận trước khi Gửi hoặc Lên lịch.'
+                    'Campaign content is locked after leaving Draft. Variables are validated against recipient data before sending or scheduling.'
                 ))
                 ->schema([
                     TextInput::make('subject')
-                        ->label(UiText::get('campaign.subject', 'Tiêu đề'))
+                        ->label(UiText::get('campaign.subject', 'Subject'))
                         ->required()
                         ->maxLength(255)
                         ->suffixAction(self::insertVariableAction('subject')),
@@ -151,13 +151,13 @@ class EmailCampaignResource extends Resource
                         ->suffixAction(self::insertVariableAction('preheader')),
 
                     RichEditor::make('html_body')
-                        ->label(UiText::get('campaign.email_body', 'Nội dung email'))
+                        ->label(UiText::get('campaign.email_body', 'Email body'))
                         ->required()
                         ->mergeTags($mergeTags)
                         ->afterLabel([
                             FormHelp::icon(UiText::get(
                                 'campaign.body_help',
-                                'Dùng công cụ merge-tag để chèn biến có sẵn. Biến tùy chỉnh từ mẫu nhập vào vẫn được nhận diện.'
+                                'Use the merge-tag tool to insert supported variables. Custom variables imported from templates are still recognized.'
                             )),
                         ])
                         ->columnSpanFull(),
@@ -173,11 +173,11 @@ class EmailCampaignResource extends Resource
     {
         return Action::make('insertVariable'.ucfirst($field))
             ->icon('heroicon-o-variable')
-            ->tooltip(UiText::get('campaign.insert_variable', 'Chèn biến cá nhân hóa'))
-            ->modalHeading(UiText::get('campaign.insert_variable', 'Chèn biến cá nhân hóa'))
+            ->tooltip(UiText::get('campaign.insert_variable', 'Insert personalization variable'))
+            ->modalHeading(UiText::get('campaign.insert_variable', 'Insert personalization variable'))
             ->schema([
                 Select::make('variable')
-                    ->label(UiText::get('campaign.variable', 'Biến'))
+                    ->label(UiText::get('campaign.variable', 'Variable'))
                     ->options(fn (): array => app(TemplateVariableRegistry::class)->mergeTagLabels())
                     ->searchable()
                     ->native(false)
@@ -205,7 +205,7 @@ class EmailCampaignResource extends Resource
                 ]))
             ->columns([
                 TextColumn::make('name')
-                    ->label(UiText::get('campaign.campaign_column', 'Chiến dịch'))
+                    ->label(UiText::get('campaign.campaign_column', 'Campaign'))
                     ->description(fn (EmailCampaign $record): ?string => filled($record->subject) ? $record->subject : null)
                     ->weight(FontWeight::SemiBold)
                     ->searchable()
@@ -213,40 +213,40 @@ class EmailCampaignResource extends Resource
                     ->wrap(),
 
                 TextColumn::make('template.name')
-                    ->label(UiText::get('campaign.template', 'Mẫu Email'))
+                    ->label(UiText::get('campaign.template', 'Email Template'))
                     ->searchable()
                     ->placeholder('—')
                     ->wrap(),
 
                 TextColumn::make('sendingAccount.name')
-                    ->label(UiText::get('campaign.sending_account', 'Tài khoản gửi'))
+                    ->label(UiText::get('campaign.sending_account', 'Sending account'))
                     ->searchable()
                     ->placeholder('—')
                     ->wrap(),
 
                 TextColumn::make('recipients_count')
-                    ->label(UiText::get('campaign.list.recipients_count', 'Số người nhận'))
+                    ->label(UiText::get('analytics.recipients', 'Recipients'))
                     ->numeric(decimalPlaces: 0)
                     ->sortable(),
 
                 ViewColumn::make('status')
-                    ->label(UiText::get('common.fields.status', 'Trạng thái'))
+                    ->label(UiText::get('common.fields.status', 'Status'))
                     ->view('dth-email::filament.tables.columns.campaign-status'),
 
                 TextColumn::make('scheduled_at')
-                    ->label(UiText::get('campaign.list.scheduled_at', 'Thời gian lên lịch'))
+                    ->label(UiText::get('campaign.scheduled', 'Scheduled'))
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
 
                 TextColumn::make('completed_at')
-                    ->label(UiText::get('campaign.list.completed_at', 'Thời gian hoàn tất'))
+                    ->label(UiText::get('campaign.completed', 'Completed'))
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
 
                 ViewColumn::make('performance')
-                    ->label(UiText::get('campaign.list.performance', 'Hiệu quả'))
+                    ->label(UiText::get('reports.performance_trend', 'Performance'))
                     ->view('dth-email::filament.tables.columns.campaign-performance'),
             ])
             ->filters([
@@ -257,8 +257,8 @@ class EmailCampaignResource extends Resource
                             'md' => 3,
                         ])->schema([
                             Select::make('sending_account_id')
-                                ->label(UiText::get('campaign.list.filters.account', 'Tài khoản gửi'))
-                                ->placeholder(UiText::get('campaign.list.filters.all_accounts', 'Tất cả tài khoản'))
+                                ->label(UiText::get('campaign.sending_account', 'Sending account'))
+                                ->placeholder(UiText::get('dashboard.filters.all_accounts', 'All sending accounts'))
                                 ->options(fn (): array => SendingAccount::query()
                                     ->orderBy('name')
                                     ->pluck('name', 'id')
@@ -267,17 +267,17 @@ class EmailCampaignResource extends Resource
                                 ->preload(),
 
                             DatePicker::make('from')
-                                ->label(UiText::get('campaign.list.filters.from', 'Từ ngày'))
+                                ->label(UiText::get('dashboard.filters.start_date', 'Start date'))
                                 ->native(false)
                                 ->displayFormat('d/m/Y'),
 
                             DatePicker::make('until')
-                                ->label(UiText::get('campaign.list.filters.until', 'Đến ngày'))
+                                ->label(UiText::get('dashboard.filters.end_date', 'End date'))
                                 ->native(false)
                                 ->displayFormat('d/m/Y'),
 
                             ToggleButtons::make('status')
-                                ->label(UiText::get('campaign.list.filters.status', 'Trạng thái'))
+                                ->label(UiText::get('common.fields.status', 'Status'))
                                 ->options(fn (): array => self::campaignStatusFilterOptions())
                                 ->default('all')
                                 ->inline()
@@ -307,7 +307,7 @@ class EmailCampaignResource extends Resource
             ->filtersFormColumns(1)
             ->deferFilters(false)
             ->hiddenFilterIndicators()
-            ->searchPlaceholder(UiText::get('campaign.list.search_placeholder', 'Tìm kiếm chiến dịch, mẫu, tài khoản...'))
+            ->searchPlaceholder(UiText::get('models.campaigns', 'Campaigns'))
             ->defaultSort('id', 'desc')
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50])
@@ -318,12 +318,12 @@ class EmailCampaignResource extends Resource
                         ->icon('heroicon-o-eye'),
 
                     EditAction::make()
-                        ->label(UiText::get('common.actions.edit', 'Chỉnh sửa'))
+                        ->label(UiText::get('common.actions.edit', 'Edit'))
                         ->icon('heroicon-o-pencil-square')
                         ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Draft),
 
                     Action::make('send')
-                        ->label(UiText::get('campaign.send', 'Gửi'))
+                        ->label(UiText::get('campaign.send', 'Send'))
                         ->icon('heroicon-o-paper-airplane')
                         ->color('success')
                         ->requiresConfirmation()
@@ -337,12 +337,12 @@ class EmailCampaignResource extends Resource
                                 app(CampaignService::class)->start($record);
 
                                 Notification::make()
-                                    ->title(UiText::get('campaign.queued_title', 'Chiến dịch đã được đưa vào hàng đợi'))
+                                    ->title(UiText::get('campaign.queued_title', 'Campaign queued'))
                                     ->success()
                                     ->send();
                             } catch (Throwable $e) {
                                 Notification::make()
-                                    ->title(UiText::get('campaign.cannot_send', 'Không thể gửi chiến dịch'))
+                                    ->title(UiText::get('campaign.cannot_send', 'Campaign cannot be sent'))
                                     ->body($e->getMessage())
                                     ->danger()
                                     ->send();
@@ -350,12 +350,12 @@ class EmailCampaignResource extends Resource
                         }),
 
                     Action::make('schedule')
-                        ->label(UiText::get('campaign.schedule', 'Lên lịch'))
+                        ->label(UiText::get('campaign.schedule', 'Schedule'))
                         ->icon('heroicon-o-calendar-days')
                         ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Draft)
                         ->schema([
                             DateTimePicker::make('scheduled_at')
-                                ->label(UiText::get('campaign.send_at', 'Gửi lúc'))
+                                ->label(UiText::get('campaign.send_at', 'Send at'))
                                 ->required()
                                 ->seconds(false)
                                 ->minDate(now()->startOfMinute()),
@@ -368,12 +368,12 @@ class EmailCampaignResource extends Resource
                                 );
 
                                 Notification::make()
-                                    ->title(UiText::get('campaign.scheduled_title', 'Đã lên lịch chiến dịch'))
+                                    ->title(UiText::get('campaign.scheduled_title', 'Campaign scheduled'))
                                     ->success()
                                     ->send();
                             } catch (Throwable $e) {
                                 Notification::make()
-                                    ->title(UiText::get('campaign.cannot_schedule', 'Không thể lên lịch chiến dịch'))
+                                    ->title(UiText::get('campaign.cannot_schedule', 'Campaign cannot be scheduled'))
                                     ->body($e->getMessage())
                                     ->danger()
                                     ->send();
@@ -381,20 +381,20 @@ class EmailCampaignResource extends Resource
                         }),
 
                     Action::make('unschedule')
-                        ->label(UiText::get('campaign.unschedule', 'Bỏ lịch'))
+                        ->label(UiText::get('campaign.unschedule', 'Unschedule'))
                         ->icon('heroicon-o-arrow-uturn-left')
                         ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Scheduled)
                         ->action(function (EmailCampaign $record): void {
                             app(CampaignService::class)->unschedule($record);
 
                             Notification::make()
-                                ->title(UiText::get('campaign.returned_draft', 'Chiến dịch đã trở về Bản nháp'))
+                                ->title(UiText::get('campaign.returned_draft', 'Campaign returned to Draft'))
                                 ->success()
                                 ->send();
                         }),
 
                     DeleteAction::make()
-                        ->label(UiText::get('campaign.delete', 'Xóa'))
+                        ->label(UiText::get('campaign.delete', 'Delete'))
                         ->icon('heroicon-o-trash')
                         ->visible(fn (EmailCampaign $record): bool => $record->status === EmailCampaignStatus::Draft),
                 ]),
@@ -414,7 +414,7 @@ class EmailCampaignResource extends Resource
         $total = array_sum($counts);
 
         return [
-            'all' => UiText::get('campaign.list.tabs.all', 'Tất cả').' ('.$total.')',
+            'all' => UiText::get('dashboard.filters.all_statuses', 'All statuses').' ('.$total.')',
             EmailCampaignStatus::Draft->value => \Dth\Email\Filament\Support\CampaignUi::statusLabel(EmailCampaignStatus::Draft).' ('.($counts[EmailCampaignStatus::Draft->value] ?? 0).')',
             EmailCampaignStatus::Scheduled->value => \Dth\Email\Filament\Support\CampaignUi::statusLabel(EmailCampaignStatus::Scheduled).' ('.($counts[EmailCampaignStatus::Scheduled->value] ?? 0).')',
             EmailCampaignStatus::Processing->value => \Dth\Email\Filament\Support\CampaignUi::statusLabel(EmailCampaignStatus::Processing).' ('.($counts[EmailCampaignStatus::Processing->value] ?? 0).')',

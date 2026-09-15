@@ -15,12 +15,19 @@ class EditEmailTemplate extends EditRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('template.edit.title', 'Chỉnh sửa mẫu Email'), 'template', 'violet');
+        return EmailPageUi::title(
+            UiText::get('template.edit.title', 'Edit Email Template'),
+            'template',
+            'violet',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('template.edit.subheading', 'Điều chỉnh nội dung, biến cá nhân hóa và trạng thái sử dụng của mẫu email.');
+        return UiText::get(
+            'template.edit.subheading',
+            'Update template content, personalization variables, and usage status.'
+        );
     }
 
     protected function getHeaderActions(): array

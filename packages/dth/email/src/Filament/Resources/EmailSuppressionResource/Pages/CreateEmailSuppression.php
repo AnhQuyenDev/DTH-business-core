@@ -17,22 +17,26 @@ class CreateEmailSuppression extends CreateRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('suppression.create.title', 'Thêm Email vào danh sách chặn'), 'shield', 'red');
+        return EmailPageUi::title(
+            UiText::get('suppression.create.title', 'Add Email to Suppression List'),
+            'shield',
+            'red',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('suppression.create.subheading', 'Khóa nhanh địa chỉ email không còn phù hợp để ngăn gửi chiến dịch trong tương lai.');
+        return UiText::get('suppression.create.subheading', 'Block an email address from future campaigns while preserving audit history.');
     }
 
     protected function getFormActions(): array
     {
         return [
             $this->getCreateFormAction()
-                ->label(UiText::get('common.actions.save', 'Lưu'))
+                ->label(UiText::get('common.actions.save', 'Save'))
                 ->icon('heroicon-o-check'),
             $this->getCancelFormAction()
-                ->label(UiText::get('common.actions.cancel', 'Hủy'))
+                ->label(UiText::get('common.actions.cancel', 'Cancel'))
                 ->icon('heroicon-o-x-mark')
                 ->color('gray'),
         ];

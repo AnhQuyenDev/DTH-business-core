@@ -14,12 +14,16 @@ class CreateEmailTemplateCategory extends CreateRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('template_category.create.title', 'Tạo danh mục Email'), 'folder', 'violet');
+        return EmailPageUi::title(
+            UiText::get('template_category.create.title', 'Create Template Category'),
+            'folder',
+            'violet',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('template_category.create.subheading', 'Tạo mới danh mục để tổ chức và quản lý template email theo nhóm nội dung.');
+        return UiText::get('template_category.create.subheading', 'Create a category to organize reusable email templates.');
     }
 
     protected function getFormActions(): array

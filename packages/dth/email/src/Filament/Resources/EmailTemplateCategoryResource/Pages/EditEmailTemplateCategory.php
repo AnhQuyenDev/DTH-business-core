@@ -15,12 +15,16 @@ class EditEmailTemplateCategory extends EditRecord
 
     public function getTitle(): string|Htmlable
     {
-        return EmailPageUi::title(UiText::get('template_category.edit.title', 'Chỉnh sửa danh mục Email'), 'folder', 'violet');
+        return EmailPageUi::title(
+            UiText::get('template_category.edit.title', 'Edit Template Category'),
+            'folder',
+            'violet',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return UiText::get('template_category.edit.subheading', 'Cập nhật thông tin danh mục mẫu email để đồng bộ với cấu trúc nội dung hiện tại.');
+        return UiText::get('template_category.edit.subheading', 'Update the category information used to organize email templates.');
     }
 
     protected function getHeaderActions(): array

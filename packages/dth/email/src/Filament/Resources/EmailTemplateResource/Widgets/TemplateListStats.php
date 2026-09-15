@@ -38,7 +38,7 @@ class TemplateListStats extends Widget
         $definitions = [
             [
                 'key' => 'total',
-                'label' => UiText::get('template.list.stats.total', 'Tổng template'),
+                'label' => UiText::get('models.templates', 'Email Templates'),
                 'value' => array_sum($counts),
                 'icon' => 'heroicon-o-document-text',
                 'tone' => 'amber',
@@ -46,7 +46,7 @@ class TemplateListStats extends Widget
             ],
             [
                 'key' => EmailTemplateStatus::Draft->value,
-                'label' => UiText::get('template.status.draft', 'Bản nháp'),
+                'label' => UiText::status(EmailTemplateStatus::Draft),
                 'value' => $counts[EmailTemplateStatus::Draft->value] ?? 0,
                 'icon' => 'heroicon-o-pencil-square',
                 'tone' => 'blue',
@@ -54,7 +54,7 @@ class TemplateListStats extends Widget
             ],
             [
                 'key' => EmailTemplateStatus::Active->value,
-                'label' => UiText::get('template.status.active', 'Hoạt động'),
+                'label' => UiText::status(EmailTemplateStatus::Active),
                 'value' => $counts[EmailTemplateStatus::Active->value] ?? 0,
                 'icon' => 'heroicon-o-check-circle',
                 'tone' => 'green',
@@ -62,7 +62,7 @@ class TemplateListStats extends Widget
             ],
             [
                 'key' => EmailTemplateStatus::Inactive->value,
-                'label' => UiText::get('template.status.inactive', 'Không hoạt động'),
+                'label' => UiText::status(EmailTemplateStatus::Inactive),
                 'value' => $counts[EmailTemplateStatus::Inactive->value] ?? 0,
                 'icon' => 'heroicon-o-archive-box',
                 'tone' => 'violet',

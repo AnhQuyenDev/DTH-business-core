@@ -37,7 +37,7 @@ class EmailOverviewStats extends Widget
         return [
             'stats' => [
                 $this->stat(
-                    label: UiText::get('dashboard.metrics.campaigns', 'Chiến dịch'),
+                    label: UiText::get('dashboard.metrics.campaigns', 'Campaign'),
                     value: $this->number($snapshot->campaigns),
                     icon: 'heroicon-o-paper-airplane',
                     tone: 'amber',
@@ -45,7 +45,7 @@ class EmailOverviewStats extends Widget
                     url: EmailCampaignResource::getUrl('index'),
                 ),
                 $this->stat(
-                    label: UiText::get('dashboard.metrics.recipients', 'Người nhận'),
+                    label: UiText::get('dashboard.metrics.recipients', 'Recipients'),
                     value: $this->number($snapshot->recipients),
                     icon: 'heroicon-o-users',
                     tone: 'blue',
@@ -53,7 +53,7 @@ class EmailOverviewStats extends Widget
                     url: EmailCampaignResource::getUrl('index'),
                 ),
                 $this->stat(
-                    label: UiText::get('dashboard.metrics.sent', 'Đã gửi'),
+                    label: UiText::get('dashboard.metrics.sent', 'Sent'),
                     value: $this->number($snapshot->sent),
                     icon: 'heroicon-o-envelope',
                     tone: 'green',
@@ -62,7 +62,7 @@ class EmailOverviewStats extends Widget
                     url: EmailDeliveryLogResource::getUrl('index'),
                 ),
                 $this->stat(
-                    label: UiText::get('dashboard.metrics.open_rate', 'Tỷ lệ mở'),
+                    label: UiText::get('dashboard.metrics.open_rate', 'Open rate'),
                     value: $this->percent($snapshot->openRate),
                     icon: 'heroicon-o-eye',
                     tone: 'blue',
@@ -70,7 +70,7 @@ class EmailOverviewStats extends Widget
                     sparkline: $this->sparkline($openTrend),
                 ),
                 $this->stat(
-                    label: UiText::get('dashboard.metrics.click_rate', 'Tỷ lệ nhấp'),
+                    label: UiText::get('dashboard.metrics.click_rate', 'Click rate'),
                     value: $this->percent($snapshot->clickRate),
                     icon: 'heroicon-o-cursor-arrow-rays',
                     tone: 'green',
@@ -78,7 +78,7 @@ class EmailOverviewStats extends Widget
                     sparkline: $this->sparkline($clickTrend),
                 ),
                 $this->stat(
-                    label: UiText::get('dashboard.metrics.ctor', 'Tỷ lệ nhấp / mở'),
+                    label: UiText::get('dashboard.metrics.ctor', 'Click-to-open rate'),
                     value: $this->percent($snapshot->clickToOpenRate),
                     icon: 'heroicon-o-link',
                     tone: 'blue',
@@ -86,7 +86,7 @@ class EmailOverviewStats extends Widget
                     sparkline: $this->sparkline($clickTrend),
                 ),
                 $this->stat(
-                    label: UiText::get('dashboard.metrics.unsubscribe_rate', 'Tỷ lệ hủy đăng ký'),
+                    label: UiText::get('dashboard.metrics.unsubscribe_rate', 'Unsubscribe rate'),
                     value: $this->percent($snapshot->unsubscribeRate),
                     icon: 'heroicon-o-user-minus',
                     tone: $snapshot->unsubscribeRate > 1 ? 'red' : 'green',
@@ -94,7 +94,7 @@ class EmailOverviewStats extends Widget
                     sparkline: $this->sparkline($unsubscribeTrend),
                 ),
                 $this->stat(
-                    label: UiText::get('dashboard.metrics.failure_rate', 'Tỷ lệ thất bại'),
+                    label: UiText::get('dashboard.metrics.failure_rate', 'Failure rate'),
                     value: $this->percent($snapshot->failureRate),
                     icon: 'heroicon-o-exclamation-triangle',
                     tone: $snapshot->failureRate > 0 ? 'red' : 'green',
