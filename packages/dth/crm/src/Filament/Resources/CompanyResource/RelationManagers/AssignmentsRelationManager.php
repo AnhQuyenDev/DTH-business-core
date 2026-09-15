@@ -2,7 +2,7 @@
 
 namespace Dth\Crm\Filament\Resources\CompanyResource\RelationManagers;
 
-use Dth\Crm\Models\Staff;
+use Dth\Crm\Models\CrmAgentProfile;
 use Dth\Crm\Support\CrmOptions;
 use Dth\Crm\Support\StatusColor;
 use Dth\Crm\Support\UiText;
@@ -26,13 +26,9 @@ class AssignmentsRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Select::make('staff_id')
-                ->label(UiText::get('fields.staff_name', 'Staff member'))
-                ->options(fn (): array => Staff::query()
-                    ->where('employment_status', 'active')
-                    ->orderBy('name')
-                    ->pluck('name', 'id')
-                    ->all())
+            Select::make('agent_profile_id')
+                ->label(UiText::get('fields.agent_name', 'CRM assignee'))
+                ->options(fn (): array => CrmAgentProfile::options(assignmentEnabledOnly: true))
                 ->required()
                 ->searchable()
                 ->preload(),
@@ -55,8 +51,8 @@ class AssignmentsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('staff.name')
-                    ->label(UiText::get('fields.staff_name', 'Staff member')),
+                TextColumn::make('agentProfile.employee.full_name')
+                    ->label(UiText::get('fields.agent_name', 'CRM assignee')),
                 TextColumn::make('assignment_type')
                     ->label(UiText::get('fields.assignment_type', 'Assignment type'))
                     ->badge()
@@ -86,7 +82,7 @@ class AssignmentsRelationManager extends RelationManager
                         ->label(UiText::get('common.actions.edit', 'Edit')),
                     Actions\DeleteAction::make()
                         ->label(UiText::get('common.actions.delete', 'Delete')),
-                ]),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ]);
     }
 }

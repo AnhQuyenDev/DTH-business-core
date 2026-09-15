@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\CrmAgentProfileResource\Pages; use Dth\Crm\Filament\Resources\CrmAgentProfileResource; use Filament\Resources\Pages\ViewRecord; use Filament\Actions\EditAction; class ViewCrmAgentProfile extends ViewRecord {protected static string $resource=CrmAgentProfileResource::class; protected function getHeaderActions():array{return [EditAction::make()->label(\Dth\Crm\Support\UiText::get('common.actions.edit', 'Edit'))];}}

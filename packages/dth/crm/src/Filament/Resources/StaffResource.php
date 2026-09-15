@@ -4,71 +4,73 @@ namespace Dth\Crm\Filament\Resources;
 
 use Dth\Crm\Filament\Navigation\CrmNavigationGroup;
 use Dth\Crm\Filament\Resources\StaffResource\Pages;
-use Dth\Crm\Filament\Resources\StaffResource\RelationManagers\AvailabilitiesRelationManager;
-use Dth\Crm\Models\Staff;
-use Dth\Crm\Support\CrmOptions;
-use Dth\Crm\Support\StatusColor;
+use Dth\Crm\Models\CrmAgentProfile;
 use Dth\Crm\Support\UiText;
+use Dth\HumanResource\Enums\EmploymentStatus;
+use Dth\HumanResource\Models\Employee;
 use Filament\Actions;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
 class StaffResource extends Resource
 {
-    protected static ?string $model = Staff::class;
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-identification';
+    protected static ?string $model = CrmAgentProfile::class;
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
     protected static string|\UnitEnum|null $navigationGroup = CrmNavigationGroup::Crm;
     protected static ?int $navigationSort = 70;
 
     public static function getNavigationLabel(): string
     {
-        return UiText::get('navigation.staff', 'CRM staff', context: 'navigation');
+        return UiText::get('navigation.staff', 'CRM team settings', context: 'navigation');
     }
 
     public static function getModelLabel(): string
     {
-        return UiText::get('models.staff', 'CRM staff member', context: 'model');
+        return UiText::get('models.staff', 'CRM team member', context: 'model');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return UiText::get('models.staff_plural', 'CRM staff', context: 'model');
+        return UiText::get('models.staff_plural', 'CRM team settings', context: 'model');
     }
 
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make(UiText::get('sections.staff', 'CRM staff'))
+            Section::make(UiText::get('sections.staff', 'CRM assignment profile'))
+                ->description(UiText::get('sections.staff_description', 'Employee identity, department, job title and work availability are managed by Human Resource. CRM only stores assignment capacity.'))
                 ->schema([
-                    TextInput::make('staff_code')
-                        ->label(UiText::get('fields.staff_code', 'Staff code')),
-                    TextInput::make('name')
-                        ->label(UiText::get('common.fields.name', 'Name'))
-                        ->required(),
-                    TextInput::make('email')
-                        ->label(UiText::get('common.fields.email', 'Email'))
-                        ->email(),
-                    TextInput::make('phone')
-                        ->label(UiText::get('fields.phone', 'Phone'))
-                        ->tel(),
-                    TextInput::make('department')
-                        ->label(UiText::get('fields.department', 'Department')),
-                    TextInput::make('position')
-                        ->label(UiText::get('fields.position', 'Position')),
-                    Select::make('employment_status')
-                        ->label(UiText::get('common.fields.status', 'Status'))
-                        ->options(CrmOptions::employmentStatuses())
-                        ->native(false),
+                    Select::make('employee_id')
+                        ->label(UiText::get('fields.hr_employee', 'HR employee'))
+                        ->options(fn (): array => Employee::query()
+                            ->where('employment_status', '!=', EmploymentStatus::Resigned->value)
+                            ->orderBy('full_name')
+                            ->get(['id', 'employee_code', 'full_name'])
+                            ->mapWithKeys(fn (Employee $employee): array => [
+                                $employee->id => $employee->displayLabel(),
+                            ])
+                            ->all())
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->unique(ignoreRecord: true),
+                    Toggle::make('assignment_enabled')
+                        ->label(UiText::get('fields.assignment_enabled', 'Can receive CRM assignments'))
+                        ->default(true),
                     TextInput::make('lead_capacity')
                         ->label(UiText::get('fields.lead_capacity', 'Lead capacity'))
                         ->numeric()
-                        ->minValue(0),
+                        ->default(50)
+                        ->minValue(0)
+                        ->required(),
                     TextInput::make('customer_capacity')
                         ->label(UiText::get('fields.customer_capacity', 'Customer capacity'))
                         ->numeric()
@@ -76,7 +78,9 @@ class StaffResource extends Resource
                     TextInput::make('distribution_weight')
                         ->label(UiText::get('fields.distribution_weight', 'Distribution weight'))
                         ->numeric()
-                        ->minValue(0),
+                        ->default(1)
+                        ->minValue(0.01)
+                        ->required(),
                 ])
                 ->columns(2)
                 ->columnSpanFull(),
@@ -87,44 +91,47 @@ class StaffResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('staff_code')
-                    ->label(UiText::get('fields.staff_code', 'Staff code'))
+                TextColumn::make('employee.employee_code')
+                    ->label(UiText::get('fields.staff_code', 'Employee code'))
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('name')
-                    ->label(UiText::get('fields.staff_name', 'Staff member'))
+                TextColumn::make('employee.full_name')
+                    ->label(UiText::get('fields.staff_name', 'Employee'))
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('department')
+                TextColumn::make('employee.department.name')
                     ->label(UiText::get('fields.department', 'Department'))
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('position')
-                    ->label(UiText::get('fields.position', 'Position'))
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('employment_status')
-                    ->label(UiText::get('common.fields.status', 'Status'))
-                    ->searchable()
-                    ->sortable()
+                    ->placeholder('—'),
+                TextColumn::make('employee.position.title')
+                    ->label(UiText::get('fields.position', 'Job title'))
+                    ->placeholder('—'),
+                TextColumn::make('employee.employment_status')
+                    ->label(UiText::get('fields.employment_status', 'Employment status'))
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => CrmOptions::label('employment_status', $state))
-                    ->color(fn ($state): string => StatusColor::for($state, 'employment_status')),
+                    ->formatStateUsing(fn ($state): string => ($state instanceof EmploymentStatus ? $state : EmploymentStatus::tryFrom((string) $state))?->label() ?? (string) $state)
+                    ->color(fn ($state): string => ($state instanceof EmploymentStatus ? $state : EmploymentStatus::tryFrom((string) $state))?->color() ?? 'gray'),
+                IconColumn::make('assignment_enabled')
+                    ->label(UiText::get('fields.assignment_enabled_short', 'Receive work'))
+                    ->boolean(),
+                TextColumn::make('lead_capacity')
+                    ->label(UiText::get('fields.lead_capacity', 'Lead capacity'))
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('distribution_weight')
+                    ->label(UiText::get('fields.distribution_weight', 'Weight'))
+                    ->numeric(decimalPlaces: 2)
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('employment_status')
-                    ->label(UiText::get('common.fields.status', 'Status'))
-                    ->options(CrmOptions::employmentStatuses()),
+                TernaryFilter::make('assignment_enabled')
+                    ->label(UiText::get('fields.assignment_enabled', 'Can receive CRM assignments')),
             ])
             ->recordActions([
                 Actions\ActionGroup::make([
-                    Actions\ViewAction::make()
-                        ->label(UiText::get('common.actions.view', 'View')),
-                    Actions\EditAction::make()
-                        ->label(UiText::get('common.actions.edit', 'Edit')),
-                    Actions\DeleteAction::make()
-                        ->label(UiText::get('common.actions.delete', 'Delete')),
-                ]),
+                    Actions\ViewAction::make()->label(UiText::get('common.actions.view', 'View')),
+                    Actions\EditAction::make()->label(UiText::get('common.actions.edit', 'Edit')),
+                    Actions\DeleteAction::make()->label(UiText::get('common.actions.delete', 'Delete')),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
@@ -144,10 +151,5 @@ class StaffResource extends Resource
             'view' => Pages\ViewStaff::route('/{record}'),
             'edit' => Pages\EditStaff::route('/{record}/edit'),
         ];
-    }
-
-    public static function getRelations(): array
-    {
-        return [AvailabilitiesRelationManager::class];
     }
 }

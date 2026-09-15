@@ -170,13 +170,13 @@
 
             <x-filament::section :heading="UiText::get('dashboard.sections.team_workload', 'CRM team workload')" icon="heroicon-o-identification">
                 <div class="dth-crm-workload">
-                    @forelse($snapshot['staff_workload'] ?? [] as $staff)
+                    @forelse($snapshot['agent_workload'] ?? [] as $agent)
                         <div>
-                            <div class="dth-crm-workload-head"><span class="dth-crm-workload-name">{{ $staff['name'] }}</span><span class="dth-crm-muted">{{ UiText::get('dashboard.help.lead_capacity', ':open / :capacity Leads', ['open' => $staff['open_leads'], 'capacity' => $staff['capacity']]) }}</span></div>
-                            <div class="dth-crm-progress"><span style="width:{{ max(2, $staff['load_percent']) }}%"></span></div>
+                            <div class="dth-crm-workload-head"><span class="dth-crm-workload-name">{{ $agent['name'] }}</span><span class="dth-crm-muted">{{ UiText::get('dashboard.help.lead_capacity', ':open / :capacity Leads', ['open' => $agent['open_leads'], 'capacity' => $agent['capacity']]) }}</span></div>
+                            <div class="dth-crm-progress"><span style="width:{{ max(2, $agent['load_percent']) }}%"></span></div>
                         </div>
                     @empty
-                        <div class="dth-crm-empty">{{ UiText::get('dashboard.empty.no_staff', 'No active CRM staff yet.') }}</div>
+                        <div class="dth-crm-empty">{{ UiText::get('dashboard.empty.no_agents', 'No active CRM assignees yet.') }}</div>
                     @endforelse
                 </div>
             </x-filament::section>

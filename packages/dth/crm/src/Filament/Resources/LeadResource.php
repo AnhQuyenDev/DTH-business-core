@@ -8,7 +8,7 @@ use Dth\Crm\Filament\Navigation\CrmNavigationGroup;
 use Dth\Crm\Filament\Resources\LeadResource\Pages;
 use Dth\Crm\Filament\Resources\LeadResource\RelationManagers\ActivitiesRelationManager;
 use Dth\Crm\Models\Lead;
-use Dth\Crm\Models\Staff;
+use Dth\Crm\Models\CrmAgentProfile;
 use Dth\Crm\Services\LeadActivityService;
 use Dth\Crm\Services\LeadDistributionService;
 use Dth\Crm\Support\CrmOptions;
@@ -68,13 +68,9 @@ class LeadResource extends Resource
                     TextInput::make('estimated_value')
                         ->label(UiText::get('fields.estimated_value', 'Estimated value'))
                         ->numeric(),
-                    Select::make('assigned_staff_id')
-                        ->label(UiText::get('fields.assigned_staff', 'Assigned staff'))
-                        ->options(fn (): array => Staff::query()
-                            ->where('employment_status', 'active')
-                            ->orderBy('name')
-                            ->pluck('name', 'id')
-                            ->all())
+                    Select::make('assigned_agent_profile_id')
+                        ->label(UiText::get('fields.assigned_agent', 'CRM assignee'))
+                        ->options(fn (): array => CrmAgentProfile::options(assignmentEnabledOnly: true))
                         ->searchable()
                         ->preload(),
                     Select::make('intake_status')
@@ -108,7 +104,7 @@ class LeadResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn ($state): string => CrmOptions::label('lead_status', $state))
                     ->color(fn ($state): string => StatusColor::for($state, 'lead_status')),
-                TextColumn::make('assignedStaff.name')
+                TextColumn::make('assignedAgentProfile.employee.full_name')
                     ->label(UiText::get('fields.owner', 'Owner'))
                     ->placeholder(UiText::get('fields.unassigned', 'Unassigned')),
             ])
@@ -116,9 +112,9 @@ class LeadResource extends Resource
                 SelectFilter::make('intake_status')
                     ->label(UiText::get('common.fields.status', 'Status'))
                     ->options(LeadIntakeStatus::options()),
-                SelectFilter::make('assigned_staff_id')
-                    ->label(UiText::get('fields.assigned_staff', 'Assigned staff'))
-                    ->options(fn (): array => Staff::query()->orderBy('name')->pluck('name', 'id')->all())
+                SelectFilter::make('assigned_agent_profile_id')
+                    ->label(UiText::get('fields.assigned_agent', 'CRM assignee'))
+                    ->options(fn (): array => CrmAgentProfile::options())
                     ->searchable(),
             ])
             ->recordActions([
@@ -128,7 +124,7 @@ class LeadResource extends Resource
                     Actions\Action::make('distribute')
                         ->label(UiText::get('actions.distribute_lead', 'Distribute Lead'))
                         ->icon('heroicon-o-paper-airplane')
-                        ->visible(fn (Lead $record): bool => $record->assigned_staff_id === null
+                        ->visible(fn (Lead $record): bool => $record->assigned_agent_profile_id === null
                             && ! in_array($record->intake_status, ['duplicate', 'spam', 'closed', 'converted_to_opportunity'], true))
                         ->action(function (Lead $record): void {
                             app(LeadDistributionService::class)->distribute($record, auth()->id());
@@ -141,14 +137,14 @@ class LeadResource extends Resource
                     Actions\Action::make('accept')
                         ->label(UiText::get('actions.accept_lead', 'Accept Lead'))
                         ->icon('heroicon-o-check')
-                        ->visible(fn (Lead $record): bool => $record->assigned_staff_id !== null
-                            && Staff::query()
-                                ->where('user_id', auth()->id())
-                                ->whereKey($record->assigned_staff_id)
+                        ->visible(fn (Lead $record): bool => $record->assigned_agent_profile_id !== null
+                            && CrmAgentProfile::query()
+                                ->forUser(auth()->id())
+                                ->whereKey($record->assigned_agent_profile_id)
                                 ->exists())
                         ->action(function (Lead $record): void {
-                            $staff = Staff::query()->where('user_id', auth()->id())->firstOrFail();
-                            app(LeadDistributionService::class)->accept($record, $staff->id);
+                            $profile = CrmAgentProfile::query()->forUser(auth()->id())->firstOrFail();
+                            app(LeadDistributionService::class)->accept($record, $profile->id);
 
                             Notification::make()
                                 ->success()
@@ -172,8 +168,8 @@ class LeadResource extends Resource
                                 ->label(UiText::get('fields.next_follow_up', 'Next follow up')),
                         ])
                         ->action(function (Lead $record, array $data): void {
-                            $staff = Staff::query()->where('user_id', auth()->id())->first();
-                            app(LeadActivityService::class)->record($record, $data + ['staff_id' => $staff?->id]);
+                            $profile = CrmAgentProfile::query()->forUser(auth()->id())->first();
+                            app(LeadActivityService::class)->record($record, $data + ['agent_profile_id' => $profile?->id]);
 
                             Notification::make()
                                 ->success()
@@ -184,7 +180,7 @@ class LeadResource extends Resource
                         ->label(UiText::get('common.actions.edit', 'Edit')),
                     Actions\DeleteAction::make()
                         ->label(UiText::get('common.actions.delete', 'Delete')),
-                ]),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
@@ -192,7 +188,7 @@ class LeadResource extends Resource
                         ->label(UiText::get('actions.distribute_leads', 'Distribute Leads'))
                         ->icon('heroicon-o-paper-airplane')
                         ->action(fn ($records) => $records->each(
-                            fn (Lead $record) => $record->assigned_staff_id
+                            fn (Lead $record) => $record->assigned_agent_profile_id
                                 ?: app(LeadDistributionService::class)->distribute($record, auth()->id())
                         )),
                     Actions\DeleteBulkAction::make()

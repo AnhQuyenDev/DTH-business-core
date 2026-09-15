@@ -107,7 +107,7 @@ class ContactQualificationResource extends Resource
                     ->searchable(),
                 TextColumn::make('contact.display_name')
                     ->label(UiText::get('models.contact', 'Contact')),
-                TextColumn::make('assignedStaff.name')
+                TextColumn::make('assignedAgentProfile.employee.full_name')
                     ->label(UiText::get('fields.owner', 'Owner'))
                     ->placeholder(UiText::get('fields.unassigned', 'Unassigned')),
                 TextColumn::make('status')
@@ -148,7 +148,7 @@ class ContactQualificationResource extends Resource
                         ->label(UiText::get('common.actions.view', 'View')),
                     Actions\EditAction::make()
                         ->label(UiText::get('common.actions.edit', 'Edit')),
-                ]),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->defaultSort('id', 'desc');
     }

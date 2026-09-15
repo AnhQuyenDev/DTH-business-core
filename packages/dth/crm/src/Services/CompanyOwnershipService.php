@@ -1,3 +1,68 @@
 <?php
-namespace Dth\Crm\Services; use Dth\Crm\Models\{Company,CompanyAssignment,Staff}; use Illuminate\Support\Facades\DB; use Illuminate\Validation\ValidationException;
-final class CompanyOwnershipService {public function assignOwner(Company $company,Staff $staff,?int $actor=null,?string $reason=null):CompanyAssignment{return DB::transaction(function()use($company,$staff,$actor,$reason){if($staff->employment_status!=='active')throw ValidationException::withMessages(['staff'=>'Nhân viên không hoạt động.']);CompanyAssignment::where('company_id',$company->id)->where('assignment_type','owner')->where('status','active')->update(['status'=>'ended','ends_at'=>now()]);$a=CompanyAssignment::create(['company_id'=>$company->id,'staff_id'=>$staff->id,'assignment_type'=>'owner','status'=>'active','reason'=>$reason,'assigned_by_user_id'=>$actor,'starts_at'=>now()]);$company->update(['account_owner_staff_id'=>$staff->id]);return $a;});} public function transferOwner(Company $c,Staff $s,?int $actor=null,?string $reason=null):CompanyAssignment{return $this->assignOwner($c,$s,$actor,$reason??'transfer');} public function endAssignment(CompanyAssignment $a):void{$a->update(['status'=>'ended','ends_at'=>now()]);if($a->assignment_type==='owner'&&$a->company?->account_owner_staff_id===$a->staff_id)$a->company->update(['account_owner_staff_id'=>null]);}}
+
+namespace Dth\Crm\Services;
+
+use Dth\Crm\Models\Company;
+use Dth\Crm\Models\CompanyAssignment;
+use Dth\Crm\Models\CrmAgentProfile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+final class CompanyOwnershipService
+{
+    public function assignOwner(
+        Company $company,
+        CrmAgentProfile $profile,
+        ?int $actor = null,
+        ?string $reason = null,
+    ): CompanyAssignment {
+        return DB::transaction(function () use ($company, $profile, $actor, $reason): CompanyAssignment {
+            if (! $profile->isAvailableForNewWork()) {
+                throw ValidationException::withMessages([
+                    'agent_profile' => 'Nhân sự CRM hiện không sẵn sàng nhận doanh nghiệp mới.',
+                ]);
+            }
+
+            CompanyAssignment::query()
+                ->where('company_id', $company->id)
+                ->where('assignment_type', 'owner')
+                ->where('status', 'active')
+                ->update(['status' => 'ended', 'ends_at' => now()]);
+
+            $assignment = CompanyAssignment::create([
+                'company_id' => $company->id,
+                'agent_profile_id' => $profile->id,
+                'assignment_type' => 'owner',
+                'status' => 'active',
+                'reason' => $reason,
+                'assigned_by_user_id' => $actor,
+                'starts_at' => now(),
+            ]);
+
+            $company->update(['account_owner_agent_profile_id' => $profile->id]);
+
+            return $assignment;
+        });
+    }
+
+    public function transferOwner(
+        Company $company,
+        CrmAgentProfile $profile,
+        ?int $actor = null,
+        ?string $reason = null,
+    ): CompanyAssignment {
+        return $this->assignOwner($company, $profile, $actor, $reason ?? 'transfer');
+    }
+
+    public function endAssignment(CompanyAssignment $assignment): void
+    {
+        $assignment->update(['status' => 'ended', 'ends_at' => now()]);
+
+        if (
+            $assignment->assignment_type === 'owner'
+            && $assignment->company?->account_owner_agent_profile_id === $assignment->agent_profile_id
+        ) {
+            $assignment->company->update(['account_owner_agent_profile_id' => null]);
+        }
+    }
+}

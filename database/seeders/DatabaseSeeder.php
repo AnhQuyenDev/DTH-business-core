@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             ResetDemoDataSeeder::class,
+            HumanResourceDemoSeeder::class,
             EmailDemoSeeder::class,
             MarketingDemoSeeder::class,
             CrmDemoSeeder::class,

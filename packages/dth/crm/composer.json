@@ -3,11 +3,32 @@
   "description": "DTH CRM module: contacts, companies, leads, qualification, distribution and customer lifecycle.",
   "type": "library",
   "license": "proprietary",
-  "require": {"php": "^8.2", "laravel/framework": "^12.0"},
-  "require-dev": {"orchestra/testbench": "^10.0", "phpunit/phpunit": "^11.5"},
-  "autoload": {"psr-4": {"Dth\\Crm\\": "src/"}},
-  "autoload-dev": {"psr-4": {"Dth\\Crm\\Tests\\": "tests/"}},
-  "extra": {"laravel": {"providers": ["Dth\\Crm\\CrmServiceProvider"]}},
+  "require": {
+    "dth/human-resource": "@dev",
+    "laravel/framework": "^12.0",
+    "php": "^8.2"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^10.0",
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Dth\\Crm\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Dth\\Crm\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Dth\\Crm\\CrmServiceProvider"
+      ]
+    }
+  },
   "minimum-stability": "stable",
   "prefer-stable": true,
   "suggest": {

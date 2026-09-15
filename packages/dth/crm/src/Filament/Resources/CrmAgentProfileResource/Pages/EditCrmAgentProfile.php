@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\CrmAgentProfileResource\Pages; use Dth\Crm\Filament\Resources\CrmAgentProfileResource; use Filament\Resources\Pages\EditRecord; use Filament\Actions\DeleteAction; class EditCrmAgentProfile extends EditRecord {protected static string $resource=CrmAgentProfileResource::class; protected function getHeaderActions():array{return [DeleteAction::make()->label(\Dth\Crm\Support\UiText::get('common.actions.delete', 'Delete'))];}}

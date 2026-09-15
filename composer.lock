@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d97c1eb26a3ba91464f17ba78a7e2a4c",
+    "content-hash": "a500ee77426a923fdb4f9848c97afe8c",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -1089,9 +1089,10 @@
             "dist": {
                 "type": "path",
                 "url": "packages/dth/crm",
-                "reference": "1cae60cf1332f82fce1f1c9e3bf5146d210690cc"
+                "reference": "57adca6682ccf72fb9bf5f451081ede9d9162a8a"
             },
             "require": {
+                "dth/human-resource": "@dev",
                 "laravel/framework": "^12.0",
                 "php": "^8.2"
             },
@@ -1174,6 +1175,53 @@
                 "proprietary"
             ],
             "description": "Reusable email delivery, campaign, template, tracking and suppression module for DTH business applications.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "dth/human-resource",
+            "version": "dev-dth-core",
+            "dist": {
+                "type": "path",
+                "url": "packages/dth/human-resource",
+                "reference": "dbdaee4df618e521480df45b00ee00e54f9368a7"
+            },
+            "require": {
+                "laravel/framework": "^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^10.0",
+                "phpunit/phpunit": "^11.5"
+            },
+            "suggest": {
+                "dth/crm": "CRM can attach CRM-agent capacity and distribution settings to HR employees.",
+                "filament/filament": "Host application should use Filament 4.13.x for the Human Resource administration UI."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Dth\\HumanResource\\HumanResourceServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Dth\\HumanResource\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Dth\\HumanResource\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "DTH Human Resource module: employees, departments, job titles, availability and business capabilities.",
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -11618,6 +11666,7 @@
     "stability-flags": {
         "dth/crm": 20,
         "dth/email": 20,
+        "dth/human-resource": 20,
         "dth/marketing": 20
     },
     "prefer-stable": true,

@@ -6,6 +6,7 @@ use App\Http\Middleware\ApplyLocale;
 use Dth\Email\Filament\EmailPlugin;
 use Dth\Marketing\Filament\MarketingPlugin;
 use Dth\Crm\Filament\CrmPlugin;
+use Dth\HumanResource\Filament\HumanResourcePlugin;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -81,6 +82,9 @@ class AdminPanelProvider extends PanelProvider
             )
             ->plugin(
                 MarketingPlugin::make()
+            )
+            ->plugin(
+                HumanResourcePlugin::make()
             )
             ->plugin(
                 CrmPlugin::make()

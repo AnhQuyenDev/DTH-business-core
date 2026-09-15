@@ -1,8 +1,77 @@
 <?php
+
 namespace Dth\Crm;
-use Illuminate\Support\ServiceProvider; use Illuminate\Contracts\Auth\Access\Gate as GateContract; use Dth\Crm\Contracts\{SalesHandoffProvider,TaxVerificationProvider}; use Dth\Crm\Integrations\Sales\NullSalesHandoffProvider; use Dth\Crm\Policies\CrmResourcePolicy; use Dth\Crm\Models\{Contact,Company,Lead,ContactQualification,Customer,Staff,CustomerDistributionBatch,CompanyMatchCandidate};
-class CrmServiceProvider extends ServiceProvider {
- public function register():void{$this->mergeConfigFrom(__DIR__.'/../config/crm.php','dth-crm');if(!$this->app->bound(SalesHandoffProvider::class)){$class=config('dth-crm.integrations.sales_handoff');$this->app->singleton(SalesHandoffProvider::class,is_string($class)&&class_exists($class)?$class:NullSalesHandoffProvider::class);}if(!$this->app->bound(TaxVerificationProvider::class))$this->app->singleton(TaxVerificationProvider::class,\Dth\Crm\Integrations\Tax\NullTaxVerificationProvider::class);foreach([\Dth\Crm\Support\Normalizer::class,\Dth\Crm\Support\CodeGenerator::class,\Dth\Crm\Support\CrmAuthorization::class,\Dth\Crm\Services\ContactService::class,\Dth\Crm\Services\CompanyContactLinkService::class,\Dth\Crm\Services\CompanyOwnershipService::class,\Dth\Crm\Services\CompanyTaxVerificationSyncService::class,\Dth\Crm\Services\CompanyService::class,\Dth\Crm\Services\LeadService::class,\Dth\Crm\Services\LeadDistributionService::class,\Dth\Crm\Services\LeadActivityService::class,\Dth\Crm\Services\CompanyMatchReviewService::class,\Dth\Crm\Services\QualificationService::class,\Dth\Crm\Services\CustomerService::class,\Dth\Crm\Services\CustomerCareService::class,\Dth\Crm\Services\CustomerExportService::class,\Dth\Crm\Services\CustomerImportService::class,\Dth\Crm\Services\LeadFormAnswerSnapshotService::class,\Dth\Crm\Services\CustomerInteractionService::class,\Dth\Crm\Services\CustomerDistributionService::class,\Dth\Crm\Services\AuditService::class,\Dth\Crm\Services\CrmAnalyticsService::class] as $s)$this->app->singleton($s);}
- public function boot():void{$this->loadMigrationsFrom(__DIR__.'/../database/migrations');$this->loadViewsFrom(__DIR__.'/../resources/views','dth-crm');$this->publishes([__DIR__.'/../config/crm.php'=>config_path('dth-crm.php')],'dth-crm-config');$g=app(GateContract::class);foreach([Contact::class,Company::class,Lead::class,ContactQualification::class,Customer::class,Staff::class,CustomerDistributionBatch::class,CompanyMatchCandidate::class] as $m)if($g->getPolicyFor($m)===null)$g->policy($m,CrmResourcePolicy::class);$this->bindMarketing();if($this->app->runningInConsole())$this->commands([\Dth\Crm\Console\Commands\CrmHealthCommand::class]);}
- private function bindMarketing():void{if(interface_exists(\Dth\Marketing\Contracts\AudienceProvider::class)&&class_exists(\Dth\Crm\Integrations\Marketing\DthMarketingAudienceProvider::class)){$this->app->singleton(\Dth\Marketing\Contracts\AudienceProvider::class,\Dth\Crm\Integrations\Marketing\DthMarketingAudienceProvider::class);}if(interface_exists(\Dth\Marketing\Contracts\LeadProvider::class)&&class_exists(\Dth\Crm\Integrations\Marketing\DthMarketingLeadProvider::class)){$this->app->singleton(\Dth\Marketing\Contracts\LeadProvider::class,\Dth\Crm\Integrations\Marketing\DthMarketingLeadProvider::class);}}
+
+use Dth\Crm\Console\Commands\CrmHealthCommand;
+use Dth\Crm\Contracts\SalesHandoffProvider;
+use Dth\Crm\Contracts\TaxVerificationProvider;
+use Dth\Crm\Integrations\Sales\NullSalesHandoffProvider;
+use Dth\Crm\Models\Company;
+use Dth\Crm\Models\CompanyMatchCandidate;
+use Dth\Crm\Models\Contact;
+use Dth\Crm\Models\ContactQualification;
+use Dth\Crm\Models\CrmAgentProfile;
+use Dth\Crm\Models\Customer;
+use Dth\Crm\Models\CustomerDistributionBatch;
+use Dth\Crm\Models\Lead;
+use Dth\Crm\Policies\CrmResourcePolicy;
+use Illuminate\Contracts\Auth\Access\Gate as GateContract;
+use Illuminate\Support\ServiceProvider;
+
+final class CrmServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->mergeConfigFrom(__DIR__.'/../config/crm.php', 'dth-crm');
+        $this->app->singleton(SalesHandoffProvider::class, NullSalesHandoffProvider::class);
+        $this->app->singleton(TaxVerificationProvider::class, fn () => new class implements TaxVerificationProvider {
+            public function verify(?string $taxCode): array
+            {
+                return ['verified' => null, 'tax_code' => $taxCode, 'provider' => 'none'];
+            }
+        });
+    }
+
+    public function boot(): void
+    {
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'dth-crm');
+
+        $this->publishes([
+            __DIR__.'/../config/crm.php' => config_path('dth-crm.php'),
+        ], 'dth-crm-config');
+
+        $gate = app(GateContract::class);
+        foreach ([
+            Contact::class,
+            Company::class,
+            Lead::class,
+            ContactQualification::class,
+            Customer::class,
+            CrmAgentProfile::class,
+            CustomerDistributionBatch::class,
+            CompanyMatchCandidate::class,
+        ] as $model) {
+            if ($gate->getPolicyFor($model) === null) {
+                $gate->policy($model, CrmResourcePolicy::class);
+            }
+        }
+
+        $this->bindMarketing();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([CrmHealthCommand::class]);
+        }
+    }
+
+    private function bindMarketing(): void
+    {
+        $marketingProvider = \Dth\Crm\Contracts\MarketingLeadProvider::class;
+        if (! interface_exists($marketingProvider)) {
+            return;
+        }
+
+        $implementation = \Dth\Crm\Integrations\Marketing\DthMarketingLeadProvider::class;
+        $this->app->singleton($marketingProvider, $implementation);
+    }
 }

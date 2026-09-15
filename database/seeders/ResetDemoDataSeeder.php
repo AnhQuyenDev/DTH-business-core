@@ -27,8 +27,9 @@ class ResetDemoDataSeeder extends Seeder
                 'crm_lead_activities', 'crm_qualification_notes', 'crm_contact_qualifications',
                 'crm_leads', 'crm_company_assignments', 'crm_company_match_candidates',
                 'crm_company_contacts', 'crm_business_contact_profiles', 'crm_personal_contact_profiles',
-                'crm_companies', 'crm_contacts', 'crm_staff_availabilities', 'crm_staff',
-                'system_translations',
+                'crm_companies', 'crm_contacts', 'crm_agent_profiles',
+                'hr_employee_business_functions', 'hr_employee_availabilities', 'hr_employees',
+                'hr_positions', 'hr_departments', 'system_translations',
             ];
 
             foreach ($tables as $table) {

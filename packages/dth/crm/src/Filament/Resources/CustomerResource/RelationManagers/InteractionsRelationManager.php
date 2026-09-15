@@ -2,7 +2,7 @@
 
 namespace Dth\Crm\Filament\Resources\CustomerResource\RelationManagers;
 
-use Dth\Crm\Models\Staff;
+use Dth\Crm\Models\CrmAgentProfile;
 use Dth\Crm\Support\CrmOptions;
 use Dth\Crm\Support\UiText;
 use Filament\Actions;
@@ -78,7 +78,7 @@ class InteractionsRelationManager extends RelationManager
                     ->label(UiText::get('actions.add_interaction', 'Add interaction'))
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->mutateDataUsing(fn (array $data): array => $data + [
-                        'staff_id' => Staff::query()->where('user_id', auth()->id())->value('id'),
+                        'agent_profile_id' => CrmAgentProfile::query()->forUser(auth()->id())->value('id'),
                     ]),
             ])
             ->recordActions([
@@ -87,7 +87,7 @@ class InteractionsRelationManager extends RelationManager
                         ->label(UiText::get('common.actions.edit', 'Edit')),
                     Actions\DeleteAction::make()
                         ->label(UiText::get('common.actions.delete', 'Delete')),
-                ]),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ]);
     }
 }

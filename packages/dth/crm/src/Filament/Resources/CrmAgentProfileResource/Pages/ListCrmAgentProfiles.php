@@ -1,0 +1,2 @@
+<?php
+namespace Dth\Crm\Filament\Resources\CrmAgentProfileResource\Pages; use Dth\Crm\Filament\Resources\CrmAgentProfileResource; use Filament\Resources\Pages\ListRecords; use Filament\Actions\CreateAction; class ListCrmAgentProfiles extends ListRecords {protected static string $resource=CrmAgentProfileResource::class; protected function getHeaderActions():array{return [CreateAction::make()->label(\Dth\Crm\Support\UiText::get('common.actions.add', 'Add'))];}}

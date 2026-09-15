@@ -3,7 +3,7 @@
 namespace Dth\Crm\Filament\Resources\LeadResource\RelationManagers;
 
 use Dth\Crm\Enums\LeadActivityType;
-use Dth\Crm\Models\Staff;
+use Dth\Crm\Models\CrmAgentProfile;
 use Dth\Crm\Support\CrmOptions;
 use Dth\Crm\Support\UiText;
 use Filament\Actions;
@@ -75,7 +75,7 @@ class ActivitiesRelationManager extends RelationManager
                     ->label(UiText::get('actions.add_activity', 'Add activity'))
                     ->icon('heroicon-o-plus')
                     ->mutateDataUsing(fn (array $data): array => $data + [
-                        'staff_id' => Staff::query()->where('user_id', auth()->id())->value('id'),
+                        'agent_profile_id' => CrmAgentProfile::query()->forUser(auth()->id())->value('id'),
                     ]),
             ])
             ->recordActions([
@@ -84,7 +84,7 @@ class ActivitiesRelationManager extends RelationManager
                         ->label(UiText::get('common.actions.edit', 'Edit')),
                     Actions\DeleteAction::make()
                         ->label(UiText::get('common.actions.delete', 'Delete')),
-                ]),
+                ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ]);
     }
 }

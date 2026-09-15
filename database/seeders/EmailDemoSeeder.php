@@ -108,5 +108,44 @@ class EmailDemoSeeder extends Seeder
                 DB::table('email_events')->insert(['message_id' => $messageId, 'event_type' => 'delivered', 'provider_event_id' => 'event-'.$messageId, 'payload' => json_encode(['demo' => true]), 'occurred_at' => $now->copy()->subDay(), 'created_at' => $now, 'updated_at' => $now]);
             }
         }
+
+        DB::table('email_suppressions')->insert([
+            [
+                'email' => 'unsubscribe@demo.local',
+                'reason' => 'unsubscribe',
+                'source' => 'customer_unsubscribe',
+                'note' => 'Customer opted out of the marketing list.',
+                'created_by' => $adminId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'email' => 'bounce@demo.local',
+                'reason' => 'bounce',
+                'source' => 'smtp_bounce',
+                'note' => 'Hard bounce reported by the receiving MTA.',
+                'created_by' => $adminId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'email' => 'complaint@demo.local',
+                'reason' => 'complaint',
+                'source' => 'feedback_loop',
+                'note' => 'User marked the message as spam.',
+                'created_by' => $adminId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'email' => 'manual@demo.local',
+                'reason' => 'manual',
+                'source' => 'ops_review',
+                'note' => 'Temporarily paused for account review.',
+                'created_by' => $adminId,
+                'created_at' => $now->copy()->subDay(),
+                'updated_at' => $now,
+            ],
+        ]);
     }
 }

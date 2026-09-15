@@ -1,0 +1,37 @@
+{
+  "name": "dth/human-resource",
+  "description": "DTH Human Resource module: employees, departments, job titles, availability and business capabilities.",
+  "type": "library",
+  "license": "proprietary",
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^12.0"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^10.0",
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Dth\\HumanResource\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Dth\\HumanResource\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Dth\\HumanResource\\HumanResourceServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "suggest": {
+    "filament/filament": "Host application should use Filament 4.13.x for the Human Resource administration UI.",
+    "dth/crm": "CRM can attach CRM-agent capacity and distribution settings to HR employees."
+  }
+}
