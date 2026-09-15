@@ -11,6 +11,8 @@ use Dth\Marketing\Filament\Resources\MarketingCampaignResource;
 use Dth\Marketing\Filament\Resources\SegmentResource;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 
 class MarketingPlugin implements Plugin
 {
@@ -65,6 +67,9 @@ class MarketingPlugin implements Plugin
 
     public function boot(Panel $panel): void
     {
-        // Reserved for Marketing-only panel hooks. Email hooks remain isolated.
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::HEAD_END,
+            fn (): string => view('dth-marketing::filament.partials.ui-assets')->render(),
+        );
     }
 }

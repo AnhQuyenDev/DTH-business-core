@@ -7,16 +7,17 @@
 @endphp
 
 <style>
-    .dth-camp-report{display:flex;flex-direction:column;gap:1.4rem}
-    .dth-camp-head{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:1rem}
-    .dth-camp-card{border:1px solid rgb(229 231 235);border-radius:12px;padding:1rem;background:white}.dark .dth-camp-card{background:rgb(17 24 39);border-color:rgb(55 65 81)}
-    .dth-camp-card span{font-size:.75rem;color:rgb(107 114 128);text-transform:uppercase;font-weight:700}.dth-camp-card strong{display:block;font-size:1.35rem;margin-top:.3rem}
-    .dth-camp-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem}
-    .dth-camp-filter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;align-items:end}
-    .dth-camp-table-wrap{overflow-x:auto}.dth-camp-table{width:100%;border-collapse:collapse;font-size:.875rem}.dth-camp-table th,.dth-camp-table td{padding:.7rem .75rem;border-bottom:1px solid rgb(229 231 235);text-align:left;white-space:nowrap}.dark .dth-camp-table th,.dark .dth-camp-table td{border-color:rgb(55 65 81)}.dth-camp-num{text-align:right!important}
-    .dth-camp-insight{border-left:4px solid rgb(99 102 241);padding:.65rem .85rem;margin:.55rem 0;background:rgb(249 250 251);border-radius:6px}.dark .dth-camp-insight{background:rgb(31 41 55)}
-    @media(max-width:900px){.dth-camp-head{grid-template-columns:repeat(2,minmax(0,1fr))}.dth-camp-grid2{grid-template-columns:1fr}.dth-camp-filter{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:600px){.dth-camp-head,.dth-camp-filter{grid-template-columns:1fr}}
+    .dth-camp-report{display:flex;flex-direction:column;gap:14px}
+    .dth-camp-head{display:grid;grid-template-columns:2fr repeat(3,minmax(0,1fr));gap:12px}
+    .dth-camp-card{position:relative;overflow:hidden;border:1px solid #e6eaf2;border-radius:15px;padding:15px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+    .dth-camp-card:first-child{background:linear-gradient(135deg,#f0f1ff,#fff)}
+    .dth-camp-card span{font-size:.68rem;color:#7e899b;text-transform:uppercase;font-weight:760;letter-spacing:.035em}.dth-camp-card strong{display:block;font-size:1.28rem;margin-top:.3rem;color:#172033;font-weight:820;letter-spacing:-.025em}
+    .dth-camp-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .dth-camp-filter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;align-items:end}.dth-camp-filter label{display:block;margin-bottom:.35rem;color:#59667c;font-size:.7rem;font-weight:700}
+    .dth-camp-table-wrap{overflow-x:auto}.dth-camp-table{width:100%;border-collapse:collapse;font-size:.76rem}.dth-camp-table th{padding:.62rem .65rem;border-bottom:1px solid #edf1f6;text-align:left;white-space:nowrap;color:#8a95a8;font-size:.64rem;text-transform:uppercase;letter-spacing:.035em;font-weight:760}.dth-camp-table td{padding:.68rem .65rem;border-bottom:1px solid #f0f3f7;text-align:left;white-space:nowrap;color:#475467}.dth-camp-table tr:last-child td{border-bottom:0}.dth-camp-table strong{color:#253047}.dth-camp-num{text-align:right!important}
+    .dth-camp-insight{position:relative;padding:.72rem .8rem .72rem 1rem;margin:.5rem 0;border:1px solid #edf0f5;border-radius:11px;background:#fbfcfe;color:#475467}.dth-camp-insight:before{content:"";position:absolute;left:0;top:.6rem;bottom:.6rem;width:4px;border-radius:999px;background:#5b5cf0}.dth-camp-insight strong{display:block;color:#273143;font-size:.73rem;margin-bottom:.15rem}.dth-camp-insight .text-sm{font-size:.67rem!important;line-height:1.4}
+    @media(max-width:1100px){.dth-camp-head{grid-template-columns:repeat(2,minmax(0,1fr))}.dth-camp-grid2{grid-template-columns:1fr}.dth-camp-filter{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:650px){.dth-camp-head,.dth-camp-filter{grid-template-columns:1fr}}
 </style>
 
 <div class="dth-camp-report">
@@ -59,11 +60,11 @@
     <div class="dth-camp-grid2">
         <x-filament::section :heading="\Dth\Marketing\Support\UiText::get('analytics.funnel','Conversion Funnel')" icon="heroicon-o-funnel">
             <div class="dth-camp-table-wrap"><table class="dth-camp-table"><tbody>
-                <tr><td>View → Submission</td><td class="dth-camp-num">{{ number_format((float)$s['view_to_submission'],2) }}%</td></tr>
-                <tr><td>Submission → Lead</td><td class="dth-camp-num">{{ $s['submission_to_lead'] === null ? 'N/A' : number_format((float)$s['submission_to_lead'],2).'%' }}</td></tr>
-                <tr><td>Lead → Customer</td><td class="dth-camp-num">{{ $s['lead_to_customer'] === null ? 'N/A' : number_format((float)$s['lead_to_customer'],2).'%' }}</td></tr>
-                <tr><td>Failed submissions</td><td class="dth-camp-num">{{ $s['failed'] }}</td></tr>
-                <tr><td>Spam submissions</td><td class="dth-camp-num">{{ $s['spam'] }}</td></tr>
+                <tr><td>{{ \Dth\Marketing\Support\UiText::get('analytics.help.view_to_submission','View → submission') }}</td><td class="dth-camp-num">{{ number_format((float)$s['view_to_submission'],2) }}%</td></tr>
+                <tr><td>{{ \Dth\Marketing\Support\UiText::get('analytics.help.submission_to_lead','Submission → lead') }}</td><td class="dth-camp-num">{{ $s['submission_to_lead'] === null ? 'N/A' : number_format((float)$s['submission_to_lead'],2).'%' }}</td></tr>
+                <tr><td>{{ \Dth\Marketing\Support\UiText::get('analytics.help.lead_to_customer','Lead → customer') }}</td><td class="dth-camp-num">{{ $s['lead_to_customer'] === null ? 'N/A' : number_format((float)$s['lead_to_customer'],2).'%' }}</td></tr>
+                <tr><td>{{ \Dth\Marketing\Support\UiText::get('analytics.labels.failed_submissions','Failed submissions') }}</td><td class="dth-camp-num">{{ $s['failed'] }}</td></tr>
+                <tr><td>{{ \Dth\Marketing\Support\UiText::get('analytics.labels.spam_submissions','Spam submissions') }}</td><td class="dth-camp-num">{{ $s['spam'] }}</td></tr>
             </tbody></table></div>
         </x-filament::section>
         <x-filament::section :heading="\Dth\Marketing\Support\UiText::get('analytics.analysis','Statistical Analysis')" icon="heroicon-o-light-bulb">

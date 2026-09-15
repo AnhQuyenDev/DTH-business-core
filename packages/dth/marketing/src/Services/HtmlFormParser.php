@@ -428,6 +428,7 @@ final class HtmlFormParser
         return match ($inputType) {
             'email' => FormFieldType::Email,
             'tel', 'phone' => FormFieldType::Phone,
+            'date' => FormFieldType::Date,
             'checkbox' => FormFieldType::Checkbox,
             default => FormFieldType::Text,
         };

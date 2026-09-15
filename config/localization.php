@@ -1244,6 +1244,77 @@ return [
                     'submission' => 'Thông tin đã gửi',
                     'submissions' => 'Thông tin đã gửi',
                 ],
+                'pages' => [
+                    'campaigns' => [
+                        'title' => 'Chiến dịch Marketing',
+                        'subheading' => 'Lập kế hoạch, theo dõi và tối ưu các chiến dịch thu hút khách hàng trên nhiều kênh và dịch vụ.',
+                        'create' => 'Tạo chiến dịch',
+                    ],
+                    'campaign_create' => [
+                        'title' => 'Tạo chiến dịch Marketing',
+                        'subheading' => 'Thiết lập phạm vi chiến dịch, dịch vụ quảng bá, thời gian, ngân sách và ghi chú vận hành.',
+                    ],
+                    'campaign_edit' => [
+                        'title' => 'Chỉnh sửa chiến dịch Marketing',
+                        'subheading' => 'Cập nhật phạm vi, ngân sách, thời gian và thông tin vận hành mà không thay đổi quy tắc vòng đời.',
+                    ],
+                    'landing_pages' => [
+                        'title' => 'Landing Pages',
+                        'subheading' => 'Xây dựng, xuất bản và theo dõi Landing Page gắn với chiến dịch, biểu mẫu và UTM.',
+                        'create' => 'Tạo Landing Page',
+                    ],
+                    'landing_create' => [
+                        'title' => 'Tạo Landing Page',
+                        'subheading' => 'Thiết lập nội dung, trải nghiệm biểu mẫu, chiến dịch liên kết, giao diện và tracking trước khi xuất bản.',
+                    ],
+                    'landing_edit' => [
+                        'title' => 'Chỉnh sửa Landing Page',
+                        'subheading' => 'Tinh chỉnh nội dung, cấu hình biểu mẫu, chiến dịch liên kết và cách trình bày Landing Page.',
+                    ],
+                    'submissions' => [
+                        'title' => 'Thông tin gửi từ Landing Page',
+                        'subheading' => 'Theo dõi thông tin khách hàng, trạng thái xử lý, dữ liệu attribution và đồng bộ Lead sang CRM.',
+                    ],
+                    'form_templates' => [
+                        'title' => 'Mẫu biểu mẫu',
+                        'subheading' => 'Thiết kế biểu mẫu thu thập Lead có thể tái sử dụng cho Landing Page và duy trì quy tắc đối tượng nhất quán.',
+                        'create' => 'Tạo mẫu biểu mẫu',
+                    ],
+                    'form_create' => [
+                        'title' => 'Tạo mẫu biểu mẫu',
+                        'subheading' => 'Thiết lập trường dữ liệu, loại đối tượng, cơ chế đồng ý và giao diện biểu mẫu có thể tái sử dụng.',
+                    ],
+                    'form_edit' => [
+                        'title' => 'Chỉnh sửa mẫu biểu mẫu',
+                        'subheading' => 'Cập nhật trường dữ liệu và giao diện trong khi vẫn giữ nguyên cơ chế version của mẫu.',
+                    ],
+                    'contact_lists' => [
+                        'title' => 'Danh sách Marketing',
+                        'subheading' => 'Tổ chức các liên hệ đã đăng ký thành nhóm đối tượng có thể tái sử dụng cho chiến dịch và tự động hóa.',
+                        'create' => 'Tạo danh sách',
+                    ],
+                    'contact_list_create' => [
+                        'title' => 'Tạo danh sách Marketing',
+                        'subheading' => 'Tạo nhóm đối tượng Marketing và xác định loại danh sách cũng như mục đích đăng ký.',
+                    ],
+                    'contact_list_edit' => [
+                        'title' => 'Chỉnh sửa danh sách Marketing',
+                        'subheading' => 'Cập nhật thông tin danh sách trong khi vẫn giữ nguyên lịch sử đăng ký và thành viên.',
+                    ],
+                    'segments' => [
+                        'title' => 'Phân khúc',
+                        'subheading' => 'Xây dựng phân khúc theo quy tắc và xem trước các liên hệ phù hợp trước khi kích hoạt.',
+                        'create' => 'Tạo phân khúc',
+                    ],
+                    'segment_create' => [
+                        'title' => 'Tạo phân khúc',
+                        'subheading' => 'Kết hợp các quy tắc được hỗ trợ để xác định đúng nhóm đối tượng Marketing.',
+                    ],
+                    'segment_edit' => [
+                        'title' => 'Chỉnh sửa phân khúc',
+                        'subheading' => 'Tinh chỉnh điều kiện đối tượng và đánh giá liên hệ phù hợp trước khi sử dụng phân khúc.',
+                    ],
+                ],
                 'audience' => [
                     'list' => 'Danh sách Marketing',
                     'slug' => 'Slug',
@@ -1384,6 +1455,8 @@ return [
                     'insights' => 'Phân tích thống kê',
                     'trend' => 'Xu hướng thu hút',
                     'sources' => 'UTM / nguồn thu hút',
+                    'utm_medium_attribution' => 'Phân bổ theo UTM medium',
+                    'utm_campaign_attribution' => 'Phân bổ theo chiến dịch UTM',
                     'email_campaigns' => 'Chiến dịch Email',
                     'campaigns' => 'Hiệu suất chiến dịch',
                     'landing_pages' => 'Hiệu suất Landing Page',
@@ -1461,6 +1534,8 @@ return [
                         'open' => 'Mở',
                         'click' => 'Nhấp',
                         'conversion' => 'Chuyển đổi',
+                    'failed_submissions' => 'Thông tin gửi thất bại',
+                    'spam_submissions' => 'Thông tin gửi bị đánh dấu spam',
                         'landing_page' => 'Landing Page',
                         'url' => 'URL',
                         'name' => 'Tên',

@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Dth\Marketing\DTO\MarketingAnalyticsFilter;
 use Dth\Marketing\Enums\MarketingCampaignStatus;
 use Dth\Marketing\Filament\Navigation\MarketingNavigationGroup;
+use Dth\Marketing\Filament\Support\MarketingPageUi;
 use Dth\Marketing\Models\MarketingCampaign;
 use Dth\Marketing\Services\MarketingAnalyticsService;
 use Dth\Marketing\Support\IntegrationHealthService;
@@ -39,7 +40,7 @@ class MarketingOverview extends Dashboard
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('analytics.title', 'Marketing Analytics');
+        return MarketingPageUi::title(UiText::get('analytics.title', 'Marketing Analytics'), 'report');
     }
 
     public function getSubheading(): string|Htmlable|null
@@ -62,21 +63,50 @@ class MarketingOverview extends Dashboard
             Action::make('marketingReportPdf')
                 ->label(UiText::get('reports.export_pdf', 'PDF report'))
                 ->icon('heroicon-o-document-arrow-down')
-                ->color('primary')
-                ->url(fn (): string => route('dth.marketing.reports.dashboard', [...$query, 'format' => 'pdf']))
-                ->visible(fn (): bool => app(MarketingAuthorizationService::class)->export(auth()->user())),
+                ->color('gray')
+                ->extraAttributes([
+                    'class' => 'dth-mkt-export-action dth-mkt-export-action--pdf',
+                ])
+                ->url(fn (): string => route(
+                    'dth.marketing.reports.dashboard',
+                    [...$query, 'format' => 'pdf']
+                ))
+                ->visible(
+                    fn (): bool => app(MarketingAuthorizationService::class)
+                        ->export(auth()->user())
+                ),
+
             Action::make('marketingReportXlsx')
                 ->label(UiText::get('reports.export_xlsx', 'Excel'))
                 ->icon('heroicon-o-table-cells')
                 ->color('gray')
-                ->url(fn (): string => route('dth.marketing.reports.dashboard', [...$query, 'format' => 'xlsx']))
-                ->visible(fn (): bool => app(MarketingAuthorizationService::class)->export(auth()->user())),
+                ->extraAttributes([
+                    'class' => 'dth-mkt-export-action dth-mkt-export-action--excel',
+                ])
+                ->url(fn (): string => route(
+                    'dth.marketing.reports.dashboard',
+                    [...$query, 'format' => 'xlsx']
+                ))
+                ->visible(
+                    fn (): bool => app(MarketingAuthorizationService::class)
+                        ->export(auth()->user())
+                ),
+
             Action::make('marketingReportCsv')
                 ->label(UiText::get('reports.export_csv', 'CSV'))
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->url(fn (): string => route('dth.marketing.reports.dashboard', [...$query, 'format' => 'csv']))
-                ->visible(fn (): bool => app(MarketingAuthorizationService::class)->export(auth()->user())),
+                ->extraAttributes([
+                    'class' => 'dth-mkt-export-action dth-mkt-export-action--csv',
+                ])
+                ->url(fn (): string => route(
+                    'dth.marketing.reports.dashboard',
+                    [...$query, 'format' => 'csv']
+                ))
+                ->visible(
+                    fn (): bool => app(MarketingAuthorizationService::class)
+                        ->export(auth()->user())
+                ),
         ];
     }
 

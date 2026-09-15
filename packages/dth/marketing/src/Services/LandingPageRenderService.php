@@ -342,6 +342,7 @@ final class LandingPageRenderService
             FormFieldType::Select->value => $this->renderSelect($field, $page, $formType, $key, $required.$disabledAttr, $inputStyle, $isServiceInterest),
             FormFieldType::Email->value => '<input type="email" name="'.$key.'" value="'.e((string) ($field->default_value ?? '')).'" placeholder="'.$placeholder.'"'.$required.$disabledAttr.' style="'.$inputStyle.'">',
             FormFieldType::Phone->value => '<input type="tel" name="'.$key.'" value="'.e((string) ($field->default_value ?? '')).'" placeholder="'.$placeholder.'"'.$required.$disabledAttr.' style="'.$inputStyle.'">',
+            FormFieldType::Date->value => '<input type="date" name="'.$key.'" value="'.e((string) ($field->default_value ?? '')).'" placeholder="'.$placeholder.'"'.$required.$disabledAttr.' style="'.$inputStyle.'">',
             default => '<input type="text" name="'.$key.'" value="'.e((string) ($field->default_value ?? '')).'" placeholder="'.$placeholder.'"'.$required.$disabledAttr.' style="'.$inputStyle.'">',
         };
 

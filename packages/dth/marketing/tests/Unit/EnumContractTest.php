@@ -22,7 +22,7 @@ class EnumContractTest extends TestCase
         $this->assertSame(['received', 'processed', 'failed', 'spam'], LandingPageSubmissionStatus::values());
         $this->assertSame(['created', 'updated', 'skipped'], LandingPageContactAction::values());
         $this->assertSame(['personal', 'business'], FormAudienceType::values());
-        $this->assertSame(['text', 'email', 'phone', 'textarea', 'select', 'checkbox', 'hidden'], FormFieldType::values());
+        $this->assertSame(['text', 'email', 'phone', 'date', 'textarea', 'select', 'checkbox', 'hidden'], FormFieldType::values());
         $this->assertContains('person.name', SemanticFieldRole::values());
         $this->assertContains('service.interest', SemanticFieldRole::values());
     }

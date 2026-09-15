@@ -16,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
@@ -118,7 +119,10 @@ class ContactListResource extends Resource
                         'active' => UiText::get('common.status.active', 'Active'),
                         'archived' => UiText::get('common.status.archived', 'Archived'),
                     ]),
-            ])
+            ], layout: FiltersLayout::AboveContent)
+            ->filtersFormColumns(1)
+            ->deferFilters(false)
+            ->hiddenFilterIndicators()
             ->recordActions([
                 \Filament\Actions\ActionGroup::make([
                     Actions\EditAction::make()

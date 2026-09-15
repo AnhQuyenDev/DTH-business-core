@@ -4,6 +4,7 @@ namespace Dth\Marketing\Filament\Resources\MarketingCampaignResource\Pages;
 
 use Dth\Marketing\DTO\MarketingAnalyticsFilter;
 use Dth\Marketing\Filament\Resources\MarketingCampaignResource;
+use Dth\Marketing\Filament\Support\MarketingPageUi;
 use Dth\Marketing\Models\MarketingCampaign;
 use Dth\Marketing\Services\MarketingAnalyticsService;
 use Dth\Marketing\Support\IntegrationHealthService;
@@ -24,7 +25,7 @@ class ViewMarketingCampaignReport extends ViewRecord
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('analytics.campaign_report', 'Campaign Report').': '.$this->getRecord()->name;
+        return MarketingPageUi::title(UiText::get('analytics.campaign_report', 'Campaign Report').': '.$this->getRecord()->name, 'report');
     }
 
     public function getSubheading(): string|Htmlable|null
@@ -43,29 +44,65 @@ class ViewMarketingCampaignReport extends ViewRecord
         $query = $this->filter()->toQuery();
 
         return [
-            Action::make('backToEdit')
-                ->label(UiText::get('common.actions.edit', 'Edit'))
-                ->icon('heroicon-o-pencil-square')
-                ->color('gray')
-                ->url(fn (): string => MarketingCampaignResource::getUrl('edit', ['record' => $campaign]))
-                ->visible(fn (): bool => MarketingCampaignResource::canEdit($campaign)),
             Action::make('campaignReportPdf')
                 ->label(UiText::get('reports.export_pdf', 'PDF report'))
                 ->icon('heroicon-o-document-arrow-down')
-                ->url(fn (): string => route('dth.marketing.reports.campaign', ['campaign' => $campaign, 'format' => 'pdf', ...$query]))
-                ->visible(fn (): bool => app(MarketingAuthorizationService::class)->export(auth()->user())),
+                ->color('gray')
+                ->extraAttributes([
+                    'class' => 'dth-mkt-export-action dth-mkt-export-action--pdf',
+                ])
+                ->url(fn (): string => route(
+                    'dth.marketing.reports.campaign',
+                    [
+                        'campaign' => $campaign,
+                        'format' => 'pdf',
+                        ...$query,
+                    ]
+                ))
+                ->visible(
+                    fn (): bool => app(MarketingAuthorizationService::class)
+                        ->export(auth()->user())
+                ),
+
             Action::make('campaignReportXlsx')
                 ->label(UiText::get('reports.export_xlsx', 'Excel'))
                 ->icon('heroicon-o-table-cells')
                 ->color('gray')
-                ->url(fn (): string => route('dth.marketing.reports.campaign', ['campaign' => $campaign, 'format' => 'xlsx', ...$query]))
-                ->visible(fn (): bool => app(MarketingAuthorizationService::class)->export(auth()->user())),
+                ->extraAttributes([
+                    'class' => 'dth-mkt-export-action dth-mkt-export-action--excel',
+                ])
+                ->url(fn (): string => route(
+                    'dth.marketing.reports.campaign',
+                    [
+                        'campaign' => $campaign,
+                        'format' => 'xlsx',
+                        ...$query,
+                    ]
+                ))
+                ->visible(
+                    fn (): bool => app(MarketingAuthorizationService::class)
+                        ->export(auth()->user())
+                ),
+
             Action::make('campaignReportCsv')
                 ->label(UiText::get('reports.export_csv', 'CSV'))
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->url(fn (): string => route('dth.marketing.reports.campaign', ['campaign' => $campaign, 'format' => 'csv', ...$query]))
-                ->visible(fn (): bool => app(MarketingAuthorizationService::class)->export(auth()->user())),
+                ->extraAttributes([
+                    'class' => 'dth-mkt-export-action dth-mkt-export-action--csv',
+                ])
+                ->url(fn (): string => route(
+                    'dth.marketing.reports.campaign',
+                    [
+                        'campaign' => $campaign,
+                        'format' => 'csv',
+                        ...$query,
+                    ]
+                ))
+                ->visible(
+                    fn (): bool => app(MarketingAuthorizationService::class)
+                        ->export(auth()->user())
+                ),
         ];
     }
 
