@@ -25,6 +25,12 @@ class ListLandingPages extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()->label(UiText::get('pages.landing_pages.create', 'Create landing page'))->icon('heroicon-o-plus')];
+        return [
+            CreateAction::make()
+                ->label(UiText::get('pages.landing_pages.create', 'Create landing page'))
+                ->icon('heroicon-o-plus')
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-mkt-entry-action dth-mkt-entry-action--blue']),
+        ];
     }
 }

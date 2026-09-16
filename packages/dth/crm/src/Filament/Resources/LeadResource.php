@@ -119,7 +119,7 @@ class LeadResource extends Resource
             ])
             ->recordActions([
                 Actions\ActionGroup::make([
-                    Actions\ViewAction::make()
+                    Actions\ViewAction::make()->icon('heroicon-o-eye')
                         ->label(UiText::get('common.actions.view', 'View')),
                     Actions\Action::make('distribute')
                         ->label(UiText::get('actions.distribute_lead', 'Distribute Lead'))
@@ -154,6 +154,8 @@ class LeadResource extends Resource
                     Actions\Action::make('activity')
                         ->label(UiText::get('actions.log_activity', 'Log activity'))
                         ->icon('heroicon-o-chat-bubble-left-right')
+                        ->modalSubmitAction(fn ($action) => $action->label(UiText::get('common.actions.save', 'Save'))->icon('heroicon-o-check-circle'))
+                        ->modalCancelAction(fn ($action) => $action->label(UiText::get('common.actions.cancel', 'Cancel'))->icon('heroicon-o-x-mark')->color('gray'))
                         ->form([
                             Select::make('type')
                                 ->label(UiText::get('fields.activity_type', 'Activity type'))
@@ -176,9 +178,9 @@ class LeadResource extends Resource
                                 ->title(UiText::get('notifications.activity_logged', 'Activity logged'))
                                 ->send();
                         }),
-                    Actions\EditAction::make()
+                    Actions\EditAction::make()->icon('heroicon-o-pencil-square')
                         ->label(UiText::get('common.actions.edit', 'Edit')),
-                    Actions\DeleteAction::make()
+                    Actions\DeleteAction::make()->icon('heroicon-o-trash')
                         ->label(UiText::get('common.actions.delete', 'Delete')),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
@@ -191,7 +193,7 @@ class LeadResource extends Resource
                             fn (Lead $record) => $record->assigned_agent_profile_id
                                 ?: app(LeadDistributionService::class)->distribute($record, auth()->id())
                         )),
-                    Actions\DeleteBulkAction::make()
+                    Actions\DeleteBulkAction::make()->icon('heroicon-o-trash')
                         ->label(UiText::get('common.actions.delete', 'Delete'))
                         ->authorizeIndividualRecords(),
                 ]),

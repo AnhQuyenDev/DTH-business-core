@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 
 class CompanyMatchCandidateResource extends Resource
@@ -79,7 +80,7 @@ class CompanyMatchCandidateResource extends Resource
                 SelectFilter::make('status')
                     ->label(UiText::get('common.fields.status', 'Status'))
                     ->options(CrmOptions::matchStatuses()),
-            ])
+            ], layout: FiltersLayout::AboveContent)
             ->recordActions([
                 Actions\ActionGroup::make([
                     Actions\Action::make('accept')
@@ -100,6 +101,8 @@ class CompanyMatchCandidateResource extends Resource
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->requiresConfirmation()
+                        ->modalSubmitAction(fn ($action) => $action->icon('heroicon-o-x-circle'))
+                        ->modalCancelAction(fn ($action) => $action->icon('heroicon-o-x-mark')->color('gray'))
                         ->visible(fn (CompanyMatchCandidate $record): bool => $record->status === 'pending')
                         ->action(function (CompanyMatchCandidate $record): void {
                             app(CompanyMatchReviewService::class)->reject($record, auth()->id());
@@ -109,7 +112,7 @@ class CompanyMatchCandidateResource extends Resource
                                 ->title(UiText::get('notifications.company_match_rejected', 'Company match rejected'))
                                 ->send();
                         }),
-                    Actions\ViewAction::make()
+                    Actions\ViewAction::make()->icon('heroicon-o-eye')
                         ->label(UiText::get('common.actions.view', 'View')),
                 ]),
             ])

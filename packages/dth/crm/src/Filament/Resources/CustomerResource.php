@@ -130,11 +130,11 @@ class CustomerResource extends Resource
             ])
             ->recordActions([
                 Actions\ActionGroup::make([
-                    Actions\ViewAction::make()
+                    Actions\ViewAction::make()->icon('heroicon-o-eye')
                         ->label(UiText::get('common.actions.view', 'View')),
-                    Actions\EditAction::make()
+                    Actions\EditAction::make()->icon('heroicon-o-pencil-square')
                         ->label(UiText::get('common.actions.edit', 'Edit')),
-                    Actions\DeleteAction::make()
+                    Actions\DeleteAction::make()->icon('heroicon-o-trash')
                         ->label(UiText::get('common.actions.delete', 'Delete')),
                 ]),
             ])
@@ -144,6 +144,8 @@ class CustomerResource extends Resource
                         ->label(UiText::get('actions.distribute_customers', 'Distribute customers'))
                         ->icon('heroicon-o-arrows-right-left')
                         ->requiresConfirmation()
+                        ->modalSubmitAction(fn ($action) => $action->icon('heroicon-o-arrows-right-left'))
+                        ->modalCancelAction(fn ($action) => $action->icon('heroicon-o-x-mark')->color('gray'))
                         ->action(function ($records): void {
                             app(CustomerDistributionService::class)->distribute($records->modelKeys(), auth()->id());
 
@@ -152,7 +154,7 @@ class CustomerResource extends Resource
                                 ->title(UiText::get('notifications.customers_distributed', 'Customers distributed'))
                                 ->send();
                         }),
-                    Actions\DeleteBulkAction::make()
+                    Actions\DeleteBulkAction::make()->icon('heroicon-o-trash')
                         ->label(UiText::get('common.actions.delete', 'Delete'))
                         ->authorizeIndividualRecords(),
                 ]),

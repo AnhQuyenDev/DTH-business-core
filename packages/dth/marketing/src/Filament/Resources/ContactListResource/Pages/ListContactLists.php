@@ -25,6 +25,12 @@ class ListContactLists extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()->label(UiText::get('pages.contact_lists.create', 'Create list'))->icon('heroicon-o-plus')];
+        return [
+            CreateAction::make()
+                ->label(UiText::get('pages.contact_lists.create', 'Create list'))
+                ->icon('heroicon-o-plus')
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-mkt-entry-action dth-mkt-entry-action--green']),
+        ];
     }
 }

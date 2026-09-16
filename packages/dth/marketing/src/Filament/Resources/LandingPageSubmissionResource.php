@@ -18,7 +18,6 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -118,7 +117,7 @@ class LandingPageSubmissionResource extends Resource
                     ->relationship('landingPage', 'name')
                     ->searchable()
                     ->preload(),
-            ], layout: FiltersLayout::AboveContent)
+            ])
             ->filtersFormColumns(3)
             ->deferFilters(false)
             ->hiddenFilterIndicators()

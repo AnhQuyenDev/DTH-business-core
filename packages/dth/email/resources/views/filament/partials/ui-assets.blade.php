@@ -261,22 +261,24 @@
             max-width: 470px;
         }
 
-        .fi-ta-filters-above-content {
-            gap: .8rem !important;
-            padding-inline: 1rem;
-            padding-bottom: .5rem;
-        }
-
-        .fi-ta-filters {
-            padding: 0 !important;
-            background: transparent !important;
-            border: 0 !important;
+        /* Native Filament table filters.
+           Do not override dropdown / popover geometry. Filament owns placement,
+           width, padding, overflow and responsiveness. Email only keeps the
+           field border and focus tone inside the native filter panel. */
+        .fi-ta-filters .fi-input-wrp,
+        .fi-ta-filters .fi-select-input,
+        .fi-ta-filters .choices__inner {
+            min-height: 42px !important;
+            border: 1px solid var(--dth-email-border-strong) !important;
+            border-radius: 10px !important;
+            background: #fff !important;
             box-shadow: none !important;
         }
 
-        .fi-ta-filters [data-field-wrapper],
-        .fi-ta-filters .fi-fo-field-wrp {
-            margin-bottom: 0 !important;
+        .fi-ta-filters .fi-input-wrp:focus-within,
+        .fi-ta-filters .choices.is-focused .choices__inner {
+            border-color: #f3b43f !important;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, .11) !important;
         }
 
         .fi-ta-content,

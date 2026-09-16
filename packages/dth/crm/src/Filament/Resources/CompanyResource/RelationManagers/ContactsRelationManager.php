@@ -66,9 +66,9 @@ class ContactsRelationManager extends RelationManager
             ])
             ->recordActions([
                 Actions\ActionGroup::make([
-                    Actions\EditAction::make()
+                    Actions\EditAction::make()->icon('heroicon-o-pencil-square')
                         ->label(UiText::get('common.actions.edit', 'Edit')),
-                    Actions\DetachAction::make()
+                    Actions\DetachAction::make()->icon('heroicon-o-link-slash')
                         ->label(UiText::get('actions.detach_contact', 'Detach contact')),
                 ]),
             ]);

@@ -80,9 +80,9 @@ class ActivitiesRelationManager extends RelationManager
             ])
             ->recordActions([
                 Actions\ActionGroup::make([
-                    Actions\EditAction::make()
+                    Actions\EditAction::make()->icon('heroicon-o-pencil-square')
                         ->label(UiText::get('common.actions.edit', 'Edit')),
-                    Actions\DeleteAction::make()
+                    Actions\DeleteAction::make()->icon('heroicon-o-trash')
                         ->label(UiText::get('common.actions.delete', 'Delete')),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ]);

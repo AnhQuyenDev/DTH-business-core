@@ -56,15 +56,15 @@ class AvailabilitiesRelationManager extends RelationManager
                     ->label(UiText::get('common.fields.notes', 'Notes')),
             ])
             ->headerActions([
-                Actions\CreateAction::make()
+                Actions\CreateAction::make()->icon('heroicon-o-plus')
                     ->label(UiText::get('actions.add_availability', 'Add availability'))
                     ->icon('heroicon-o-calendar-days'),
             ])
             ->recordActions([
                 Actions\ActionGroup::make([
-                    Actions\EditAction::make()
+                    Actions\EditAction::make()->icon('heroicon-o-pencil-square')
                         ->label(UiText::get('common.actions.edit', 'Edit')),
-                    Actions\DeleteAction::make()
+                    Actions\DeleteAction::make()->icon('heroicon-o-trash')
                         ->label(UiText::get('common.actions.delete', 'Delete')),
                 ]),
             ]);

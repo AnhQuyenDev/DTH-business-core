@@ -25,10 +25,8 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -36,7 +34,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ViewColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -250,50 +247,40 @@ class EmailCampaignResource extends Resource
                     ->view('dth-email::filament.tables.columns.campaign-performance'),
             ])
             ->filters([
-                Filter::make('campaign_controls')
+                \Filament\Tables\Filters\SelectFilter::make('sending_account_id')
+                    ->label(UiText::get('campaign.sending_account', 'Sending account'))
+                    ->placeholder(UiText::get('dashboard.filters.all_accounts', 'All sending accounts'))
+                    ->options(fn (): array => SendingAccount::query()
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all())
+                    ->searchable()
+                    ->preload(),
+
+                \Filament\Tables\Filters\SelectFilter::make('status')
+                    ->label(UiText::get('common.fields.status', 'Status'))
+                    ->placeholder(UiText::get('dashboard.filters.all_statuses', 'All statuses'))
+                    ->options(function (): array {
+                        $options = self::campaignStatusFilterOptions();
+                        unset($options['all']);
+
+                        return $options;
+                    }),
+
+                Filter::make('created_at')
+                    ->label(UiText::get('common.fields.created_at', 'Created at'))
                     ->schema([
-                        Grid::make([
-                            'default' => 1,
-                            'md' => 3,
-                        ])->schema([
-                            Select::make('sending_account_id')
-                                ->label(UiText::get('campaign.sending_account', 'Sending account'))
-                                ->placeholder(UiText::get('dashboard.filters.all_accounts', 'All sending accounts'))
-                                ->options(fn (): array => SendingAccount::query()
-                                    ->orderBy('name')
-                                    ->pluck('name', 'id')
-                                    ->all())
-                                ->searchable()
-                                ->preload(),
-
-                            DatePicker::make('from')
-                                ->label(UiText::get('dashboard.filters.start_date', 'Start date'))
-                                ->native(false)
-                                ->displayFormat('d/m/Y'),
-
-                            DatePicker::make('until')
-                                ->label(UiText::get('dashboard.filters.end_date', 'End date'))
-                                ->native(false)
-                                ->displayFormat('d/m/Y'),
-
-                            ToggleButtons::make('status')
-                                ->label(UiText::get('common.fields.status', 'Status'))
-                                ->options(fn (): array => self::campaignStatusFilterOptions())
-                                ->default('all')
-                                ->inline()
-                                ->columnSpanFull(),
-                        ]),
+                        DatePicker::make('from')
+                            ->label(UiText::get('dashboard.filters.start_date', 'Start date'))
+                            ->native(false)
+                            ->displayFormat('d/m/Y'),
+                        DatePicker::make('until')
+                            ->label(UiText::get('dashboard.filters.end_date', 'End date'))
+                            ->native(false)
+                            ->displayFormat('d/m/Y'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when(
-                                $data['sending_account_id'] ?? null,
-                                fn (Builder $query, $accountId): Builder => $query->where('sending_account_id', $accountId),
-                            )
-                            ->when(
-                                filled($data['status'] ?? null) && ($data['status'] ?? null) !== 'all',
-                                fn (Builder $query): Builder => $query->where('status', $data['status']),
-                            )
                             ->when(
                                 $data['from'] ?? null,
                                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
@@ -303,10 +290,7 @@ class EmailCampaignResource extends Resource
                                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     }),
-            ], layout: FiltersLayout::AboveContent)
-            ->filtersFormColumns(1)
-            ->deferFilters(false)
-            ->hiddenFilterIndicators()
+            ])
             ->searchPlaceholder(UiText::get('models.campaigns', 'Campaigns'))
             ->defaultSort('id', 'desc')
             ->defaultPaginationPageOption(10)

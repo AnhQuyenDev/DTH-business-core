@@ -88,6 +88,59 @@
         border-color:var(--dth-mkt-border) !important; box-shadow:none !important;
     }
 
+
+    /* Marketing entry actions that open create / input forms.
+       Keep them visually aligned with the CRM treatment while preserving
+       Marketing's own module palette. */
+    .dth-mkt-entry-action.fi-btn {
+        min-height: 40px !important;
+        padding: 0 14px !important;
+        border: 1px solid #dbe3ec !important;
+        border-radius: 12px !important;
+        background: #fff !important;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, .04) !important;
+        font-size: .8rem !important;
+        font-weight: 720 !important;
+        gap: .48rem !important;
+        transition:
+            transform .15s ease,
+            border-color .15s ease,
+            background .15s ease,
+            box-shadow .15s ease;
+    }
+
+    .dth-mkt-entry-action.fi-btn:hover {
+        transform: translateY(-1px);
+        background: #fbfcfe !important;
+        border-color: #cbd5e1 !important;
+        box-shadow: 0 5px 14px rgba(15, 23, 42, .06) !important;
+    }
+
+    .dth-mkt-entry-action--indigo.fi-btn,
+    .dth-mkt-entry-action--indigo.fi-btn * {
+        color: var(--dth-mkt-indigo) !important;
+    }
+
+    .dth-mkt-entry-action--blue.fi-btn,
+    .dth-mkt-entry-action--blue.fi-btn * {
+        color: var(--dth-mkt-blue) !important;
+    }
+
+    .dth-mkt-entry-action--amber.fi-btn,
+    .dth-mkt-entry-action--amber.fi-btn * {
+        color: #d97706 !important;
+    }
+
+    .dth-mkt-entry-action--green.fi-btn,
+    .dth-mkt-entry-action--green.fi-btn * {
+        color: #0f9f5a !important;
+    }
+
+    .dth-mkt-entry-action--rose.fi-btn,
+    .dth-mkt-entry-action--rose.fi-btn * {
+        color: #e84c78 !important;
+    }
+
     /* Report export actions mirror the Email module buttons. */
     .dth-mkt-export-action.fi-btn {
         display: inline-flex !important;
@@ -232,8 +285,24 @@
     .fi-ta-header { padding:.95rem 1rem 0 !important; gap:.85rem !important; }
     .fi-ta-header-toolbar { gap:.7rem !important; }
     .fi-ta-search-field { max-width:470px; }
-    .fi-ta-filters-above-content { gap:.75rem !important; padding-inline:1rem; padding-bottom:.55rem; }
-    .fi-ta-filters { padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
+
+    /* Native Filament table filters.
+       Do not style dropdown/popover geometry; Filament controls placement, width and responsiveness.
+       Marketing only keeps the field border/focus tone inside the native filter panel. */
+    .fi-ta-filters .fi-input-wrp,
+    .fi-ta-filters .fi-select-input,
+    .fi-ta-filters .choices__inner {
+        min-height:42px !important;
+        border:1px solid var(--dth-mkt-border-strong) !important;
+        border-radius:10px !important;
+        background:#fff !important;
+        box-shadow:none !important;
+    }
+    .fi-ta-filters .fi-input-wrp:focus-within,
+    .fi-ta-filters .choices.is-focused .choices__inner {
+        border-color:#8b8cf7 !important;
+        box-shadow:0 0 0 4px rgba(91,92,240,.12) !important;
+    }
     .fi-ta-header-cell { background:#fbfcfe !important; border-bottom:1px solid #edf1f6 !important; }
     .fi-ta-header-cell, .fi-ta-cell { padding-top:.86rem !important; padding-bottom:.86rem !important; }
     .fi-ta-row { background:#fff; transition:background .12s ease; }

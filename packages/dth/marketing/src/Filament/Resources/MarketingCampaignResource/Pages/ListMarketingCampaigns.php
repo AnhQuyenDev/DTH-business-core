@@ -25,6 +25,12 @@ class ListMarketingCampaigns extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()->label(UiText::get('pages.campaigns.create', 'Create campaign'))->icon('heroicon-o-plus')];
+        return [
+            CreateAction::make()
+                ->label(UiText::get('pages.campaigns.create', 'Create campaign'))
+                ->icon('heroicon-o-plus')
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-mkt-entry-action dth-mkt-entry-action--indigo']),
+        ];
     }
 }

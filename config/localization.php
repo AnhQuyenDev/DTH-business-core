@@ -399,7 +399,7 @@ return [
                     'incomplete_title' => 'Xác minh chưa hoàn tất',
                     'verification_body' => 'SPF: :spf; DKIM: :dkim; DMARC: :dmarc',
                     'create' => [
-                        'title' => 'Tạo / Chỉnh sửa Tên miền gửi',
+                        'title' => 'Tạo tên miền gửi',
                         'subheading' => 'Khai báo tên miền gửi, DKIM selector và chuẩn bị thông tin để xác thực DNS.',
                     ],
                     'edit' => [
@@ -437,7 +437,7 @@ return [
                     'test_sent' => 'Đã gửi email kiểm tra SMTP',
                     'test_failed' => 'Kiểm tra SMTP thất bại',
                     'create' => [
-                        'title' => 'Tạo / Chỉnh sửa Tài khoản gửi',
+                        'title' => 'Tạo tài khoản gửi',
                         'subheading' => 'Khai báo thông tin định danh, cấu hình SMTP và giới hạn gửi cho tài khoản email mới.',
                     ],
                     'edit' => [
@@ -891,6 +891,47 @@ return [
                     'match_candidate' => 'Đề xuất đối chiếu doanh nghiệp',
                     'match_candidates' => 'Đề xuất đối chiếu doanh nghiệp',
                 ],
+                'pages' => [
+                    'contacts' => [
+                        'title' => 'Liên hệ',
+                        'subheading' => 'Quản lý liên hệ cá nhân và doanh nghiệp, nguồn dữ liệu và định danh CRM trên cùng một màn hình.',
+                        'create' => 'Thêm liên hệ',
+                    ],
+                    'companies' => [
+                        'title' => 'Doanh nghiệp',
+                        'subheading' => 'Quản lý hồ sơ doanh nghiệp, mã số thuế, giai đoạn vòng đời và các quan hệ trong CRM.',
+                        'create' => 'Thêm doanh nghiệp',
+                    ],
+                    'leads' => [
+                        'title' => 'Lead',
+                        'subheading' => 'Theo dõi Lead, nhân sự phụ trách, dịch vụ quan tâm và trạng thái tiếp nhận trong suốt quá trình đánh giá.',
+                        'create' => 'Thêm Lead',
+                    ],
+                    'qualifications' => [
+                        'title' => 'Đánh giá Lead',
+                        'subheading' => 'Đánh giá chất lượng Lead, ngân sách, thời gian mua, vai trò quyết định và tiến độ theo dõi.',
+                        'create' => 'Tạo đánh giá Lead',
+                    ],
+                    'customers' => [
+                        'title' => 'Khách hàng',
+                        'subheading' => 'Quản lý vòng đời khách hàng, mức ưu tiên, doanh thu, nhân sự phụ trách và lịch sử chăm sóc.',
+                        'create' => 'Thêm khách hàng',
+                    ],
+                    'agent_profiles' => [
+                        'title' => 'Cấu hình nhân sự CRM',
+                        'subheading' => 'Liên kết nhân viên từ HR với năng lực nhận việc CRM mà không nhân đôi dữ liệu nhân sự.',
+                        'create' => 'Tạo cấu hình nhân sự CRM',
+                    ],
+                    'distribution' => [
+                        'title' => 'Phân phối khách hàng',
+                        'subheading' => 'Tạo và theo dõi các đợt phân phối khách hàng theo chiến lược đang được CRM sử dụng.',
+                        'create' => 'Tạo đợt phân phối khách hàng',
+                    ],
+                    'match_candidates' => [
+                        'title' => 'Đối chiếu doanh nghiệp',
+                        'subheading' => 'Xem xét các đề xuất ghép liên hệ với doanh nghiệp và xác nhận kết quả đối chiếu.',
+                    ],
+                ],
                 'sections' => [
                     'contact' => 'Thông tin liên hệ',
                     'personal_contact' => 'Thông tin liên hệ cá nhân',
@@ -1124,6 +1165,20 @@ return [
                         'rejected' => 'Đã từ chối',
                     ],
                 ],
+                'data' => [
+                    'import' => 'Nhập CSV / Excel',
+                    'import_title' => 'Nhập dữ liệu CRM từ CSV / Excel',
+                    'import_description' => 'Tải lên tệp CSV hoặc XLSX. Nên sử dụng đúng tên cột như tệp xuất để dữ liệu được đối chiếu an toàn.',
+                    'import_action' => 'Nhập dữ liệu',
+                    'file' => 'Tệp CSV / Excel',
+                    'expected_columns' => 'Các cột mong đợi: :columns',
+                    'invalid_file' => 'Tệp tải lên không hợp lệ.',
+                    'import_success' => 'Nhập dữ liệu hoàn tất',
+                    'import_summary' => 'Đã nhập: :imported · Lỗi: :errors',
+                    'import_failed' => 'Nhập dữ liệu thất bại',
+                    'export_excel' => 'Excel',
+                    'export_csv' => 'CSV',
+                ],
                 'actions' => [
                     'new_contact' => 'Thêm liên hệ',
                     'new_lead' => 'Thêm Lead',
@@ -1156,6 +1211,13 @@ return [
                     'customers_distributed' => 'Đã phân phối khách hàng',
                     'company_match_accepted' => 'Đã chấp nhận ghép doanh nghiệp',
                     'company_match_rejected' => 'Đã từ chối ghép doanh nghiệp',
+                    'contact_created' => 'Đã tạo liên hệ',
+                    'company_created' => 'Đã tạo doanh nghiệp',
+                    'lead_created' => 'Đã tạo Lead',
+                    'agent_profile_created' => 'Đã tạo cấu hình nhân sự CRM',
+                    'distribution_created' => 'Đã tạo đợt phân phối khách hàng',
+                    'qualification_exists' => 'Lead này đã có bản đánh giá.',
+                    'qualification_created' => 'Đã tạo đánh giá Lead',
                 ],
                 'relations' => [
                     'company_assignments' => 'Phân công doanh nghiệp',

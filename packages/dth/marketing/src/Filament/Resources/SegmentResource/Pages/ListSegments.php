@@ -25,6 +25,12 @@ class ListSegments extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()->label(UiText::get('pages.segments.create', 'Create segment'))->icon('heroicon-o-plus')];
+        return [
+            CreateAction::make()
+                ->label(UiText::get('pages.segments.create', 'Create segment'))
+                ->icon('heroicon-o-plus')
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-mkt-entry-action dth-mkt-entry-action--rose']),
+        ];
     }
 }

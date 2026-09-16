@@ -116,15 +116,15 @@ class BusinessContactResource extends Resource
             ])
             ->recordActions([
                 Actions\ActionGroup::make([
-                    Actions\EditAction::make()
+                    Actions\EditAction::make()->icon('heroicon-o-pencil-square')
                         ->label(UiText::get('common.actions.edit', 'Edit')),
-                    Actions\DeleteAction::make()
+                    Actions\DeleteAction::make()->icon('heroicon-o-trash')
                         ->label(UiText::get('common.actions.delete', 'Delete')),
                 ]),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
-                    Actions\DeleteBulkAction::make()
+                    Actions\DeleteBulkAction::make()->icon('heroicon-o-trash')
                         ->label(UiText::get('common.actions.delete', 'Delete'))
                         ->authorizeIndividualRecords(),
                 ]),

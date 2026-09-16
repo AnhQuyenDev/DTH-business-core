@@ -45,10 +45,6 @@ class ContactQualificationResource extends Resource
         return UiText::get('models.qualifications', 'Lead qualifications', context: 'model');
     }
 
-    public static function canCreate(): bool
-    {
-        return false;
-    }
 
     public static function form(Schema $schema): Schema
     {
@@ -144,9 +140,9 @@ class ContactQualificationResource extends Resource
                     self::transition('duplicate', 'actions.mark_duplicate', 'Mark duplicate'),
                     self::transition('spam', 'actions.mark_spam', 'Mark spam'),
                     self::transition('archived', 'actions.archive', 'Archive'),
-                    Actions\ViewAction::make()
+                    Actions\ViewAction::make()->icon('heroicon-o-eye')
                         ->label(UiText::get('common.actions.view', 'View')),
-                    Actions\EditAction::make()
+                    Actions\EditAction::make()->icon('heroicon-o-pencil-square')
                         ->label(UiText::get('common.actions.edit', 'Edit')),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
@@ -162,6 +158,8 @@ class ContactQualificationResource extends Resource
         $action = Actions\Action::make('to_'.$to)
             ->label(UiText::get($labelKey, $defaultLabel))
             ->visible(fn (ContactQualification $record): bool => $record->status !== $to)
+            ->modalSubmitAction(fn ($action) => $action->icon('heroicon-o-check-circle'))
+            ->modalCancelAction(fn ($action) => $action->icon('heroicon-o-x-mark')->color('gray'))
             ->form(array_values(array_filter([
                 $needDate
                     ? DateTimePicker::make('next_follow_up_at')

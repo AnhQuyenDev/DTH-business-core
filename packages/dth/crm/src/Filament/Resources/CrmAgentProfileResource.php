@@ -128,14 +128,14 @@ class CrmAgentProfileResource extends Resource
             ])
             ->recordActions([
                 Actions\ActionGroup::make([
-                    Actions\ViewAction::make()->label(UiText::get('common.actions.view', 'View')),
-                    Actions\EditAction::make()->label(UiText::get('common.actions.edit', 'Edit')),
-                    Actions\DeleteAction::make()->label(UiText::get('common.actions.delete', 'Delete')),
+                    Actions\ViewAction::make()->icon('heroicon-o-eye')->label(UiText::get('common.actions.view', 'View')),
+                    Actions\EditAction::make()->icon('heroicon-o-pencil-square')->label(UiText::get('common.actions.edit', 'Edit')),
+                    Actions\DeleteAction::make()->icon('heroicon-o-trash')->label(UiText::get('common.actions.delete', 'Delete')),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
-                    Actions\DeleteBulkAction::make()
+                    Actions\DeleteBulkAction::make()->icon('heroicon-o-trash')
                         ->label(UiText::get('common.actions.delete', 'Delete'))
                         ->authorizeIndividualRecords(),
                 ]),

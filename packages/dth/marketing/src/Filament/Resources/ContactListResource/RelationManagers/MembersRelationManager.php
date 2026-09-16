@@ -13,7 +13,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -110,7 +109,7 @@ class MembersRelationManager extends RelationManager
                         'subscribed' => UiText::get('audience.subscribed', 'Subscribed'),
                         'unsubscribed' => UiText::get('audience.unsubscribed', 'Unsubscribed'),
                     ]),
-            ], layout: FiltersLayout::AboveContent)
+            ])
             ->filtersFormColumns(1)
             ->deferFilters(false)
             ->hiddenFilterIndicators()
@@ -118,6 +117,8 @@ class MembersRelationManager extends RelationManager
                 Actions\CreateAction::make()
                     ->label(UiText::get('audience.add_member', 'Add member'))
                     ->icon('heroicon-o-user-plus')
+                    ->color('gray')
+                    ->extraAttributes(['class' => 'dth-mkt-entry-action dth-mkt-entry-action--green'])
                     ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user())),
             ])
             ->recordActions([

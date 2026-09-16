@@ -35,11 +35,16 @@ class ListFormTemplates extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()->label(UiText::get('pages.form_templates.create', 'Create form template'))->icon('heroicon-o-plus'),
+            CreateAction::make()
+                ->label(UiText::get('pages.form_templates.create', 'Create form template'))
+                ->icon('heroicon-o-plus')
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-mkt-entry-action dth-mkt-entry-action--amber']),
             Action::make('import_html')
                 ->label(UiText::get('form.import_html', 'Import HTML'))
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('gray')
+                ->extraAttributes(['class' => 'dth-mkt-entry-action dth-mkt-entry-action--amber'])
                 ->schema([
                     TextInput::make('name')->label(UiText::get('common.fields.name', 'Name'))->required()->maxLength(255),
                     Select::make('audience_type')->label(UiText::get('form.audience_type', 'Audience type'))->options(FormAudienceType::options())->default(FormAudienceType::Personal->value)->required()->native(false),

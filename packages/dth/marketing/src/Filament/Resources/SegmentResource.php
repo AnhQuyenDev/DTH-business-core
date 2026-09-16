@@ -23,7 +23,6 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -143,7 +142,7 @@ class SegmentResource extends Resource
                     'active' => UiText::get('common.status.active', 'Active'),
                     'archived' => UiText::get('common.status.archived', 'Archived'),
                 ]),
-            ], layout: FiltersLayout::AboveContent)
+            ])
             ->filtersFormColumns(1)
             ->deferFilters(false)
             ->hiddenFilterIndicators()

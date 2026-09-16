@@ -79,6 +79,8 @@ class EmailCampaignsRelationManager extends RelationManager
                 Actions\CreateAction::make()
                     ->label(UiText::get('email_bridge.manual_link', 'Add reference'))
                     ->icon('heroicon-o-link')
+                    ->color('gray')
+                    ->extraAttributes(['class' => 'dth-mkt-entry-action dth-mkt-entry-action--indigo'])
                     ->createAnother(false)
                     ->visible(fn (): bool => app(MarketingAuthorizationService::class)->manage(auth()->user()) && ! $this->getOwnerRecord()->isTerminal())
                     ->using(fn (array $data): MarketingCampaignEmailLink => app(EmailMarketingLinkService::class)
