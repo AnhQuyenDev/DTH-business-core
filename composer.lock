@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a500ee77426a923fdb4f9848c97afe8c",
+    "content-hash": "10c3e81ee5731308395aa2cec6d8dfe2",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -1084,16 +1084,66 @@
             "time": "2025-10-31T18:51:33+00:00"
         },
         {
+            "name": "dth/commercial",
+            "version": "dev-dth-core",
+            "dist": {
+                "type": "path",
+                "url": "packages/dth/commercial",
+                "reference": "50ba814ba29f14840c22b08b70624df1b2aa9d60"
+            },
+            "require": {
+                "laravel/framework": "^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^10.0",
+                "phpunit/phpunit": "^11.5"
+            },
+            "suggest": {
+                "dth/crm": "Lets qualified CRM leads hand off into Commercial opportunities.",
+                "dth/email": "Email Campaigns can display Marketing offer context when linked to a Marketing Campaign.",
+                "dth/marketing": "Lets Marketing select services/packages through CatalogProvider.",
+                "filament/filament": "Provides the optional Commercial administration UI."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Dth\\Commercial\\CommercialServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Dth\\Commercial\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Dth\\Commercial\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "DTH Commercial module: service catalog, service packages and business opportunities with optional CRM, Marketing and Email integration.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
             "name": "dth/crm",
             "version": "dev-dth-core",
             "dist": {
                 "type": "path",
                 "url": "packages/dth/crm",
-                "reference": "57adca6682ccf72fb9bf5f451081ede9d9162a8a"
+                "reference": "43602edc76768d3aa0c17095969826080e8ad1df"
             },
             "require": {
                 "dth/human-resource": "@dev",
                 "laravel/framework": "^12.0",
+                "openspout/openspout": "^4.23",
                 "php": "^8.2"
             },
             "require-dev": {
@@ -11664,6 +11714,7 @@
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
+        "dth/commercial": 20,
         "dth/crm": 20,
         "dth/email": 20,
         "dth/human-resource": 20,

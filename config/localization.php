@@ -878,7 +878,7 @@ return [
                         'active_employees' => ':count nhân viên đang làm việc',
                         'organization' => 'Cơ cấu tổ chức đang hoạt động',
                         'positions' => 'Danh mục chức danh đang sử dụng',
-                        'on_leave' => ':count nhân viên đang nghỉ hoặc vắng mặt',
+                        'on_leave' => 'Nhân viên đang nghỉ hoặc vắng mặt',
                         'employment_status' => 'Trạng thái hiện tại của toàn bộ hồ sơ nhân viên.',
                         'departments' => 'Phân bổ nhân sự theo cơ cấu tổ chức hiện tại.',
                         'recent_employees' => 'Các hồ sơ nhân viên mới nhất trong dữ liệu nhân sự.',

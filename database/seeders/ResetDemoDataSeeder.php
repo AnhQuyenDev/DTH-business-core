@@ -14,6 +14,8 @@ class ResetDemoDataSeeder extends Seeder
     {
         $this->withoutForeignKeys(function (): void {
             $tables = [
+                'commercial_opportunity_interactions', 'commercial_opportunities',
+                'commercial_service_packages', 'commercial_services',
                 'email_events', 'email_tracked_links', 'email_messages', 'email_campaign_recipients',
                 'email_campaigns', 'email_suppressions', 'email_templates', 'email_template_categories',
                 'email_sending_accounts', 'email_sending_domains', 'marketing_audit_logs',

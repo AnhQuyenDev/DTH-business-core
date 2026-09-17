@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             EmailDemoSeeder::class,
             MarketingDemoSeeder::class,
             CrmDemoSeeder::class,
+            CommercialDemoSeeder::class,
         ]);
     }
 }
