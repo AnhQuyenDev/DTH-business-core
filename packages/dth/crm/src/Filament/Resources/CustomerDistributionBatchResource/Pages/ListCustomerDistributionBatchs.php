@@ -10,7 +10,6 @@ use Dth\Crm\Support\UiText;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\Width;
@@ -45,9 +44,6 @@ class ListCustomerDistributionBatchs extends ListRecords
                 ->modalCancelAction(fn (Action $action): Action => $action->label(UiText::get('common.actions.cancel', 'Cancel'))->icon('heroicon-o-x-mark')->color('gray'))
                 ->schema([
                     Grid::make(2)->schema([
-                        TextInput::make('batch_code')
-                            ->label(UiText::get('fields.batch_code', 'Batch code'))
-                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Mã đợt phân phối để theo dõi và đối soát lịch sử chạy batch.'),
                         Select::make('batch_type')
                             ->label(UiText::get('fields.batch_type', 'Batch type'))
                             ->options(CrmOptions::batchTypes())

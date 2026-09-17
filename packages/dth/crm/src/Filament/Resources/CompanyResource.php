@@ -50,7 +50,10 @@ class CompanyResource extends Resource
             Section::make(UiText::get('sections.company', 'Company'))
                 ->schema([
                     TextInput::make('company_code')
-                        ->label(UiText::get('fields.company_code', 'Company code')),
+                        ->label(UiText::get('fields.company_code', 'Company code'))
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->hiddenOn('create'),
                     TextInput::make('legal_name')
                         ->label(UiText::get('fields.legal_name', 'Legal name'))
                         ->required(),

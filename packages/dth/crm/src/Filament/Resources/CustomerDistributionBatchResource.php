@@ -46,7 +46,10 @@ class CustomerDistributionBatchResource extends Resource
             Section::make(UiText::get('sections.distribution', 'Customer distribution'))
                 ->schema([
                     TextInput::make('batch_code')
-                        ->label(UiText::get('fields.batch_code', 'Batch code')),
+                        ->label(UiText::get('fields.batch_code', 'Batch code'))
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->hiddenOn('create'),
                     Select::make('batch_type')
                         ->label(UiText::get('fields.batch_type', 'Batch type'))
                         ->options(CrmOptions::batchTypes())

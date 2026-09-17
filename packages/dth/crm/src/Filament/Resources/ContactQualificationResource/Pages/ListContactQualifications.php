@@ -47,7 +47,8 @@ class ListContactQualifications extends ListRecords
                 ->modalSubmitAction(fn (Action $action): Action => $action->label(UiText::get('common.actions.save', 'Save'))->icon('heroicon-o-check'))
                 ->modalCancelAction(fn (Action $action): Action => $action->label(UiText::get('common.actions.cancel', 'Cancel'))->icon('heroicon-o-x-mark')->color('gray'))
                 ->schema([
-                    Grid::make(2)->schema([
+                    Grid::make(3)->schema([
+                        // Hàng 1: thông tin chính. Lead chiếm 2/3 chiều ngang để tên dài vẫn dễ đọc.
                         Select::make('lead_id')
                             ->label(UiText::get('models.lead', 'Lead'))
                             ->options(fn (): array => Lead::query()
@@ -63,7 +64,7 @@ class ListContactQualifications extends ListRecords
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->columnSpanFull()
+                            ->columnSpan(2)
                             ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Chọn Lead chưa có bản đánh giá để tạo hồ sơ qualification.'),
                         Select::make('priority')
                             ->label(UiText::get('fields.priority', 'Priority'))
@@ -71,6 +72,8 @@ class ListContactQualifications extends ListRecords
                             ->default('normal')
                             ->native(false)
                             ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Mức độ ưu tiên để đội ngũ CRM biết nên chăm sóc Lead này nhanh tới đâu.'),
+
+                        // Hàng 2: nhóm đánh giá nhanh.
                         TextInput::make('score')
                             ->label(UiText::get('fields.score', 'Score'))
                             ->numeric()
@@ -78,36 +81,39 @@ class ListContactQualifications extends ListRecords
                             ->minValue(0)
                             ->maxValue(100)
                             ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Điểm đánh giá tổng quát của Lead, thường trong thang 0 đến 100.'),
-                        TextInput::make('service_interest')
-                            ->label(UiText::get('fields.service_interest', 'Service interest'))
-                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Dịch vụ hoặc nhóm giải pháp mà Lead đang quan tâm nhiều nhất.'),
                         Select::make('budget_status')
                             ->label(UiText::get('fields.budget_status', 'Budget status'))
                             ->options(CrmOptions::budgetStatuses())
                             ->native(false)
                             ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Xác nhận Lead đã có ngân sách, đang chờ duyệt hay chưa rõ ngân sách.'),
-                        TextInput::make('budget_amount')
-                            ->label(UiText::get('fields.budget_amount', 'Budget amount'))
-                            ->numeric()
-                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Ngân sách dự kiến mà khách hàng có thể chi cho nhu cầu này.'),
                         Select::make('purchase_timeline')
                             ->label(UiText::get('fields.purchase_timeline', 'Purchase timeline'))
                             ->options(CrmOptions::purchaseTimelines())
                             ->native(false)
                             ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Khung thời gian dự kiến khách hàng sẽ ra quyết định mua.'),
+
+                        // Hàng 3: nhu cầu, ngân sách và vai trò quyết định.
+                        TextInput::make('service_interest')
+                            ->label(UiText::get('fields.service_interest', 'Service interest'))
+                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Dịch vụ hoặc nhóm giải pháp mà Lead đang quan tâm nhiều nhất.'),
+                        TextInput::make('budget_amount')
+                            ->label(UiText::get('fields.budget_amount', 'Budget amount'))
+                            ->numeric()
+                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Ngân sách dự kiến mà khách hàng có thể chi cho nhu cầu này.'),
                         Select::make('decision_role')
                             ->label(UiText::get('fields.decision_role', 'Decision role'))
                             ->options(CrmOptions::decisionRoles())
                             ->native(false)
                             ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Vai trò của đầu mối hiện tại trong quá trình ra quyết định mua hàng.'),
+
+                        // Hàng cuối: lịch theo dõi + ghi chú. Giảm textarea còn 2 dòng để modal vừa màn hình desktop.
                         DateTimePicker::make('next_follow_up_at')
                             ->label(UiText::get('fields.next_follow_up', 'Next follow up'))
-                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Lịch hẹn hoặc thời điểm CRM cần theo dõi tiếp Lead này.')
-                            ->columnSpanFull(),
+                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Lịch hẹn hoặc thời điểm CRM cần theo dõi tiếp Lead này.'),
                         Textarea::make('qualification_note')
                             ->label(UiText::get('fields.qualification_note', 'Qualification note'))
-                            ->rows(3)
-                            ->columnSpanFull()
+                            ->rows(2)
+                            ->columnSpan(2)
                             ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Ghi chú đánh giá, bối cảnh trao đổi và thông tin quan trọng cần nhớ.'),
                     ]),
                 ])

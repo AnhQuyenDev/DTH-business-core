@@ -87,7 +87,9 @@ class AvailabilitiesRelationManager extends RelationManager
             ->headerActions([
                 Actions\CreateAction::make()
                     ->label(UiText::get('actions.add_availability', 'Add availability'))
-                    ->icon('heroicon-o-calendar-days'),
+                    ->icon('heroicon-o-calendar-days')
+                    ->color('gray')
+                    ->extraAttributes(['class' => 'dth-hr-entry-action dth-hr-entry-action--green']),
             ])
             ->recordActions([
                 Actions\ActionGroup::make([

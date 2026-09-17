@@ -21,8 +21,6 @@ class EmailPerformanceTrendChart extends ChartWidget
         'xl' => 8,
     ];
 
-    public ?string $filter = 'day';
-
     public function getHeading(): string
     {
         return UiText::get('dashboard.charts.performance_trend', 'Email performance over time');
@@ -30,26 +28,21 @@ class EmailPerformanceTrendChart extends ChartWidget
 
     public function getDescription(): ?string
     {
-        return UiText::get(
+        return $this->trendGranularity() === AnalyticsGranularity::Hour
+            ? UiText::get(
+                'dashboard.charts.performance_trend_description_hour',
+                'Sent emails, opens, and clicks by hour.'
+            )
+            : UiText::get(
                 'dashboard.charts.performance_trend_description',
-            'Sent emails, opens, and clicks by day.'
-        );
-    }
-
-    /** @return array<string, string>|null */
-    protected function getFilters(): ?array
-    {
-        return [
-            'day' => UiText::get('common.fields.time', 'Time'),
-        ];
+                'Sent emails, opens, and clicks by day.'
+            );
     }
 
     protected function getData(): array
     {
         $filters = $this->analyticsFilters();
-        $granularity = $filters->range->days() <= 2
-            ? AnalyticsGranularity::Hour
-            : AnalyticsGranularity::Day;
+        $granularity = $this->trendGranularity();
         $trend = app(EmailAnalyticsService::class)->trend($filters, $granularity);
 
         return [
@@ -104,6 +97,13 @@ class EmailPerformanceTrendChart extends ChartWidget
                 $trend,
             ),
         ];
+    }
+
+    private function trendGranularity(): AnalyticsGranularity
+    {
+        return $this->analyticsFilters()->range->days() <= 2
+            ? AnalyticsGranularity::Hour
+            : AnalyticsGranularity::Day;
     }
 
     protected function getOptions(): array

@@ -799,6 +799,52 @@ return [
                 'positions' => [
                     'all_functions' => 'Dùng cho mọi chức năng nghiệp vụ',
                 ],
+                'pages' => [
+                    'employee_create' => [
+                        'title' => 'Thêm nhân viên',
+                    ],
+                    'employee_edit' => [
+                        'title' => 'Chỉnh sửa nhân viên',
+                    ],
+                    'employees' => [
+                        'title' => 'Nhân viên',
+                    ],
+                    'employee_view' => [
+                        'title' => 'Chi tiết nhân viên',
+                    ],
+                    'department_create' => [
+                        'title' => 'Thêm phòng ban',
+                    ],
+                    'department_edit' => [
+                        'title' => 'Chỉnh sửa phòng ban',
+                    ],
+                    'departments' => [
+                        'title' => 'Phòng ban',
+                    ],
+                    'position_create' => [
+                        'title' => 'Thêm chức danh',
+                    ],
+                    'position_edit' => [
+                        'title' => 'Chỉnh sửa chức danh',
+                    ],
+                    'positions' => [
+                        'title' => 'Chức danh',
+                    ],
+                ],
+                'data' => [
+                    'import' => 'Nhập CSV / Excel',
+                    'import_title' => 'Nhập CSV / Excel',
+                    'import_description' => 'Tải lên tệp CSV hoặc XLSX. Để đảm bảo dữ liệu tương thích, hãy dùng cùng tên cột với tệp đã xuất.',
+                    'import_action' => 'Nhập dữ liệu',
+                    'file' => 'Tệp CSV / Excel',
+                    'expected_columns' => 'Các cột yêu cầu: :columns',
+                    'invalid_file' => 'Tệp nhập lên không hợp lệ.',
+                    'import_success' => 'Nhập dữ liệu thành công',
+                    'import_summary' => 'Đã nhập: :imported · Lỗi: :errors',
+                    'import_failed' => 'Nhập dữ liệu thất bại',
+                    'export_excel' => 'Excel',
+                    'export_csv' => 'CSV',
+                ],
                 'colors' => [
                     'gray' => 'Xám',
                     'primary' => 'Chủ đạo',
@@ -833,6 +879,10 @@ return [
                         'organization' => 'Cơ cấu tổ chức đang hoạt động',
                         'positions' => 'Danh mục chức danh đang sử dụng',
                         'on_leave' => ':count nhân viên đang nghỉ hoặc vắng mặt',
+                        'employment_status' => 'Trạng thái hiện tại của toàn bộ hồ sơ nhân viên.',
+                        'departments' => 'Phân bổ nhân sự theo cơ cấu tổ chức hiện tại.',
+                        'recent_employees' => 'Các hồ sơ nhân viên mới nhất trong dữ liệu nhân sự.',
+                        'boundary' => 'HR là nguồn dữ liệu gốc duy nhất về định danh nhân viên được các module khác sử dụng.',
                     ],
                     'sections' => [
                         'employment_status' => 'Trạng thái nhân sự',

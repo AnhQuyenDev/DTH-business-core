@@ -47,9 +47,6 @@ class ListLeads extends ListRecords
                 ->modalCancelAction(fn (Action $action): Action => $action->label(UiText::get('common.actions.cancel', 'Cancel'))->icon('heroicon-o-x-mark')->color('gray'))
                 ->schema([
                     Grid::make(2)->schema([
-                        TextInput::make('lead_code')
-                            ->label(UiText::get('fields.lead_code', 'Lead code'))
-                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Mã Lead nội bộ giúp tra cứu và đối soát nhanh trong CRM.'),
                         TextInput::make('title')
                             ->label(UiText::get('fields.title', 'Title'))
                             ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Tiêu đề ngắn mô tả nhu cầu hoặc cơ hội bán hàng.')

@@ -47,9 +47,6 @@ class ListCompanys extends ListRecords
                 ->modalCancelAction(fn (Action $action): Action => $action->label(UiText::get('common.actions.cancel', 'Cancel'))->icon('heroicon-o-x-mark')->color('gray'))
                 ->schema([
                     Grid::make(2)->schema([
-                        TextInput::make('company_code')
-                            ->label(UiText::get('fields.company_code', 'Company code'))
-                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Mã doanh nghiệp nội bộ để tra cứu nhanh trên CRM.'),
                         TextInput::make('legal_name')
                             ->label(UiText::get('fields.legal_name', 'Legal name'))
                             ->required()

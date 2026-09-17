@@ -84,10 +84,10 @@ class AdminPanelProvider extends PanelProvider
                 MarketingPlugin::make()
             )
             ->plugin(
-                HumanResourcePlugin::make()
+                CrmPlugin::make()
             )
             ->plugin(
-                CrmPlugin::make()
+                HumanResourcePlugin::make()
             );
     }
 }

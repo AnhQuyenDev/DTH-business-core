@@ -8,6 +8,8 @@ use Dth\HumanResource\Filament\Resources\EmployeeResource;
 use Dth\HumanResource\Filament\Resources\PositionResource;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 
 final class HumanResourcePlugin implements Plugin
 {
@@ -49,6 +51,9 @@ final class HumanResourcePlugin implements Plugin
 
     public function boot(Panel $panel): void
     {
-        // Reserved for Human Resource-only Filament hooks.
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::HEAD_END,
+            fn (): string => view('dth-human-resource::filament.partials.ui-assets')->render(),
+        );
     }
 }

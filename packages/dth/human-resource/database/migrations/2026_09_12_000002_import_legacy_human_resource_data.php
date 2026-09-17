@@ -98,7 +98,9 @@ return new class extends Migration
                 $id = DB::table('hr_positions')->insertGetId([
                     'code' => $this->uniqueCode('hr_positions', 'code', Str::limit($baseCode, 100, ''), 100),
                     'title' => $title,
-                    'group_key' => $this->columnValue('positions', $row, 'group_key') ?: $this->guessPositionGroup($title),
+                    'group_key' => $this->normalizePositionGroup(
+                        $this->columnValue('positions', $row, 'group_key') ?: $this->guessPositionGroup($title),
+                    ),
                     'authority_level' => $this->columnValue('positions', $row, 'authority_level') ?: $this->guessAuthority($title),
                     'function_key' => $this->columnValue('positions', $row, 'function_key'),
                     'description' => $this->columnValue('positions', $row, 'description'),
@@ -370,5 +372,12 @@ return new class extends Migration
             'limited' => 'temporary',
             default => 'professional',
         };
+    }
+
+    private function normalizePositionGroup(?string $group): string
+    {
+        return in_array($group, ['leadership', 'management', 'professional', 'operations', 'temporary', 'other'], true)
+            ? $group
+            : 'professional';
     }
 };

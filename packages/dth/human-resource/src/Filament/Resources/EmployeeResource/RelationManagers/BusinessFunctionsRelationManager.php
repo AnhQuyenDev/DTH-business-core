@@ -69,7 +69,11 @@ class BusinessFunctionsRelationManager extends RelationManager
                     ->boolean(),
             ])
             ->headerActions([
-                Actions\CreateAction::make()->label(UiText::get('actions.add_business_function', 'Add business function')),
+                Actions\CreateAction::make()
+                    ->label(UiText::get('actions.add_business_function', 'Add business function'))
+                    ->icon('heroicon-o-squares-2x2')
+                    ->color('gray')
+                    ->extraAttributes(['class' => 'dth-hr-entry-action dth-hr-entry-action--violet']),
             ])
             ->recordActions([
                 Actions\ActionGroup::make([

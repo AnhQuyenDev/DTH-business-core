@@ -51,7 +51,10 @@ class CustomerResource extends Resource
             Section::make(UiText::get('sections.customer', 'Customer'))
                 ->schema([
                     TextInput::make('customer_code')
-                        ->label(UiText::get('fields.customer_code', 'Customer code')),
+                        ->label(UiText::get('fields.customer_code', 'Customer code'))
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->hiddenOn('create'),
                     Select::make('customer_type')
                         ->label(UiText::get('fields.customer_type', 'Customer type'))
                         ->options(CrmOptions::contactTypes())

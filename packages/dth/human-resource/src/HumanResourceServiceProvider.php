@@ -10,6 +10,7 @@ use Dth\HumanResource\Models\EmployeeBusinessFunction;
 use Dth\HumanResource\Models\Position;
 use Dth\HumanResource\Policies\HumanResourcePolicy;
 use Dth\HumanResource\Services\HumanResourceAnalyticsService;
+use Dth\HumanResource\Services\HumanResourceDataExchangeService;
 use Dth\HumanResource\Services\WorkforceService;
 use Dth\HumanResource\Support\CodeGenerator;
 use Dth\HumanResource\Support\HumanResourceAuthorization;
@@ -26,6 +27,7 @@ final class HumanResourceServiceProvider extends ServiceProvider
             CodeGenerator::class,
             HumanResourceAuthorization::class,
             HumanResourceAnalyticsService::class,
+            HumanResourceDataExchangeService::class,
             WorkforceService::class,
         ] as $service) {
             $this->app->singleton($service);

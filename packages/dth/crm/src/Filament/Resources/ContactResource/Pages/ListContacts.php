@@ -52,9 +52,6 @@ class ListContacts extends ListRecords
                     ->color('gray'))
                 ->schema([
                     Grid::make(2)->schema([
-                        TextInput::make('contact_code')
-                            ->label(UiText::get('fields.contact_code', 'Contact code'))
-                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Mã nhận diện nội bộ của liên hệ trong CRM.'),
                         Select::make('type')
                             ->label(UiText::get('fields.contact_type', 'Contact type'))
                             ->options(ContactType::options())

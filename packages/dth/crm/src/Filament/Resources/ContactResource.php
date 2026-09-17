@@ -47,7 +47,10 @@ class ContactResource extends Resource
             Section::make(UiText::get('sections.contact', 'Contact'))
                 ->schema([
                     TextInput::make('contact_code')
-                        ->label(UiText::get('fields.contact_code', 'Contact code')),
+                        ->label(UiText::get('fields.contact_code', 'Contact code'))
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->hiddenOn('create'),
                     Select::make('type')
                         ->label(UiText::get('fields.contact_type', 'Contact type'))
                         ->options(ContactType::options())

@@ -26,11 +26,11 @@ class HumanResourceDemoSeeder extends Seeder
         });
 
         $positions = collect([
-            ['code' => 'ACCOUNT-EXEC', 'title' => 'Account Executive', 'group_key' => 'sales', 'authority_level' => 'member', 'function_key' => 'sales', 'sort_order' => 10],
-            ['code' => 'CS-SPECIALIST', 'title' => 'Customer Success Specialist', 'group_key' => 'service', 'authority_level' => 'member', 'function_key' => 'customer_service', 'sort_order' => 20],
-            ['code' => 'BUSINESS-CONSULTANT', 'title' => 'Business Consultant', 'group_key' => 'sales', 'authority_level' => 'member', 'function_key' => 'sales', 'sort_order' => 30],
+            ['code' => 'ACCOUNT-EXEC', 'title' => 'Account Executive', 'group_key' => 'professional', 'authority_level' => 'member', 'function_key' => 'sales', 'sort_order' => 10],
+            ['code' => 'CS-SPECIALIST', 'title' => 'Customer Success Specialist', 'group_key' => 'professional', 'authority_level' => 'member', 'function_key' => 'customer_service', 'sort_order' => 20],
+            ['code' => 'BUSINESS-CONSULTANT', 'title' => 'Business Consultant', 'group_key' => 'professional', 'authority_level' => 'member', 'function_key' => 'sales', 'sort_order' => 30],
             ['code' => 'OPS-MANAGER', 'title' => 'Operations Manager', 'group_key' => 'management', 'authority_level' => 'manager', 'function_key' => 'other', 'sort_order' => 40],
-            ['code' => 'SDR', 'title' => 'Sales Development Representative', 'group_key' => 'sales', 'authority_level' => 'member', 'function_key' => 'sales', 'sort_order' => 50],
+            ['code' => 'SDR', 'title' => 'Sales Development Representative', 'group_key' => 'professional', 'authority_level' => 'member', 'function_key' => 'sales', 'sort_order' => 50],
         ])->mapWithKeys(function (array $row) use ($now): array {
             DB::table('hr_positions')->updateOrInsert(
                 ['code' => $row['code']],

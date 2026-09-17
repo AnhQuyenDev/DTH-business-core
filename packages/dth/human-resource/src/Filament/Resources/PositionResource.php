@@ -51,6 +51,7 @@ class PositionResource extends Resource
     {
         return $schema->components([
             Section::make(UiText::get('sections.position', 'Job title'))
+                ->icon('heroicon-o-briefcase')
                 ->schema([
                     TextInput::make('code')
                         ->label(UiText::get('fields.position_code', 'Job-title code'))

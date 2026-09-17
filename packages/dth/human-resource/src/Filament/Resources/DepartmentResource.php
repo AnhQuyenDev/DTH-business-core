@@ -49,6 +49,7 @@ class DepartmentResource extends Resource
     {
         return $schema->components([
             Section::make(UiText::get('sections.department', 'Department'))
+                ->icon('heroicon-o-building-office-2')
                 ->schema([
                     TextInput::make('code')
                         ->label(UiText::get('fields.department_code', 'Department code'))

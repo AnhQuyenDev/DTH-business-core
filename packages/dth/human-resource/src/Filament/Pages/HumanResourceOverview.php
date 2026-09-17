@@ -6,6 +6,7 @@ use Dth\HumanResource\Filament\Navigation\HumanResourceNavigationGroup;
 use Dth\HumanResource\Filament\Resources\DepartmentResource;
 use Dth\HumanResource\Filament\Resources\EmployeeResource;
 use Dth\HumanResource\Filament\Resources\PositionResource;
+use Dth\HumanResource\Filament\Support\HumanResourcePageUi;
 use Dth\HumanResource\Services\HumanResourceAnalyticsService;
 use Dth\HumanResource\Support\HumanResourceAuthorization;
 use Dth\HumanResource\Support\UiText;
@@ -30,7 +31,11 @@ class HumanResourceOverview extends Page
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('dashboard.title', 'Human Resource');
+        return HumanResourcePageUi::title(
+            UiText::get('dashboard.title', 'Human Resource'),
+            'report',
+            'blue',
+        );
     }
 
     public function getSubheading(): string|Htmlable|null
@@ -49,18 +54,21 @@ class HumanResourceOverview extends Page
             Action::make('newEmployee')
                 ->label(UiText::get('actions.new_employee', 'New employee'))
                 ->icon('heroicon-o-user-plus')
-                ->color('primary')
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-hr-entry-action dth-hr-entry-action--blue'])
                 ->url(fn (): string => EmployeeResource::getUrl('create'))
                 ->visible(fn (): bool => EmployeeResource::canCreate()),
             Action::make('departments')
                 ->label(UiText::get('navigation.departments', 'Departments'))
                 ->icon('heroicon-o-building-office-2')
                 ->color('gray')
+                ->extraAttributes(['class' => 'dth-hr-entry-action dth-hr-entry-action--violet'])
                 ->url(fn (): string => DepartmentResource::getUrl('index')),
             Action::make('positions')
                 ->label(UiText::get('navigation.positions', 'Job titles'))
                 ->icon('heroicon-o-briefcase')
                 ->color('gray')
+                ->extraAttributes(['class' => 'dth-hr-entry-action dth-hr-entry-action--amber'])
                 ->url(fn (): string => PositionResource::getUrl('index')),
         ];
     }

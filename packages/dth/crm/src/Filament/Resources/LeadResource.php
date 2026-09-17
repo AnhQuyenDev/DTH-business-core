@@ -56,7 +56,9 @@ class LeadResource extends Resource
                 ->schema([
                     TextInput::make('lead_code')
                         ->label(UiText::get('fields.lead_code', 'Lead code'))
-                        ->disabledOn('edit'),
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->hiddenOn('create'),
                     TextInput::make('title')
                         ->label(UiText::get('fields.title', 'Title')),
                     TextInput::make('source')

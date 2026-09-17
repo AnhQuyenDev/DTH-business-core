@@ -183,8 +183,10 @@
     .fi-fo-actions { gap:.65rem; padding-top:.25rem; }
     .fi-form { gap:1rem !important; }
     .fi-section-content { row-gap:1rem !important; }
-    .fi-modal-window { overflow:hidden; }
-    .fi-modal-content { max-height:min(82vh, 980px); }
+    /* Keep Filament's native modal scrolling/overflow behavior.
+     * Forcing overflow:hidden / a custom max-height clips non-native Select dropdowns
+     * and can make the modal footer overlap the form on shorter viewports. */
+    .fi-header-actions { position:relative; z-index:5; }
     .ProseMirror { min-height:220px; }
 
     /* Import/export buttons: white surface, colored semantic icon/text like Email. */
