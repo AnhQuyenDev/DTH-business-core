@@ -73,6 +73,16 @@ class BusinessFunctionsRelationManager extends RelationManager
                     ->label(UiText::get('actions.add_business_function', 'Add business function'))
                     ->icon('heroicon-o-squares-2x2')
                     ->color('gray')
+                    ->modalIcon('heroicon-o-squares-2x2')
+                    ->modalHeading(UiText::get('actions.add_business_function', 'Thêm chức năng nghiệp vụ'))
+                    ->modalDescription(UiText::get('relations.business_function_modal_description', 'Gán thêm chức năng nghiệp vụ, mức thẩm quyền và trạng thái hoạt động cho nhân viên này.'))
+                    ->modalSubmitAction(fn (Actions\Action $action): Actions\Action => $action
+                        ->label(UiText::get('actions.add_business_function', 'Thêm chức năng nghiệp vụ'))
+                        ->icon('heroicon-o-squares-2x2')
+                        ->extraAttributes(['class' => 'dth-hr-modal-action dth-hr-modal-action--primary']))
+                    ->modalCancelAction(fn (Actions\Action $action): Actions\Action => $action
+                        ->label(UiText::get('common.actions.cancel', 'Hủy thao tác'))
+                        ->extraAttributes(['class' => 'dth-hr-modal-action dth-hr-modal-action--secondary']))
                     ->extraAttributes(['class' => 'dth-hr-entry-action dth-hr-entry-action--violet']),
             ])
             ->recordActions([

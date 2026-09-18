@@ -1,5 +1,6 @@
 @php
     $t = static fn (string $key, string $fallback): string => \Dth\AccountManagement\Support\UiText::get($key, $fallback);
+    $can = static fn (string $permission): bool => app(\Dth\AccountManagement\Support\AccountAuthorization::class)->allows($permission);
 @endphp
 
 <div class="dth-acc-overview">
@@ -14,7 +15,7 @@
 
     <div class="dth-acc-grid">
         <section class="dth-acc-panel">
-            <div class="dth-acc-panel__head"><div><span class="eyebrow">{{ $t('overview.role_distribution_eyebrow', 'PHÂN QUYỀN') }}</span><h3>{{ $t('overview.role_distribution', 'Phân bố vai trò') }}</h3></div><a href="{{ url('/admin/account-roles') }}">{{ $t('overview.manage_roles', 'Quản lý vai trò') }} →</a></div>
+            <div class="dth-acc-panel__head"><div><span class="eyebrow">{{ $t('overview.role_distribution_eyebrow', 'PHÂN QUYỀN') }}</span><h3>{{ $t('overview.role_distribution', 'Phân bố vai trò') }}</h3></div><a href="{{ url('/admin/account-roles') }}">{{ $can('accounts.roles.manage') ? $t('overview.manage_roles', 'Quản lý vai trò') : $t('overview.view_roles', 'Xem vai trò') }} →</a></div>
             <div class="dth-acc-role-list">
                 @php $max = max(1, (int) ($snapshot['role_distribution']->max('users_count') ?? 1)); @endphp
                 @forelse($snapshot['role_distribution'] as $role)
@@ -35,15 +36,19 @@
                 </div>
             </div>
             <div class="dth-acc-security-actions">
-                <a href="{{ url('/admin/account-users') }}">{{ $t('overview.manage_users', 'Quản lý người dùng') }}</a>
-                <a href="{{ url('/admin/account-settings') }}">{{ $t('overview.access_settings', 'Cấu hình truy cập') }}</a>
-                <a href="{{ url('/admin/account-sessions') }}">{{ $t('overview.check_sessions', 'Kiểm tra phiên đăng nhập') }}</a>
+                <a href="{{ url('/admin/account-users') }}">{{ $can('accounts.users.manage') ? $t('overview.manage_users', 'Quản lý người dùng') : $t('overview.view_users', 'Xem người dùng') }}</a>
+                @if($can('accounts.settings.manage'))
+                    <a href="{{ url('/admin/account-settings') }}">{{ $t('overview.access_settings', 'Cấu hình truy cập') }}</a>
+                @endif
+                @if($can('accounts.sessions.manage'))
+                    <a href="{{ url('/admin/account-sessions') }}">{{ $t('overview.check_sessions', 'Kiểm tra phiên đăng nhập') }}</a>
+                @endif
             </div>
         </section>
     </div>
 
     <section class="dth-acc-panel dth-acc-activity">
-        <div class="dth-acc-panel__head"><div><span class="eyebrow">{{ $t('overview.activity_eyebrow', 'NHẬT KÝ') }}</span><h3>{{ $t('overview.recent_activity', 'Hoạt động gần đây') }}</h3></div><a href="{{ url('/admin/account-audit-logs') }}">{{ $t('overview.view_all', 'Xem tất cả') }} →</a></div>
+        <div class="dth-acc-panel__head"><div><span class="eyebrow">{{ $t('overview.activity_eyebrow', 'NHẬT KÝ') }}</span><h3>{{ $t('overview.recent_activity', 'Hoạt động gần đây') }}</h3></div>@if($can('accounts.audit.view'))<a href="{{ url('/admin/account-audit-logs') }}">{{ $t('overview.view_all', 'Xem tất cả') }} →</a>@endif</div>
         <div class="dth-acc-activity-list">
             @forelse($snapshot['recent_activity'] as $item)
                 @php

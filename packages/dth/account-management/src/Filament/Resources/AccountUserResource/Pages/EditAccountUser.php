@@ -25,7 +25,12 @@ class EditAccountUser extends EditRecord
         if (blank($data['password'] ?? null)) unset($data['password']);
         return $data;
     }
-    protected function afterSave(): void { app(EmployeeLinkService::class)->link($this->record, $this->employeeId); }
+    protected function afterSave(): void
+    {
+        $links = app(EmployeeLinkService::class);
+        $links->link($this->record, $this->employeeId);
+        $links->resolveIdentityRequestIfSatisfied($this->record);
+    }
     protected function getFormActions(): array
     {
         return [

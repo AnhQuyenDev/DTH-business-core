@@ -130,16 +130,26 @@ class DepartmentResource extends Resource
             ->recordActions([
                 Actions\ActionGroup::make([
                     Actions\EditAction::make()->label(UiText::get('common.actions.edit', 'Edit')),
-                    Actions\DeleteAction::make()->label(UiText::get('common.actions.delete', 'Delete')),
+                    Actions\Action::make('deleteBlocked')
+                        ->label(UiText::get('common.actions.delete', 'Xóa'))
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->modalIcon('heroicon-o-shield-exclamation')
+                        ->modalHeading(UiText::get('departments.delete_blocked_title', 'Không thể xóa phòng ban'))
+                        ->modalDescription(fn (Department $record): string => UiText::get(
+                            'departments.delete_blocked_description',
+                            'Phòng ban ":name" đang được sử dụng bởi :count nhân viên. Hãy chuyển các nhân viên sang phòng ban khác trước khi xóa.',
+                            ['name' => $record->name, 'count' => $record->employees()->count()],
+                        ))
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel(UiText::get('common.actions.close', 'Đóng'))
+                        ->visible(fn (Department $record): bool => $record->employees()->exists()),
+                    Actions\DeleteAction::make()
+                        ->label(UiText::get('common.actions.delete', 'Xóa'))
+                        ->visible(fn (Department $record): bool => ! $record->employees()->exists()),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
-            ->bulkActions([
-                Actions\BulkActionGroup::make([
-                    Actions\DeleteBulkAction::make()
-                        ->label(UiText::get('common.actions.delete', 'Delete'))
-                        ->authorizeIndividualRecords(),
-                ]),
-            ])
+            ->bulkActions([])
             ->defaultSort('sort_order');
     }
 

@@ -2,7 +2,6 @@
 namespace Dth\AccountManagement\Services;
 
 use Dth\AccountManagement\Enums\DataScope;
-use Dth\AccountManagement\Models\AccountRole;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +9,10 @@ use Throwable;
 
 final class AccessControlService
 {
-    public function __construct(private readonly AccountSettingService $settings) {}
+    public function __construct(
+        private readonly AccountSettingService $settings,
+        private readonly PermissionRegistryService $registry,
+    ) {}
 
     public function allows(?Authenticatable $user, string $permission): bool
     {
@@ -22,8 +24,6 @@ final class AccessControlService
         if (! $this->accountCanAuthenticate($user)) return false;
         if ($this->isSuperAdministrator($user) || $this->isBootstrapAdministrator($user)) return true;
 
-        // Keep legacy DTH modules usable until an administrator explicitly
-        // enables permission enforcement after assigning roles.
         if (! str_starts_with($permission, 'accounts.') && ! $this->settings->bool('security.permissions_enforced', false)) {
             return true;
         }
@@ -38,12 +38,48 @@ final class AccessControlService
         if ($direct === 'deny') return false;
         if ($direct === 'allow') return true;
 
+        if ($this->roleGrantsAnyPermissionIds($user, [(int) $permissionId])) return true;
+
+        // Action permissions can require a base module permission. This makes
+        // "manage / report / export" roles usable without forcing admins to
+        // manually tick every prerequisite permission.
+        $implyingKeys = $this->registry->permissionsImplying($permission);
+        if ($implyingKeys === []) return false;
+
+        $implyingIds = DB::table('account_permissions')->whereIn('key', $implyingKeys)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($implyingIds === []) return false;
+
+        $deniedIds = DB::table('account_user_permissions')
+            ->where('user_id', $user->getAuthIdentifier())
+            ->whereIn('permission_id', $implyingIds)
+            ->where('effect', 'deny')
+            ->pluck('permission_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $eligibleIds = array_values(array_diff($implyingIds, $deniedIds));
+        if ($eligibleIds === []) return false;
+
+        $directAllow = DB::table('account_user_permissions')
+            ->where('user_id', $user->getAuthIdentifier())
+            ->whereIn('permission_id', $eligibleIds)
+            ->where('effect', 'allow')
+            ->exists();
+        if ($directAllow) return true;
+
+        return $this->roleGrantsAnyPermissionIds($user, $eligibleIds);
+    }
+
+    /** @param array<int, int> $permissionIds */
+    private function roleGrantsAnyPermissionIds(Authenticatable $user, array $permissionIds): bool
+    {
+        if ($permissionIds === []) return false;
         return DB::table('account_role_user as aru')
             ->join('account_roles as ar', 'ar.id', '=', 'aru.role_id')
             ->join('account_permission_role as apr', 'apr.role_id', '=', 'ar.id')
             ->where('aru.user_id', $user->getAuthIdentifier())
             ->where('ar.is_active', true)
-            ->where('apr.permission_id', $permissionId)
+            ->whereIn('apr.permission_id', $permissionIds)
             ->exists();
     }
 
@@ -68,7 +104,7 @@ final class AccessControlService
         return DB::table('account_role_user as aru')
             ->join('account_roles as ar', 'ar.id', '=', 'aru.role_id')
             ->where('aru.user_id', $user->getAuthIdentifier())
-            ->where('ar.key', 'super-admin')
+            ->whereIn('ar.key', ['super-admin', 'super_admin'])
             ->where('ar.is_active', true)
             ->exists();
     }

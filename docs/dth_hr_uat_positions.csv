@@ -1,0 +1,12 @@
+﻿code,title,group_key,authority_level,function_key,description,sort_order,is_active
+POS-HR-MGR,Trưởng phòng Nhân sự,management,manager,,"Quản lý hoạt động nhân sự, hồ sơ nhân viên và vận hành HR.",10,1
+POS-SALES-MGR,Trưởng phòng Kinh doanh,management,manager,sales,"Quản lý đội ngũ kinh doanh, pipeline và hiệu suất bán hàng.",20,1
+POS-SALES-EXEC,Chuyên viên Kinh doanh,professional,member,sales,"Tìm kiếm, tư vấn và chăm sóc khách hàng trong quy trình bán hàng.",30,1
+POS-ACCOUNT-EXEC,Chuyên viên Phát triển khách hàng,professional,member,sales,Phát triển quan hệ khách hàng và theo dõi cơ hội kinh doanh.,40,1
+POS-BIZDEV,Chuyên viên Phát triển kinh doanh,professional,member,sales,"Mở rộng thị trường, đối tác và cơ hội kinh doanh mới.",50,1
+POS-MKT-MGR,Trưởng phòng Marketing,management,manager,marketing,"Quản lý chiến lược Marketing, chiến dịch và hiệu quả chuyển đổi.",60,1
+POS-CONTENT,Chuyên viên Nội dung Marketing,professional,member,marketing,"Xây dựng nội dung cho chiến dịch, Landing Page và kênh truyền thông.",70,1
+POS-CAMPAIGN,Chuyên viên Chiến dịch Marketing,professional,member,marketing,"Thiết lập, vận hành và tối ưu các chiến dịch Marketing.",80,1
+POS-GROWTH,Chuyên viên Growth Marketing,professional,member,marketing,"Thử nghiệm và tối ưu các kênh tăng trưởng, chuyển đổi khách hàng.",90,1
+POS-MKT-ANALYST,Chuyên viên Phân tích Marketing,professional,member,marketing,"Theo dõi dữ liệu, phân tích hiệu suất và báo cáo Marketing.",100,1
+POS-EMAIL,Chuyên viên Email Marketing,professional,member,marketing,"Xây dựng, vận hành và theo dõi chiến dịch Email Marketing.",110,1

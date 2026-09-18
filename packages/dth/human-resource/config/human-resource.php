@@ -19,4 +19,17 @@ return [
     'employee_code_prefix' => env('DTH_HR_EMPLOYEE_CODE_PREFIX', 'EMP'),
     'department_code_prefix' => env('DTH_HR_DEPARTMENT_CODE_PREFIX', 'DEPT'),
     'position_code_prefix' => env('DTH_HR_POSITION_CODE_PREFIX', 'JOB'),
+
+    'account_integration' => [
+        // These protected administrative identities must never be assigned to an employee record.
+        'protected_role_keys' => [
+            'super-admin',
+            'super_admin',
+            'administrator',
+            'system_admin',
+            'system-administrator',
+            'system_administrator',
+        ],
+    ],
+
 ];

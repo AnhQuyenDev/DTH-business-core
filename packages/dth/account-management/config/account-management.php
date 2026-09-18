@@ -35,6 +35,43 @@ return [
     'human_resource' => [
         'employee_model' => 'Dth\\HumanResource\\Models\\Employee',
         'auto_disable_when_employee_inactive' => (bool) env('DTH_ACCOUNT_SYNC_HR_STATUS', true),
+        'protected_role_keys' => [
+            'super-admin', 'super_admin', 'administrator', 'system_admin', 'system-administrator', 'system_administrator',
+        ],
+    ],
+
+    /*
+     | Permission prerequisites. When a role receives an action permission,
+     | the base view permission is automatically included. AccessControlService
+     | also honors these implications for roles created before this rule existed.
+     */
+    'permission_dependencies' => [
+        'accounts.users.manage' => ['accounts.view'],
+        'accounts.roles.manage' => ['accounts.view'],
+        'accounts.groups.manage' => ['accounts.view'],
+        'accounts.invitations.manage' => ['accounts.view'],
+        'accounts.sessions.manage' => ['accounts.view'],
+        'accounts.settings.manage' => ['accounts.view'],
+
+        'commercial.manage-catalog' => ['commercial.view'],
+        'commercial.manage-opportunities' => ['commercial.view'],
+        'commercial.reports' => ['commercial.view'],
+        'commercial.export' => ['commercial.view'],
+
+        'crm.manage' => ['crm.view'],
+        'crm.export' => ['crm.view'],
+
+        'marketing.manage' => ['marketing.view'],
+        'marketing.view-reports' => ['marketing.view'],
+        'marketing.export' => ['marketing.view'],
+        'marketing.process-submissions' => ['marketing.view'],
+
+        'hr.manage' => ['hr.view'],
+        'hr.export' => ['hr.view'],
+
+        'email.manage' => ['email.view'],
+        'email.reports' => ['email.view'],
+        'email.export' => ['email.view'],
     ],
 
     /*

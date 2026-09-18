@@ -10,18 +10,24 @@ use Dth\HumanResource\Filament\Resources\EmployeeResource\RelationManagers\Busin
 use Dth\HumanResource\Models\Department;
 use Dth\HumanResource\Models\Employee;
 use Dth\HumanResource\Models\Position;
+use Dth\HumanResource\Services\EmployeeAccountService;
+use Dth\HumanResource\Support\HumanResourceAuthorization;
 use Dth\HumanResource\Support\StatusColor;
 use Dth\HumanResource\Support\UiText;
 use Filament\Actions;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class EmployeeResource extends Resource
 {
@@ -68,13 +74,15 @@ class EmployeeResource extends Resource
                         ->label(UiText::get('fields.phone', 'Phone'))
                         ->tel()
                         ->maxLength(30),
-                    Select::make('user_id')
-                        ->label(UiText::get('fields.login_account', 'Login account'))
-                        ->options(fn (): array => self::userOptions())
-                        ->searchable()
-                        ->preload()
-                        ->placeholder(UiText::get('fields.no_login_account', 'No login account'))
-                        ->unique(ignoreRecord: true),
+                    TextInput::make('_account_link_status')
+                        ->label(UiText::get('fields.system_account', 'Tài khoản hệ thống'))
+                        ->default(fn (?Employee $record): string => app(EmployeeAccountService::class)->accountSummary($record))
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->helperText(UiText::get(
+                            'fields.system_account_help',
+                            'Việc cấp hoặc liên kết tài khoản được thực hiện từ menu thao tác của nhân viên để bảo đảm đúng quyền và lịch sử truy cập.',
+                        )),
                 ])
                 ->columns(2)
                 ->columnSpanFull(),
@@ -134,6 +142,12 @@ class EmployeeResource extends Resource
                     ->formatStateUsing(fn ($state): string => ($state instanceof EmploymentStatus ? $state : EmploymentStatus::tryFrom((string) $state))?->label() ?? (string) $state)
                     ->color(fn ($state): string => StatusColor::employment($state))
                     ->sortable(),
+                TextColumn::make('_account_status')
+                    ->label(UiText::get('fields.system_account', 'Tài khoản hệ thống'))
+                    ->state(fn (Employee $record): string => app(EmployeeAccountService::class)->accountStatusLabel($record))
+                    ->description(fn (Employee $record): ?string => app(EmployeeAccountService::class)->linkedAccountEmail($record))
+                    ->badge()
+                    ->color(fn (Employee $record): string => app(EmployeeAccountService::class)->accountStatusColor($record)),
                 TextColumn::make('email')
                     ->label(UiText::get('common.fields.email', 'Email'))
                     ->searchable()
@@ -155,6 +169,131 @@ class EmployeeResource extends Resource
                 Actions\ActionGroup::make([
                     Actions\ViewAction::make()->label(UiText::get('common.actions.view', 'View')),
                     Actions\EditAction::make()->label(UiText::get('common.actions.edit', 'Edit')),
+
+                    Actions\Action::make('provisionAccount')
+                        ->label(UiText::get('actions.provision_account', 'Cấp tài khoản mới'))
+                        ->icon('heroicon-o-user-plus')
+                        ->color('primary')
+                        ->url(fn (Employee $record): ?string => app(EmployeeAccountService::class)->provisioningUrl($record))
+                        ->visible(fn (Employee $record): bool => app(HumanResourceAuthorization::class)->allows('hr.manage')
+                            && app(EmployeeAccountService::class)->available()
+                            && ! $record->user_id
+                            && app(EmployeeAccountService::class)->canManageAccounts()
+                            && filled(app(EmployeeAccountService::class)->provisioningUrl($record))),
+
+                    Actions\Action::make('requestAccount')
+                        ->label(UiText::get('actions.request_account', 'Yêu cầu cấp tài khoản'))
+                        ->icon('heroicon-o-paper-airplane')
+                        ->color('gray')
+                        ->modalIcon('heroicon-o-paper-airplane')
+                        ->modalWidth('2xl')
+                        ->modalHeading(UiText::get('account.request_title', 'Yêu cầu quản trị cấp tài khoản'))
+                        ->modalDescription(UiText::get(
+                            'account.request_description',
+                            'Yêu cầu sẽ xuất hiện trong module Tài khoản & Phân quyền để quản trị viên xử lý. HR không cần và không được sửa thông tin đăng nhập khi chưa có quyền quản trị tài khoản.',
+                        ))
+                        ->modalSubmitAction(fn (Actions\Action $action): Actions\Action => $action
+                            ->label(UiText::get('actions.send_request', 'Gửi yêu cầu'))
+                            ->icon('heroicon-o-paper-airplane')
+                            ->extraAttributes(['class' => 'dth-hr-modal-action dth-hr-modal-action--primary']))
+                        ->modalCancelAction(fn (Actions\Action $action): Actions\Action => $action
+                            ->label(UiText::get('common.actions.cancel', 'Hủy thao tác'))
+                            ->extraAttributes(['class' => 'dth-hr-modal-action dth-hr-modal-action--secondary']))
+                        ->schema([
+                            Textarea::make('note')
+                                ->label(UiText::get('fields.request_note', 'Ghi chú cho quản trị viên'))
+                                ->rows(3)
+                                ->maxLength(1000),
+                        ])
+                        ->action(function (Employee $record, array $data): void {
+                            app(EmployeeAccountService::class)->requestProvisioning($record, $data['note'] ?? null);
+                            Notification::make()
+                                ->title(UiText::get('notifications.account_request_sent', 'Đã gửi yêu cầu cấp tài khoản'))
+                                ->body(UiText::get('notifications.account_request_sent_body', 'Quản trị viên tài khoản có thể xem và xử lý yêu cầu này trong danh sách Người dùng.'))
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn (Employee $record): bool => app(HumanResourceAuthorization::class)->allows('hr.manage')
+                            && app(EmployeeAccountService::class)->available()
+                            && ! $record->user_id
+                            && ! app(EmployeeAccountService::class)->canManageAccounts()
+                            && ! app(EmployeeAccountService::class)->hasPendingAdminRequest($record)),
+
+                    Actions\Action::make('linkExistingAccount')
+                        ->label(UiText::get('actions.link_existing_account', 'Liên kết tài khoản hiện có'))
+                        ->icon('heroicon-o-link')
+                        ->color('gray')
+                        ->modalIcon('heroicon-o-link')
+                        ->modalWidth('2xl')
+                        ->modalHeading(UiText::get('account.link_title', 'Liên kết tài khoản hiện có'))
+                        ->modalDescription(UiText::get(
+                            'account.link_description',
+                            'Chỉ các tài khoản chưa thuộc nhân viên nào và không phải tài khoản quản trị được bảo vệ mới xuất hiện. Tài khoản đã từng được sử dụng cho người khác không được tái sử dụng.',
+                        ))
+                        ->modalSubmitAction(fn (Actions\Action $action): Actions\Action => $action
+                            ->label(UiText::get('actions.link_existing_account', 'Liên kết tài khoản'))
+                            ->icon('heroicon-o-link')
+                            ->extraAttributes(['class' => 'dth-hr-modal-action dth-hr-modal-action--primary']))
+                        ->modalCancelAction(fn (Actions\Action $action): Actions\Action => $action
+                            ->label(UiText::get('common.actions.cancel', 'Hủy thao tác'))
+                            ->extraAttributes(['class' => 'dth-hr-modal-action dth-hr-modal-action--secondary']))
+                        ->schema([
+                            Select::make('account_user_id')
+                                ->label(UiText::get('fields.login_account', 'Tài khoản đăng nhập'))
+                                ->options(fn (Employee $record): array => app(EmployeeAccountService::class)->linkableAccountOptions($record))
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->helperText(new HtmlString('<div class="dth-hr-helper-legend"><span class="dth-hr-helper-pill dth-hr-helper-pill--match">Khớp hồ sơ</span><span class="dth-hr-helper-pill dth-hr-helper-pill--review">Cần xác minh</span></div><div class="dth-hr-helper-note">Tài khoản mang nhãn <strong>Khớp hồ sơ</strong> có tên/email trùng với hồ sơ nhân viên. Tài khoản mang nhãn <strong>Cần xác minh</strong> chưa từng sử dụng nhưng thông tin hiện tại khác với hồ sơ nhân viên.</div>')),
+                            Toggle::make('confirm_identity_mismatch')
+                                ->label(UiText::get('fields.confirm_identity_mismatch', 'Tôi đã xác minh đúng chủ tài khoản'))
+                                ->helperText(UiText::get('fields.confirm_identity_mismatch_help', 'Chỉ bật khi tài khoản được đánh dấu cần xác minh. Nếu HR không có quyền quản trị tài khoản, hệ thống sẽ tự gửi yêu cầu để Admin đồng bộ lại tên/email.')),
+                        ])
+                        ->action(function (Employee $record, array $data): void {
+                            $result = app(EmployeeAccountService::class)->linkExisting(
+                                $record,
+                                (int) $data['account_user_id'],
+                                (bool) ($data['confirm_identity_mismatch'] ?? false),
+                            );
+
+                            Notification::make()
+                                ->title(UiText::get('notifications.account_linked', 'Đã liên kết tài khoản'))
+                                ->body($result['admin_request_created']
+                                    ? UiText::get('notifications.account_identity_request_created', 'Thông tin tài khoản khác với hồ sơ nhân viên. Hệ thống đã gửi yêu cầu cho quản trị viên tài khoản để đồng bộ danh tính.')
+                                    : UiText::get('notifications.account_linked_body', 'Tài khoản đã được gắn với nhân viên này.'))
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn (Employee $record): bool => app(HumanResourceAuthorization::class)->allows('hr.manage')
+                            && app(EmployeeAccountService::class)->available()
+                            && ! $record->user_id
+                            && app(EmployeeAccountService::class)->linkableAccountOptions($record) !== []),
+
+                    Actions\Action::make('unlinkAccount')
+                        ->label(UiText::get('actions.unlink_account', 'Gỡ liên kết tài khoản'))
+                        ->icon('heroicon-o-link-slash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalIcon('heroicon-o-link-slash')
+                        ->modalWidth('xl')
+                        ->modalDescription(UiText::get('account.unlink_description', 'Thao tác này chỉ gỡ liên kết với hồ sơ nhân viên, không xóa hoặc vô hiệu hóa tài khoản. Chỉ quản trị viên tài khoản mới được thực hiện.'))
+                        ->modalSubmitAction(fn (Actions\Action $action): Actions\Action => $action
+                            ->label(UiText::get('actions.unlink_account', 'Gỡ liên kết tài khoản'))
+                            ->extraAttributes(['class' => 'dth-hr-modal-action dth-hr-modal-action--danger']))
+                        ->modalCancelAction(fn (Actions\Action $action): Actions\Action => $action
+                            ->label(UiText::get('common.actions.cancel', 'Hủy thao tác'))
+                            ->extraAttributes(['class' => 'dth-hr-modal-action dth-hr-modal-action--secondary']))
+                        ->action(function (Employee $record): void {
+                            app(EmployeeAccountService::class)->unlink($record);
+                            Notification::make()
+                                ->title(UiText::get('notifications.account_unlinked', 'Đã gỡ liên kết tài khoản'))
+                                ->success()
+                                ->send();
+                        })
+                        ->visible(fn (Employee $record): bool => app(HumanResourceAuthorization::class)->allows('hr.manage')
+                            && (bool) $record->user_id
+                            && app(EmployeeAccountService::class)->canManageAccounts()),
+
                     Actions\DeleteAction::make()->label(UiText::get('common.actions.delete', 'Delete')),
                 ])->icon('heroicon-o-ellipsis-vertical')->iconButton(),
             ])
@@ -192,19 +331,4 @@ class EmployeeResource extends Resource
         ];
     }
 
-    private static function userOptions(): array
-    {
-        $model = (string) config('auth.providers.users.model', \App\Models\User::class);
-        if (! class_exists($model)) {
-            return [];
-        }
-
-        return $model::query()
-            ->orderBy('name')
-            ->get(['id', 'name', 'email'])
-            ->mapWithKeys(fn ($user): array => [
-                $user->id => trim((string) $user->name).' · '.(string) $user->email,
-            ])
-            ->all();
-    }
 }

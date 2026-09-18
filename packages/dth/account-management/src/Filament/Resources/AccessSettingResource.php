@@ -77,7 +77,8 @@ class AccessSettingResource extends Resource
                             };
                         })
                         ->rows(3)
-                        ->required(),
+                        ->required()
+                        ->helperText(UiText::get('fields.setting_value_help', 'Giá trị phải đúng định dạng với kiểu dữ liệu đã chọn ở trên.')),
                     Textarea::make('description')
                         ->label(UiText::get('common.fields.description', 'Mô tả'))
                         ->rows(3)

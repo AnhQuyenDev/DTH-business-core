@@ -6,6 +6,7 @@ use Dth\HumanResource\Enums\BusinessFunction;
 use Dth\HumanResource\Support\CodeGenerator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class Department extends Model
 {
@@ -35,6 +36,15 @@ class Department extends Model
 
         static::saving(function (self $department): void {
             $department->name = trim((string) $department->name);
+        });
+
+        static::deleting(function (self $department): void {
+            $count = $department->employees()->count();
+            if ($count > 0) {
+                throw ValidationException::withMessages([
+                    'department' => 'Không thể xóa phòng ban đang được sử dụng bởi '.$count.' nhân viên. Hãy chuyển nhân viên sang phòng ban khác trước.',
+                ]);
+            }
         });
     }
 

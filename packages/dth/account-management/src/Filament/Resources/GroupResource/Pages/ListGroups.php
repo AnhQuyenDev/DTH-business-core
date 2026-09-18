@@ -1,2 +1,35 @@
 <?php
-namespace Dth\AccountManagement\Filament\Resources\GroupResource\Pages; use Dth\AccountManagement\Filament\Resources\GroupResource; use Dth\AccountManagement\Filament\Support\AccountPageUi; use Dth\AccountManagement\Support\UiText; use Filament\Actions\CreateAction; use Filament\Resources\Pages\ListRecords; use Illuminate\Contracts\Support\Htmlable; class ListGroups extends ListRecords{protected static string $resource=GroupResource::class;public function getTitle():string|Htmlable{return AccountPageUi::title(UiText::get('navigation.groups','Nhóm & Đơn vị'),'group');}protected function getHeaderActions():array{return[CreateAction::make()->label(UiText::get('actions.new_group','Tạo nhóm'))->icon('heroicon-o-plus-circle')->color('gray')->extraAttributes(['class'=>'dth-acc-entry-action'])];}}
+
+namespace Dth\AccountManagement\Filament\Resources\GroupResource\Pages;
+
+use Dth\AccountManagement\Filament\Resources\GroupResource;
+use Dth\AccountManagement\Filament\Support\AccountGroupDataActions;
+use Dth\AccountManagement\Filament\Support\AccountPageUi;
+use Dth\AccountManagement\Support\AccountAuthorization;
+use Dth\AccountManagement\Support\UiText;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
+use Illuminate\Contracts\Support\Htmlable;
+
+class ListGroups extends ListRecords
+{
+    protected static string $resource = GroupResource::class;
+
+    public function getTitle(): string|Htmlable
+    {
+        return AccountPageUi::title(UiText::get('navigation.groups', 'Nhóm & Đơn vị'), 'group');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            AccountGroupDataActions::import(),
+            CreateAction::make()
+                ->label(UiText::get('actions.new_group', 'Tạo nhóm'))
+                ->icon('heroicon-o-plus-circle')
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-acc-entry-action'])
+                ->visible(fn (): bool => app(AccountAuthorization::class)->allows('accounts.groups.manage')),
+        ];
+    }
+}

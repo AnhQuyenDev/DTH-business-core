@@ -10,6 +10,7 @@ use Dth\AccountManagement\Services\AccountAnalyticsService;
 use Dth\AccountManagement\Services\AccountSettingService;
 use Dth\AccountManagement\Services\AuditLogger;
 use Dth\AccountManagement\Services\EmployeeLinkService;
+use Dth\AccountManagement\Services\EffectivePermissionService;
 use Dth\AccountManagement\Services\InvitationService;
 use Dth\AccountManagement\Services\PermissionRegistryService;
 use Dth\AccountManagement\Services\SecurityService;
@@ -35,6 +36,7 @@ final class AccountManagementServiceProvider extends ServiceProvider
             AccessControlService::class,
             PermissionRegistryService::class,
             EmployeeLinkService::class,
+            EffectivePermissionService::class,
             InvitationService::class,
             AuditLogger::class,
             SecurityService::class,
@@ -101,22 +103,26 @@ final class AccountManagementServiceProvider extends ServiceProvider
         }
 
         // Optional Human Resource lifecycle integration. No hard package dependency.
-        Event::listen('eloquent.updated: Dth\\HumanResource\\Models\\Employee', function (string $eventName, array $data): void {
+        // This is an exact Eloquent event listener (not a wildcard listener).
+        // Laravel passes the updated model as the single listener argument.
+        Event::listen('eloquent.updated: Dth\\HumanResource\\Models\\Employee', function (Model $employee): void {
             if (! config('dth-account-management.human_resource.auto_disable_when_employee_inactive', true)) {
                 return;
             }
 
-            $employee = $data[0] ?? null;
-            if (! $employee || ! $employee->user_id || ! $employee->wasChanged('employment_status')) {
+            if (! $employee->getAttribute('user_id') || ! $employee->wasChanged('employment_status')) {
                 return;
             }
 
-            $status = $employee->employment_status instanceof \BackedEnum
-                ? $employee->employment_status->value
-                : (string) $employee->employment_status;
+            $statusValue = $employee->getAttribute('employment_status');
+            $status = $statusValue instanceof \BackedEnum
+                ? $statusValue->value
+                : (string) $statusValue;
 
             if ($status !== 'active' && Schema::hasTable('users')) {
-                AccountUser::query()->whereKey($employee->user_id)->update(['account_status' => 'inactive']);
+                AccountUser::query()
+                    ->whereKey((int) $employee->getAttribute('user_id'))
+                    ->update(['account_status' => 'inactive']);
             }
         });
 

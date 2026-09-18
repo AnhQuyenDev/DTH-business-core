@@ -1,0 +1,4 @@
+﻿code,name,function_key,color,description,sort_order,is_active
+DEPT-HR,Phòng Nhân sự,admin,info,"Quản lý nhân sự, hồ sơ nhân viên và chính sách nhân sự nội bộ.",10,1
+DEPT-SALES,Phòng Kinh doanh,sales,success,"Phụ trách phát triển khách hàng, quản lý Lead và hoạt động kinh doanh.",20,1
+DEPT-MKT,Phòng Marketing,marketing,primary,"Phụ trách chiến dịch Marketing, nội dung, tăng trưởng và Email Marketing.",30,1

@@ -9,6 +9,7 @@ use Dth\HumanResource\Support\CodeGenerator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class Position extends Model
 {
@@ -40,6 +41,15 @@ class Position extends Model
 
         static::saving(function (self $position): void {
             $position->title = trim((string) $position->title);
+        });
+
+        static::deleting(function (self $position): void {
+            $count = $position->employees()->count();
+            if ($count > 0) {
+                throw ValidationException::withMessages([
+                    'position' => 'Không thể xóa chức danh đang được sử dụng bởi '.$count.' nhân viên. Hãy chuyển nhân viên sang chức danh khác trước.',
+                ]);
+            }
         });
     }
 
