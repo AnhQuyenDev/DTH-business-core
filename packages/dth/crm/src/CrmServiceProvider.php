@@ -30,10 +30,16 @@ final class CrmServiceProvider extends ServiceProvider
                 return ['verified' => null, 'tax_code' => $taxCode, 'provider' => 'none'];
             }
         });
+
     }
 
     public function boot(): void
     {
+        // Marketing registers null adapters as safe fallbacks. Rebind here,
+        // after all register() methods have run, so CRM becomes the real
+        // AudienceProvider / LeadProvider whenever both modules are installed.
+        $this->bindMarketing();
+
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'dth-crm');
 
@@ -57,8 +63,6 @@ final class CrmServiceProvider extends ServiceProvider
             }
         }
 
-        $this->bindMarketing();
-
         if ($this->app->runningInConsole()) {
             $this->commands([CrmHealthCommand::class]);
         }
@@ -66,12 +70,43 @@ final class CrmServiceProvider extends ServiceProvider
 
     private function bindMarketing(): void
     {
-        $marketingProvider = \Dth\Crm\Contracts\MarketingLeadProvider::class;
-        if (! interface_exists($marketingProvider)) {
+        if (! config('dth-crm.enabled', true) || ! config('dth-marketing.enabled', true)) {
             return;
         }
 
-        $implementation = \Dth\Crm\Integrations\Marketing\DthMarketingLeadProvider::class;
-        $this->app->singleton($marketingProvider, $implementation);
+        $this->bindMarketingIntegration(
+            contract: 'Dth\\Marketing\\Contracts\\AudienceProvider',
+            fallback: 'Dth\\Marketing\\Integrations\\Crm\\NullAudienceProvider',
+            implementation: \Dth\Crm\Integrations\Marketing\DthMarketingAudienceProvider::class,
+        );
+
+        $this->bindMarketingIntegration(
+            contract: 'Dth\\Marketing\\Contracts\\LeadProvider',
+            fallback: 'Dth\\Marketing\\Integrations\\Crm\\NullLeadProvider',
+            implementation: \Dth\Crm\Integrations\Marketing\DthMarketingLeadProvider::class,
+        );
+    }
+
+    private function bindMarketingIntegration(string $contract, string $fallback, string $implementation): void
+    {
+        if (! interface_exists($contract) || ! $this->canReplaceIntegration($contract, $fallback)) {
+            return;
+        }
+
+        $this->app->singleton($contract, $implementation);
+    }
+
+    private function canReplaceIntegration(string $contract, string $fallback): bool
+    {
+        if (! $this->app->bound($contract)) {
+            return true;
+        }
+
+        $binding = $this->app->getBindings()[$contract]['concrete'] ?? null;
+        if ($binding instanceof \Closure) {
+            $binding = (new \ReflectionFunction($binding))->getStaticVariables()['concrete'] ?? null;
+        }
+
+        return is_string($binding) && $binding === $fallback;
     }
 }

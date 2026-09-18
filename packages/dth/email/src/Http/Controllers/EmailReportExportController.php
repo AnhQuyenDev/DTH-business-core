@@ -10,6 +10,7 @@ use Dth\Email\Services\EmailReportDataService;
 use Dth\Email\Services\EmailReportPdfService;
 use Dth\Email\Services\EmailReportSpreadsheetService;
 use Dth\Email\Support\UiText;
+use Dth\Email\Support\EmailAuthorization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -160,12 +161,16 @@ class EmailReportExportController
     {
         abort_unless(auth()->check(), 403);
         abort_unless(EmailDashboard::canAccess(), 403);
+        $authorization = app(EmailAuthorization::class);
+        abort_unless($authorization->reports() && $authorization->export(), 403);
     }
 
     private function authorizeCampaign(EmailCampaign $campaign): void
     {
         abort_unless(auth()->check(), 403);
         abort_unless(EmailCampaignResource::canView($campaign), 403);
+        $authorization = app(EmailAuthorization::class);
+        abort_unless($authorization->reports() && $authorization->export(), 403);
     }
 
     private function syncLocale(Request $request): void

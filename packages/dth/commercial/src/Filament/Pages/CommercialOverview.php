@@ -47,6 +47,7 @@ final class CommercialOverview extends Dashboard
                 ->icon('heroicon-o-light-bulb')
                 ->color('gray')
                 ->extraAttributes(['class' => 'dth-com-report-action dth-com-report-action--analysis'])
+                ->visible(fn (): bool => app(CommercialAuthorization::class)->allows('reports'))
                 ->modalHeading(UiText::get('reports.analysis_heading', 'Commercial statistical analysis'))
                 ->modalDescription(UiText::get('reports.analysis_description', 'Signals calculated from the current catalog and opportunity pipeline.'))
                 ->modalSubmitAction(false)
@@ -65,19 +66,22 @@ final class CommercialOverview extends Dashboard
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('gray')
                 ->extraAttributes(['class' => 'dth-com-report-action dth-com-report-action--pdf'])
-                ->url(fn (): string => route('dth.commercial.reports.dashboard', ['format' => 'pdf'])),
+                ->url(fn (): string => route('dth.commercial.reports.dashboard', ['format' => 'pdf']))
+                ->visible(fn (): bool => app(CommercialAuthorization::class)->allows('reports') && app(CommercialAuthorization::class)->allows('export')),
             Action::make('commercialReportXlsx')
                 ->label(UiText::get('reports.export_xlsx', 'Excel'))
                 ->icon('heroicon-o-table-cells')
                 ->color('gray')
                 ->extraAttributes(['class' => 'dth-com-report-action dth-com-report-action--excel'])
-                ->url(fn (): string => route('dth.commercial.reports.dashboard', ['format' => 'xlsx'])),
+                ->url(fn (): string => route('dth.commercial.reports.dashboard', ['format' => 'xlsx']))
+                ->visible(fn (): bool => app(CommercialAuthorization::class)->allows('reports') && app(CommercialAuthorization::class)->allows('export')),
             Action::make('commercialReportCsv')
                 ->label(UiText::get('reports.export_csv', 'CSV'))
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
                 ->extraAttributes(['class' => 'dth-com-report-action dth-com-report-action--csv'])
-                ->url(fn (): string => route('dth.commercial.reports.dashboard', ['format' => 'csv'])),
+                ->url(fn (): string => route('dth.commercial.reports.dashboard', ['format' => 'csv']))
+                ->visible(fn (): bool => app(CommercialAuthorization::class)->allows('reports') && app(CommercialAuthorization::class)->allows('export')),
         ];
     }
 

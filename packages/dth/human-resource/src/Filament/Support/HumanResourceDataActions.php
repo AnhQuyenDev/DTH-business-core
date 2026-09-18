@@ -107,14 +107,16 @@ final class HumanResourceDataActions
                 ->icon('heroicon-o-table-cells')
                 ->color('gray')
                 ->extraAttributes(['class' => 'dth-hr-data-action dth-hr-data-action--excel'])
-                ->action(fn () => app(HumanResourceDataExchangeService::class)->xlsxDownload($entity, $query(), $filename, $sheetName)),
+                ->action(fn () => app(HumanResourceDataExchangeService::class)->xlsxDownload($entity, $query(), $filename, $sheetName))
+                ->visible(fn (): bool => app(HumanResourceAuthorization::class)->allows('hr.export')),
 
             Action::make('export_'.$entity.'_csv')
                 ->label(UiText::get('data.export_csv', 'CSV'))
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
                 ->extraAttributes(['class' => 'dth-hr-data-action dth-hr-data-action--csv'])
-                ->action(fn () => app(HumanResourceDataExchangeService::class)->csvDownload($entity, $query(), $filename)),
+                ->action(fn () => app(HumanResourceDataExchangeService::class)->csvDownload($entity, $query(), $filename))
+                ->visible(fn (): bool => app(HumanResourceAuthorization::class)->allows('hr.export')),
         ];
     }
 }

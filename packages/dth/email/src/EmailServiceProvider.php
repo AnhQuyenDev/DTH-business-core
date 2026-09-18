@@ -14,6 +14,7 @@ use Dth\Email\Services\EmailInsightService;
 use Dth\Email\Services\EmailSendingQuotaService;
 use Dth\Email\Services\EmailSystemHeartbeatService;
 use Dth\Email\Support\ReportChartBuilder;
+use Dth\Email\Support\EmailAuthorization;
 use Dth\Email\Services\EmailReportSpreadsheetService;
 use Dth\Email\Services\EmailReportPdfService;
 use Dth\Email\Services\EmailReportDataService;
@@ -43,6 +44,7 @@ class EmailServiceProvider extends ServiceProvider
         $this->app->singleton(EmailSendingQuotaService::class);
         $this->app->singleton(EmailSystemHeartbeatService::class);
         $this->app->singleton(ReportChartBuilder::class);
+        $this->app->singleton(EmailAuthorization::class);
         $this->app->singleton(EmailReportDataService::class);
         $this->app->singleton(EmailReportPdfService::class);
         $this->app->singleton(EmailReportSpreadsheetService::class);

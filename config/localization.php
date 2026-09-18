@@ -200,6 +200,7 @@ return [
                     'charts' => [
                         'performance_trend' => 'Hiệu suất Email theo thời gian',
                         'performance_trend_description' => 'Số email gửi, số lượt mở và số lượt nhấp theo ngày.',
+                        'performance_trend_description_hour' => 'Số email gửi, số lượt mở và số lượt nhấp theo giờ.',
                         'engagement_funnel' => 'Phễu tương tác',
                         'engagement_funnel_description' => 'Hành trình của người nhận từ gửi đến tương tác.',
                         'audience' => 'Tập người nhận',
@@ -918,6 +919,7 @@ return [
                     'agent_profiles' => 'Cấu hình nhân sự CRM',
                     'distribution' => 'Phân phối khách hàng',
                     'match_candidates' => 'Đối chiếu doanh nghiệp',
+                    'staff' => 'Nhân sự CRM',
                 ],
                 'models' => [
                     'contact' => 'Liên hệ',
@@ -940,6 +942,8 @@ return [
                     'distributions' => 'Đợt phân phối khách hàng',
                     'match_candidate' => 'Đề xuất đối chiếu doanh nghiệp',
                     'match_candidates' => 'Đề xuất đối chiếu doanh nghiệp',
+                    'staff' => 'Nhân sự CRM',
+                    'staff_plural' => 'Nhân sự CRM',
                 ],
                 'pages' => [
                     'contacts' => [
@@ -993,6 +997,8 @@ return [
                     'qualification' => 'Đánh giá Lead',
                     'customer' => 'Thông tin khách hàng',
                     'distribution' => 'Phân phối khách hàng',
+                    'staff' => 'Nhân sự CRM',
+                    'staff_description' => 'Thông tin nhân sự được kế thừa từ Human Resource; CRM chỉ lưu cấu hình phân công.',
                 ],
                 'fields' => [
                     'contact_code' => 'Mã liên hệ',
@@ -1023,6 +1029,8 @@ return [
                     'email_domain' => 'Tên miền Email',
                     'lifecycle_stage' => 'Giai đoạn vòng đời',
                     'employee_code' => 'Mã nhân viên HR',
+                    'staff_code' => 'Mã nhân sự',
+                    'staff_name' => 'Tên nhân sự',
                     'agent_name' => 'Nhân sự phụ trách',
                     'hr_employee' => 'Nhân viên từ HR',
                     'assignment_enabled' => 'Cho phép nhận phân công CRM',
@@ -1472,6 +1480,7 @@ return [
                     'preview_count' => 'Đếm',
                     'preview' => 'Xem trước phân khúc',
                     'matching_contacts' => 'Liên hệ khớp: :count',
+                    'no_matches' => 'Không có liên hệ phù hợp.',
                     'preview_failed' => 'Xem trước phân khúc thất bại',
                     'preview_sample' => 'Mẫu phân khúc',
                     'rule' => [
@@ -1533,6 +1542,8 @@ return [
                     'payload' => 'Dữ liệu gửi',
                     'data' => 'Dữ liệu',
                     'integration_snapshot' => 'Ảnh chụp capability tích hợp',
+                    'thank_you_title' => 'Cảm ơn bạn',
+                    'back_to_page' => 'Quay lại',
                     'attribution' => 'Ghi nhận nguồn',
                     'direct' => 'Trực tiếp',
                     'form_not_active' => 'Biểu mẫu được chọn chưa được kích hoạt trên Landing Page này.',
@@ -1646,6 +1657,8 @@ return [
                         'open' => 'Mở',
                         'click' => 'Nhấp',
                         'conversion' => 'Chuyển đổi',
+                        'email_campaign' => 'Chiến dịch Email',
+                        'landing_pages' => 'Landing Pages',
                     'failed_submissions' => 'Thông tin gửi thất bại',
                     'spam_submissions' => 'Thông tin gửi bị đánh dấu spam',
                         'landing_page' => 'Landing Page',
@@ -1709,6 +1722,10 @@ return [
                     'refreshed' => 'Đã làm mới liên kết chiến dịch Email',
                     'synced_at' => 'Đồng bộ lúc',
                     'synced_count' => 'Đã đồng bộ :count chiến dịch Email.',
+                    'metrics' => 'Chỉ số',
+                    'module' => 'Module Email',
+                    'no_links' => 'Chưa có Chiến dịch Email nào được liên kết.',
+                    'unavailable' => 'Cầu nối Email chưa khả dụng. Các mã tham chiếu thủ công hiện có vẫn được giữ.',
                     'validation' => [
                         'reference_required' => 'Mã tham chiếu chiến dịch Email là bắt buộc.',
                     ],
@@ -1782,6 +1799,7 @@ return [
                         'text' => 'Văn bản',
                         'email' => 'Email',
                         'phone' => 'Số điện thoại',
+                        'date' => 'Ngày',
                         'textarea' => 'Văn bản nhiều dòng',
                         'select' => 'Danh sách chọn',
                         'checkbox' => 'Hộp kiểm',

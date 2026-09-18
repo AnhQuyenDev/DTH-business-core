@@ -16,6 +16,7 @@ use Dth\Email\Models\SendingAccount;
 use Dth\Email\Services\EmailDashboardFilterResolver;
 use Dth\Email\Services\EmailInsightService;
 use Dth\Email\Support\UiText;
+use Dth\Email\Support\EmailAuthorization;
 use Filament\Pages\Dashboard;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
@@ -135,6 +136,8 @@ class EmailDashboard extends Dashboard
                 'csv' => route('dth.email.reports.dashboard.csv', $query),
             ],
             'pdfEnabled' => (bool) config('dth-email.reports.pdf.enabled', true),
+            'canViewReports' => app(EmailAuthorization::class)->reports(),
+            'canExport' => app(EmailAuthorization::class)->export(),
             'insightReport' => app(EmailInsightService::class)->dashboard($filters),
         ];
     }

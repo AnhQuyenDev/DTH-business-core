@@ -28,11 +28,29 @@
       "providers": [
         "Dth\\Email\\EmailServiceProvider"
       ]
+    },
+    "dth-module": {
+      "id": "email",
+      "name": "Email",
+      "order": 10,
+      "filament": {
+        "plugin": "Dth\\Email\\Filament\\EmailPlugin"
+      },
+      "dependencies": {
+        "required": [],
+        "optional": [
+          "dth/marketing"
+        ],
+        "integrations": [
+          "dth/marketing"
+        ]
+      }
     }
   },
   "minimum-stability": "stable",
   "prefer-stable": true,
   "suggest": {
-    "filament/filament": "Provides the optional DTH Email administration UI."
+    "filament/filament": "Provides the optional DTH Email administration UI.",
+    "dth/marketing": "Provides Marketing Campaign context for linked Email Campaigns."
   }
 }

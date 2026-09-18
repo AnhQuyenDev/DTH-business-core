@@ -17,6 +17,27 @@
       "providers": [
         "Dth\\AccountManagement\\AccountManagementServiceProvider"
       ]
+    },
+    "dth-module": {
+      "id": "account-management",
+      "name": "Tài khoản & Phân quyền",
+      "order": 60,
+      "enabled_config": "dth-account-management.enabled",
+      "filament": {
+        "plugin": "Dth\\AccountManagement\\Filament\\AccountManagementPlugin",
+        "auth_middleware": [
+          "Dth\\AccountManagement\\Http\\Middleware\\EnsureAccountIsActive"
+        ]
+      },
+      "dependencies": {
+        "required": [],
+        "optional": [
+          "dth/human-resource"
+        ],
+        "integrations": [
+          "dth/human-resource"
+        ]
+      }
     }
   },
   "minimum-stability": "stable",

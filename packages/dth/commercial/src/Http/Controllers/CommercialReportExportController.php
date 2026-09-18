@@ -16,6 +16,8 @@ final class CommercialReportExportController
         CommercialAuthorization $authorization,
     ): Response {
         abort_unless($authorization->allows('view', $request->user()), 403);
+        abort_unless($authorization->allows('reports', $request->user()), 403);
+        abort_unless($authorization->allows('export', $request->user()), 403);
         abort_unless(in_array(strtolower($format), ['pdf', 'xlsx', 'csv'], true), 404);
 
         $file = $exports->dashboard($format);

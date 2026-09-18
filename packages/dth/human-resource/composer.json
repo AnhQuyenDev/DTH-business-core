@@ -26,6 +26,26 @@
       "providers": [
         "Dth\\HumanResource\\HumanResourceServiceProvider"
       ]
+    },
+    "dth-module": {
+      "id": "human-resource",
+      "name": "Nhân sự",
+      "order": 50,
+      "enabled_config": "dth-human-resource.enabled",
+      "filament": {
+        "plugin": "Dth\\HumanResource\\Filament\\HumanResourcePlugin"
+      },
+      "dependencies": {
+        "required": [],
+        "optional": [
+          "dth/crm",
+          "dth/account-management"
+        ],
+        "integrations": [
+          "dth/crm",
+          "dth/account-management"
+        ]
+      }
     }
   },
   "minimum-stability": "stable",

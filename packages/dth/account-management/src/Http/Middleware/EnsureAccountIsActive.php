@@ -12,6 +12,10 @@ class EnsureAccountIsActive
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (! config('dth-account-management.enabled', true)) {
+            return $next($request);
+        }
+
         $user = $request->user();
         if (! $user || ! Schema::hasColumn($user->getTable(), 'account_status')) return $next($request);
 

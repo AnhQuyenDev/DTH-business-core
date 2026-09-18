@@ -26,6 +26,28 @@
       "providers": [
         "Dth\\Commercial\\CommercialServiceProvider"
       ]
+    },
+    "dth-module": {
+      "id": "commercial",
+      "name": "Dịch vụ & Kinh doanh",
+      "order": 30,
+      "enabled_config": "dth-commercial.enabled",
+      "filament": {
+        "plugin": "Dth\\Commercial\\Filament\\CommercialPlugin"
+      },
+      "dependencies": {
+        "required": [],
+        "optional": [
+          "dth/crm",
+          "dth/marketing",
+          "dth/email"
+        ],
+        "integrations": [
+          "dth/crm",
+          "dth/marketing",
+          "dth/email"
+        ]
+      }
     }
   },
   "minimum-stability": "stable",

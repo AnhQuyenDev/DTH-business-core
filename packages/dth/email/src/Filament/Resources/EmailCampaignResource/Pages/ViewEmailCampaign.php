@@ -11,6 +11,7 @@ use Dth\Email\Filament\Resources\EmailCampaignResource\Widgets\CampaignReportSum
 use Dth\Email\Filament\Resources\EmailCampaignResource\Widgets\CampaignInsightsWidget;
 use Dth\Email\Filament\Resources\EmailCampaignResource\Widgets\CampaignTopLinksTableWidget;
 use Dth\Email\Support\UiText;
+use Dth\Email\Support\EmailAuthorization;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -36,7 +37,9 @@ class ViewEmailCampaign extends ViewRecord
                     'dth.email.reports.campaign.pdf',
                     ['campaign' => $this->record->getKey()],
                 ))
-                ->visible(fn (): bool => (bool) config('dth-email.reports.pdf.enabled', true)),
+                ->visible(fn (): bool => (bool) config('dth-email.reports.pdf.enabled', true)
+                    && app(EmailAuthorization::class)->reports()
+                    && app(EmailAuthorization::class)->export()),
 
             Action::make('campaignRecipientsXlsx')
                 ->label(UiText::get('reports.export_xlsx', 'Excel'))
@@ -45,7 +48,9 @@ class ViewEmailCampaign extends ViewRecord
                 ->url(fn (): string => route(
                     'dth.email.reports.campaign.xlsx',
                     ['campaign' => $this->record->getKey()],
-                )),
+                ))
+                ->visible(fn (): bool => app(EmailAuthorization::class)->reports()
+                    && app(EmailAuthorization::class)->export()),
 
             Action::make('campaignRecipientsCsv')
                 ->label(UiText::get('reports.export_csv', 'CSV'))
@@ -54,7 +59,9 @@ class ViewEmailCampaign extends ViewRecord
                 ->url(fn (): string => route(
                     'dth.email.reports.campaign.csv',
                     ['campaign' => $this->record->getKey()],
-                )),
+                ))
+                ->visible(fn (): bool => app(EmailAuthorization::class)->reports()
+                    && app(EmailAuthorization::class)->export()),
 
             EditAction::make()
                 ->label(UiText::get('common.actions.edit', 'Edit'))

@@ -26,12 +26,36 @@
       "providers": [
         "Dth\\Marketing\\MarketingServiceProvider"
       ]
+    },
+    "dth-module": {
+      "id": "marketing",
+      "name": "Marketing",
+      "order": 20,
+      "enabled_config": "dth-marketing.enabled",
+      "filament": {
+        "plugin": "Dth\\Marketing\\Filament\\MarketingPlugin"
+      },
+      "dependencies": {
+        "required": [],
+        "optional": [
+          "dth/crm",
+          "dth/commercial",
+          "dth/email"
+        ],
+        "integrations": [
+          "dth/crm",
+          "dth/commercial",
+          "dth/email"
+        ]
+      }
     }
   },
   "minimum-stability": "stable",
   "prefer-stable": true,
   "suggest": {
     "filament/filament": "Host application should use Filament 4.13.x for the optional DTH Marketing administration UI.",
-    "dth/email": "Provides Email Campaign integration through EmailMarketingBridge when an adapter is enabled."
+    "dth/email": "Provides Email Campaign integration through EmailMarketingBridge when available.",
+    "dth/crm": "Persists Marketing contacts and leads in CRM when both modules are installed.",
+    "dth/commercial": "Provides the service/package catalog used by campaigns and landing pages."
   }
 }

@@ -55,9 +55,12 @@ return [
         'commercial.view' => ['module' => 'commercial', 'name' => 'Xem Dịch vụ & Kinh doanh', 'description' => 'Truy cập module Commercial.'],
         'commercial.manage-catalog' => ['module' => 'commercial', 'name' => 'Quản lý danh mục Commercial', 'description' => 'Quản lý dịch vụ và gói dịch vụ.'],
         'commercial.manage-opportunities' => ['module' => 'commercial', 'name' => 'Quản lý cơ hội kinh doanh', 'description' => 'Tạo, cập nhật và chuyển giai đoạn cơ hội.'],
+        'commercial.reports' => ['module' => 'commercial', 'name' => 'Xem phân tích Commercial', 'description' => 'Xem phân tích và báo cáo Dịch vụ & Kinh doanh.'],
+        'commercial.export' => ['module' => 'commercial', 'name' => 'Xuất dữ liệu Commercial', 'description' => 'Xuất PDF, Excel và CSV của Dịch vụ & Kinh doanh.'],
 
         'crm.view' => ['module' => 'crm', 'name' => 'Xem CRM', 'description' => 'Truy cập dữ liệu CRM.'],
         'crm.manage' => ['module' => 'crm', 'name' => 'Quản lý CRM', 'description' => 'Tạo và cập nhật dữ liệu CRM.'],
+        'crm.export' => ['module' => 'crm', 'name' => 'Xuất dữ liệu CRM', 'description' => 'Xuất Excel và CSV từ CRM.'],
 
         'marketing.view' => ['module' => 'marketing', 'name' => 'Xem Marketing', 'description' => 'Truy cập module Marketing.'],
         'marketing.manage' => ['module' => 'marketing', 'name' => 'Quản lý Marketing', 'description' => 'Tạo và cập nhật dữ liệu Marketing.'],
@@ -67,6 +70,7 @@ return [
 
         'hr.view' => ['module' => 'human-resource', 'name' => 'Xem Nhân sự', 'description' => 'Truy cập module Human Resource.'],
         'hr.manage' => ['module' => 'human-resource', 'name' => 'Quản lý Nhân sự', 'description' => 'Quản lý nhân viên, phòng ban và chức danh.'],
+        'hr.export' => ['module' => 'human-resource', 'name' => 'Xuất dữ liệu Nhân sự', 'description' => 'Xuất Excel và CSV từ Human Resource.'],
 
         'email.view' => ['module' => 'email', 'name' => 'Xem Email', 'description' => 'Truy cập module Email.'],
         'email.manage' => ['module' => 'email', 'name' => 'Quản lý Email', 'description' => 'Quản lý chiến dịch, template và cấu hình Email.'],

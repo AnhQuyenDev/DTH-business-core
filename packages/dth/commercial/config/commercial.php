@@ -16,6 +16,8 @@ return [
             'view' => 'commercial.view',
             'manage-catalog' => 'commercial.manage-catalog',
             'manage-opportunities' => 'commercial.manage-opportunities',
+            'reports' => 'commercial.reports',
+            'export' => 'commercial.export',
         ],
     ],
 

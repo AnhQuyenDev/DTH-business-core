@@ -104,14 +104,16 @@ final class CrmDataActions
                 ->icon('heroicon-o-table-cells')
                 ->color('gray')
                 ->extraAttributes(['class' => 'dth-crm-data-action dth-crm-data-action--excel'])
-                ->action(fn () => app(CrmDataExchangeService::class)->xlsxDownload($entity, $query(), $filename, $sheetName)),
+                ->action(fn () => app(CrmDataExchangeService::class)->xlsxDownload($entity, $query(), $filename, $sheetName))
+                ->visible(fn (): bool => app(CrmAuthorization::class)->allows('crm.export')),
 
             Action::make('export_'.$entity.'_csv')
                 ->label(UiText::get('data.export_csv', 'CSV'))
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
                 ->extraAttributes(['class' => 'dth-crm-data-action dth-crm-data-action--csv'])
-                ->action(fn () => app(CrmDataExchangeService::class)->csvDownload($entity, $query(), $filename)),
+                ->action(fn () => app(CrmDataExchangeService::class)->csvDownload($entity, $query(), $filename))
+                ->visible(fn (): bool => app(CrmAuthorization::class)->allows('crm.export')),
         ];
     }
 }

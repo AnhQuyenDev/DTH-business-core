@@ -3,13 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Http\Middleware\ApplyLocale;
-use Dth\Email\Filament\EmailPlugin;
-use Dth\Marketing\Filament\MarketingPlugin;
-use Dth\Crm\Filament\CrmPlugin;
-use Dth\HumanResource\Filament\HumanResourcePlugin;
-use Dth\Commercial\Filament\CommercialPlugin;
-use Dth\AccountManagement\Filament\AccountManagementPlugin;
-use Dth\AccountManagement\Http\Middleware\EnsureAccountIsActive;
+use App\Support\Modules\DthModuleRegistry;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -32,7 +26,10 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        /** @var DthModuleRegistry $modules */
+        $modules = app(DthModuleRegistry::class);
+
+        $panel = $panel
             ->default()
             ->id('admin')
             ->path('admin')
@@ -41,12 +38,12 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
+            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
+            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 AccountWidget::class,
                 FilamentInfoWidget::class,
@@ -79,25 +76,13 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                EnsureAccountIsActive::class,
-            ])
-            ->plugin(
-                EmailPlugin::make()
-            )
-            ->plugin(
-                MarketingPlugin::make()
-            )
-            ->plugin(
-                CommercialPlugin::make()
-            )
-            ->plugin(
-                CrmPlugin::make()
-            )
-            ->plugin(
-                HumanResourcePlugin::make()
-            )
-            ->plugin(
-                AccountManagementPlugin::make()
-            );
+                ...$modules->authMiddlewareClasses(),
+            ]);
+
+        foreach ($modules->filamentPlugins() as $plugin) {
+            $panel->plugin($plugin);
+        }
+
+        return $panel;
     }
 }

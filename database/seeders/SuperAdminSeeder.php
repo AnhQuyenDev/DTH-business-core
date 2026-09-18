@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class SuperAdminSeeder extends Seeder
 {
@@ -26,6 +27,13 @@ class SuperAdminSeeder extends Seeder
                 'email_verified_at' => now(),
             ],
         );
+
+        // Account Management is an optional DTH module. The host must still be
+        // seedable when that package is not installed or its migrations have not
+        // been run yet; in that case we only create the core administrator user.
+        if (! Schema::hasTable('account_roles') || ! Schema::hasTable('account_role_user')) {
+            return;
+        }
 
         $roleId = DB::table('account_roles')->where('key', 'super-admin')->value('id');
         if (! $roleId) {

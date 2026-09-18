@@ -92,7 +92,10 @@ Các module hiện tại có thể dùng ngay các permission sau:
 - CRM: `crm.view`, `crm.manage`
 - Marketing: `marketing.view`, `marketing.manage`, `marketing.view-reports`, `marketing.export`, `marketing.process-submissions`
 - Human Resource: `hr.view`, `hr.manage`
-- Email: `email.view`, `email.manage` qua Gate-before bridge cho model abilities; `email.reports` và `email.export` đã có trong registry để dùng khi Email tách permission chi tiết hơn.
+- Email: `email.view`, `email.manage`, `email.reports`, `email.export`.
+- Commercial: `commercial.view`, `commercial.manage-catalog`, `commercial.manage-opportunities`, `commercial.reports`, `commercial.export`.
+- CRM: `crm.view`, `crm.manage`, `crm.export`.
+- Human Resource: `hr.view`, `hr.manage`, `hr.export`.
 
 ## 7. Human Resource integration
 

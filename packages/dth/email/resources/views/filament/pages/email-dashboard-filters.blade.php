@@ -775,27 +775,31 @@
         </div>
 
         <div class="dth-email-dashboard-actions">
-            <button type="button" class="dth-email-header-btn dth-email-header-btn--analysis" @click="insightsOpen = true">
-                <x-filament::icon icon="heroicon-o-light-bulb" />
-                <span>{{ \Dth\Email\Support\UiText::get('insights.heading', 'Statistical insights') }}</span>
-            </button>
-
-            @if ($pdfEnabled)
-                <a class="dth-email-header-btn dth-email-header-btn--pdf" href="{{ $exportUrls['pdf'] }}">
-                    <x-filament::icon icon="heroicon-o-document-arrow-down" />
-                    <span>{{ \Dth\Email\Support\UiText::get('reports.export_pdf', 'Export PDF') }}</span>
-                </a>
+            @if ($canViewReports)
+                <button type="button" class="dth-email-header-btn dth-email-header-btn--analysis" @click="insightsOpen = true">
+                    <x-filament::icon icon="heroicon-o-light-bulb" />
+                    <span>{{ \Dth\Email\Support\UiText::get('insights.heading', 'Statistical insights') }}</span>
+                </button>
             @endif
 
-            <a class="dth-email-header-btn dth-email-header-btn--excel" href="{{ $exportUrls['xlsx'] }}">
-                <x-filament::icon icon="heroicon-o-table-cells" />
-                <span>{{ \Dth\Email\Support\UiText::get('reports.export_xlsx', 'Export Excel') }}</span>
-            </a>
+            @if ($canViewReports && $canExport)
+                @if ($pdfEnabled)
+                    <a class="dth-email-header-btn dth-email-header-btn--pdf" href="{{ $exportUrls['pdf'] }}">
+                        <x-filament::icon icon="heroicon-o-document-arrow-down" />
+                        <span>{{ \Dth\Email\Support\UiText::get('reports.export_pdf', 'Export PDF') }}</span>
+                    </a>
+                @endif
 
-            <a class="dth-email-header-btn" href="{{ $exportUrls['csv'] }}">
-                <x-filament::icon icon="heroicon-o-arrow-down-tray" />
-                <span>{{ \Dth\Email\Support\UiText::get('reports.export_csv', 'Export CSV') }}</span>
-            </a>
+                <a class="dth-email-header-btn dth-email-header-btn--excel" href="{{ $exportUrls['xlsx'] }}">
+                    <x-filament::icon icon="heroicon-o-table-cells" />
+                    <span>{{ \Dth\Email\Support\UiText::get('reports.export_xlsx', 'Export Excel') }}</span>
+                </a>
+
+                <a class="dth-email-header-btn" href="{{ $exportUrls['csv'] }}">
+                    <x-filament::icon icon="heroicon-o-arrow-down-tray" />
+                    <span>{{ \Dth\Email\Support\UiText::get('reports.export_csv', 'Export CSV') }}</span>
+                </a>
+            @endif
         </div>
     </header>
 

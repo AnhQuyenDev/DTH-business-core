@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Support\Localization\LocaleManager;
 use App\Support\Localization\UiTranslator;
+use App\Support\Modules\DthModuleRegistry;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -12,6 +13,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(LocaleManager::class);
         $this->app->singleton(UiTranslator::class);
+        $this->app->singleton(DthModuleRegistry::class);
         $this->app->alias(UiTranslator::class, 'ui.translator');
     }
 
