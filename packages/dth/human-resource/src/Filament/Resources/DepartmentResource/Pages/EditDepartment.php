@@ -37,6 +37,7 @@ class EditDepartment extends EditRecord
             $this->getSaveFormAction()
                 ->label(UiText::get('common.actions.save', 'Save'))
                 ->icon('heroicon-o-check-circle')
+                ->color('primary')
                 ->extraAttributes(['class' => 'dth-hr-form-action dth-hr-form-action--primary']),
             $this->getCancelFormAction()
                 ->label(UiText::get('common.actions.cancel', 'Cancel'))

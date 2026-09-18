@@ -19,6 +19,7 @@
     "dth/human-resource": "@dev",
     "dth/marketing": "@dev",
     "dth/commercial": "@dev",
+    "dth/account-management": "@dev",
     "filament/filament": "^4.0",
     "laravel/framework": "^12.0",
     "laravel/tinker": "^2.10.1"

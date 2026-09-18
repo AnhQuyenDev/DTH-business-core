@@ -1,0 +1,2 @@
+<?php
+namespace Dth\AccountManagement\Filament\Resources\SessionResource\Pages; use Dth\AccountManagement\Filament\Resources\SessionResource; use Dth\AccountManagement\Filament\Support\AccountPageUi; use Dth\AccountManagement\Support\UiText; use Filament\Resources\Pages\ListRecords; use Illuminate\Contracts\Support\Htmlable; class ListSessions extends ListRecords{protected static string $resource=SessionResource::class;public function getTitle():string|Htmlable{return AccountPageUi::title(UiText::get('navigation.sessions','Phiên đăng nhập'),'security');}}

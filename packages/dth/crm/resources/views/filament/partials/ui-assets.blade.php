@@ -74,6 +74,64 @@
     .fi-btn-color-danger { box-shadow:0 8px 18px rgba(220,38,38,.12) !important; }
     .fi-btn-color-success { box-shadow:0 8px 18px rgba(22,163,74,.12) !important; }
 
+
+    /* DTH_FORM_ACTION_TONE:crm */
+    /* Explicit resource form actions, following the Human Resource pattern.
+       These selectors are intentionally stronger than Filament / host theme
+       primary colors so each module keeps its own identity. */
+    html body .fi-btn.dth-crm-form-action--primary {
+        min-height: 42px !important;
+        padding: 0 16px !important;
+        border: 1px solid #0f766e !important;
+        border-radius: 12px !important;
+        background: linear-gradient(180deg, #14877d 0%, #0f766e 100%) !important;
+        color: #ffffff !important;
+        box-shadow: 0 9px 20px rgba(15, 118, 110, .18) !important;
+        font-weight: 720 !important;
+        gap: .45rem !important;
+    }
+    html body .fi-btn.dth-crm-form-action--primary * { color: #ffffff !important; }
+    html body .fi-btn.dth-crm-form-action--primary:hover {
+        background: linear-gradient(180deg, #0f766e 0%, #0b655e 100%) !important;
+        border-color: #0b655e !important;
+        transform: translateY(-1px);
+    }
+
+    html body .fi-btn.dth-crm-form-action--secondary {
+        min-height: 42px !important;
+        padding: 0 16px !important;
+        border: 1px solid var(--dth-crm-border) !important;
+        border-radius: 12px !important;
+        background: #fff !important;
+        color: var(--dth-crm-text) !important;
+        box-shadow: none !important;
+        font-weight: 720 !important;
+        gap: .45rem !important;
+    }
+    html body .fi-btn.dth-crm-form-action--secondary * { color: var(--dth-crm-text) !important; }
+    html body .fi-btn.dth-crm-form-action--secondary:hover {
+        background: #f8fafc !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    /* Modal submit/cancel actions on the module's own pages use the same tone. */
+    html body .fi-main .fi-modal-footer-actions .fi-btn.fi-btn-color-primary,
+    html body .fi-modal-footer-actions .fi-btn.fi-btn-color-primary {
+        background: linear-gradient(180deg, #14877d 0%, #0f766e 100%) !important;
+        border-color: #0f766e !important;
+        color: #ffffff !important;
+        box-shadow: 0 9px 20px rgba(15, 118, 110, .18) !important;
+    }
+    html body .fi-main .fi-modal-footer-actions .fi-btn.fi-btn-color-primary *,
+    html body .fi-modal-footer-actions .fi-btn.fi-btn-color-primary * { color: #ffffff !important; }
+    html body .fi-main .fi-modal-footer-actions .fi-btn.fi-btn-color-gray,
+    html body .fi-modal-footer-actions .fi-btn.fi-btn-color-gray {
+        background: #fff !important;
+        color: var(--dth-crm-text) !important;
+        border: 1px solid var(--dth-crm-border) !important;
+        box-shadow: none !important;
+    }
+
     /* CRM page entry actions that open forms/modals should look like first-class module controls. */
     .dth-crm-entry-action.fi-btn {
         min-height:40px !important;

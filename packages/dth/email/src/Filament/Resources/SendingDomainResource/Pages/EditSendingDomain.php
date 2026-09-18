@@ -37,11 +37,14 @@ class EditSendingDomain extends EditRecord
         return [
             $this->getSaveFormAction()
                 ->label(UiText::get('common.actions.save', 'Save'))
-                ->icon('heroicon-o-check'),
+                ->icon('heroicon-o-check-circle')
+                ->color('primary')
+                ->extraAttributes(['class' => 'dth-email-form-action dth-email-form-action--primary']),
             $this->getCancelFormAction()
                 ->label(UiText::get('common.actions.cancel', 'Cancel'))
                 ->icon('heroicon-o-x-mark')
-                ->color('gray'),
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-email-form-action dth-email-form-action--secondary']),
         ];
     }
 }

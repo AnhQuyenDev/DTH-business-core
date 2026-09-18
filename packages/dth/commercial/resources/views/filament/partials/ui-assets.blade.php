@@ -119,6 +119,64 @@
         color: #344054 !important;
     }
 
+
+    /* DTH_FORM_ACTION_TONE:commercial */
+    /* Explicit resource form actions, following the Human Resource pattern.
+       These selectors are intentionally stronger than Filament / host theme
+       primary colors so each module keeps its own identity. */
+    html body .fi-btn.dth-com-form-action--primary {
+        min-height: 42px !important;
+        padding: 0 16px !important;
+        border: 1px solid #0f8f95 !important;
+        border-radius: 12px !important;
+        background: linear-gradient(180deg, #17a1a6 0%, #0f8f95 100%) !important;
+        color: #ffffff !important;
+        box-shadow: 0 9px 20px rgba(15, 143, 149, .18) !important;
+        font-weight: 720 !important;
+        gap: .45rem !important;
+    }
+    html body .fi-btn.dth-com-form-action--primary * { color: #ffffff !important; }
+    html body .fi-btn.dth-com-form-action--primary:hover {
+        background: linear-gradient(180deg, #0f8f95 0%, #087178 100%) !important;
+        border-color: #087178 !important;
+        transform: translateY(-1px);
+    }
+
+    html body .fi-btn.dth-com-form-action--secondary {
+        min-height: 42px !important;
+        padding: 0 16px !important;
+        border: 1px solid var(--dth-com-border) !important;
+        border-radius: 12px !important;
+        background: #fff !important;
+        color: var(--dth-com-text) !important;
+        box-shadow: none !important;
+        font-weight: 720 !important;
+        gap: .45rem !important;
+    }
+    html body .fi-btn.dth-com-form-action--secondary * { color: var(--dth-com-text) !important; }
+    html body .fi-btn.dth-com-form-action--secondary:hover {
+        background: #f8fafc !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    /* Modal submit/cancel actions on the module's own pages use the same tone. */
+    html body .fi-main .fi-modal-footer-actions .fi-btn.fi-btn-color-primary,
+    html body .fi-modal-footer-actions .fi-btn.fi-btn-color-primary {
+        background: linear-gradient(180deg, #17a1a6 0%, #0f8f95 100%) !important;
+        border-color: #0f8f95 !important;
+        color: #ffffff !important;
+        box-shadow: 0 9px 20px rgba(15, 143, 149, .18) !important;
+    }
+    html body .fi-main .fi-modal-footer-actions .fi-btn.fi-btn-color-primary *,
+    html body .fi-modal-footer-actions .fi-btn.fi-btn-color-primary * { color: #ffffff !important; }
+    html body .fi-main .fi-modal-footer-actions .fi-btn.fi-btn-color-gray,
+    html body .fi-modal-footer-actions .fi-btn.fi-btn-color-gray {
+        background: #fff !important;
+        color: var(--dth-com-text) !important;
+        border: 1px solid var(--dth-com-border) !important;
+        box-shadow: none !important;
+    }
+
     /* Create / input entry actions mirror the other DTH modules: white card-like
        button, compact geometry, module-color text instead of a heavy filled CTA. */
     .dth-com-entry-action.fi-btn {

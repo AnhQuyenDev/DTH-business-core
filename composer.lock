@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "10c3e81ee5731308395aa2cec6d8dfe2",
+    "content-hash": "ceca806534e830af5bbd1df487bf2b8c",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -1082,6 +1082,44 @@
                 }
             ],
             "time": "2025-10-31T18:51:33+00:00"
+        },
+        {
+            "name": "dth/account-management",
+            "version": "dev-dth-core",
+            "dist": {
+                "type": "path",
+                "url": "packages/dth/account-management",
+                "reference": "ca687d3af03c11da6aafdb97a1bdd180a7c30f98"
+            },
+            "require": {
+                "laravel/framework": "^12.0",
+                "php": "^8.2"
+            },
+            "suggest": {
+                "dth/human-resource": "Optional employee-account linking and employee lifecycle synchronization.",
+                "filament/filament": "Host application should use Filament 4.x for the administration UI."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Dth\\AccountManagement\\AccountManagementServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Dth\\AccountManagement\\": "src/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "DTH Account & Access Management module: users, roles, permissions, groups, invitations, sessions, audit logs and access settings.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "dth/commercial",
@@ -11714,6 +11752,7 @@
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
+        "dth/account-management": 20,
         "dth/commercial": 20,
         "dth/crm": 20,
         "dth/email": 20,

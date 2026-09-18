@@ -22,11 +22,14 @@ abstract class CrmEditRecord extends EditRecord
         return [
             $this->getSaveFormAction()
                 ->label(UiText::get('common.actions.save', 'Save'))
-                ->icon('heroicon-o-check-circle'),
+                ->icon('heroicon-o-check-circle')
+                ->color('primary')
+                ->extraAttributes(['class' => 'dth-crm-form-action dth-crm-form-action--primary']),
             $this->getCancelFormAction()
                 ->label(UiText::get('common.actions.cancel', 'Cancel'))
                 ->icon('heroicon-o-x-mark')
-                ->color('gray'),
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-crm-form-action dth-crm-form-action--secondary']),
         ];
     }
 

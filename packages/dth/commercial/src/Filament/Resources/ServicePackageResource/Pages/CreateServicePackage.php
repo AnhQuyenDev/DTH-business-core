@@ -34,11 +34,14 @@ class CreateServicePackage extends CreateRecord
         return [
             $this->getCreateFormAction()
                 ->label(UiText::get('actions.save_package', 'Save package'))
-                ->icon('heroicon-o-check'),
+                ->icon('heroicon-o-check-circle')
+                ->color('primary')
+                ->extraAttributes(['class' => 'dth-com-form-action dth-com-form-action--primary']),
             $this->getCancelFormAction()
                 ->label(UiText::get('common.actions.cancel', 'Cancel'))
                 ->icon('heroicon-o-x-mark')
-                ->color('gray'),
+                ->color('gray')
+                ->extraAttributes(['class' => 'dth-com-form-action dth-com-form-action--secondary']),
         ];
     }
 }

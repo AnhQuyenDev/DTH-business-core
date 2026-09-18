@@ -34,8 +34,11 @@ class CreateFormTemplate extends CreateRecord
     protected function getFormActions(): array
     {
         return [
-            $this->getCreateFormAction()->label(UiText::get('common.actions.save', 'Save'))->icon('heroicon-o-check'),
-            $this->getCancelFormAction()->label(UiText::get('common.actions.cancel', 'Cancel'))->icon('heroicon-o-x-mark')->color('gray'),
+            $this->getCreateFormAction()->label(UiText::get('common.actions.save', 'Save'))->icon('heroicon-o-check-circle')
+                ->color('primary')
+                ->extraAttributes(['class' => 'dth-mkt-form-action dth-mkt-form-action--primary']),
+            $this->getCancelFormAction()->label(UiText::get('common.actions.cancel', 'Cancel'))->icon('heroicon-o-x-mark')->color('gray')
+                ->extraAttributes(['class' => 'dth-mkt-form-action dth-mkt-form-action--secondary']),
         ];
     }
 }

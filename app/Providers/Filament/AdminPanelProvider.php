@@ -8,6 +8,8 @@ use Dth\Marketing\Filament\MarketingPlugin;
 use Dth\Crm\Filament\CrmPlugin;
 use Dth\HumanResource\Filament\HumanResourcePlugin;
 use Dth\Commercial\Filament\CommercialPlugin;
+use Dth\AccountManagement\Filament\AccountManagementPlugin;
+use Dth\AccountManagement\Http\Middleware\EnsureAccountIsActive;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -77,6 +79,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                EnsureAccountIsActive::class,
             ])
             ->plugin(
                 EmailPlugin::make()
@@ -92,6 +95,9 @@ class AdminPanelProvider extends PanelProvider
             )
             ->plugin(
                 HumanResourcePlugin::make()
+            )
+            ->plugin(
+                AccountManagementPlugin::make()
             );
     }
 }

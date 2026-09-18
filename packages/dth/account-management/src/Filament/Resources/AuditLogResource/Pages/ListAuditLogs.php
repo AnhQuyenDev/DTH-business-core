@@ -1,0 +1,2 @@
+<?php
+namespace Dth\AccountManagement\Filament\Resources\AuditLogResource\Pages; use Dth\AccountManagement\Filament\Resources\AuditLogResource; use Dth\AccountManagement\Filament\Support\AccountPageUi; use Dth\AccountManagement\Support\UiText; use Filament\Resources\Pages\ListRecords; use Illuminate\Contracts\Support\Htmlable; class ListAuditLogs extends ListRecords{protected static string $resource=AuditLogResource::class;public function getTitle():string|Htmlable{return AccountPageUi::title(UiText::get('navigation.audit','Nhật ký hoạt động'),'security');}}
