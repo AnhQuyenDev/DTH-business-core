@@ -27,7 +27,7 @@ class Service extends Model
     protected static function booted(): void
     {
         static::saving(function (self $service): void {
-            $service->service_code = trim((string) $service->service_code);
+            $service->service_code = strtoupper(trim((string) $service->service_code));
             $service->name = trim((string) $service->name);
             if (blank($service->slug) && filled($service->name)) {
                 $base = Str::slug($service->name) ?: strtolower($service->service_code);
@@ -41,6 +41,20 @@ class Service extends Model
         });
     }
 
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class, 'service_id')->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function bundles(): HasMany
+    {
+        return $this->hasMany(Bundle::class, 'primary_service_id')->orderBy('sort_order')->orderBy('name');
+    }
+
+    /**
+     * Legacy relation kept so existing external code does not fatal while the
+     * old commercial_service_packages table remains available for rollback.
+     */
     public function packages(): HasMany
     {
         return $this->hasMany(ServicePackage::class, 'service_id')->orderBy('sort_order')->orderBy('name');

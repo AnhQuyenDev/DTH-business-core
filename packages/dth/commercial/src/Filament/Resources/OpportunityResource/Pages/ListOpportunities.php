@@ -3,8 +3,10 @@
 namespace Dth\Commercial\Filament\Resources\OpportunityResource\Pages;
 
 use Dth\Commercial\Filament\Resources\OpportunityResource;
+use Dth\Commercial\Filament\Support\CommercialDataActions;
 use Dth\Commercial\Filament\Widgets\OpportunityListStats;
 use Dth\Commercial\Filament\Widgets\OpportunityPipelineBoard;
+use Dth\Commercial\Support\PageHeading;
 use Dth\Commercial\Support\UiText;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -16,7 +18,7 @@ class ListOpportunities extends ListRecords
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('pages.opportunities.title', 'Business opportunities');
+        return PageHeading::make(UiText::get('pages.opportunities.title', 'Business opportunities'), OpportunityResource::NAVIGATION_ICON);
     }
 
     public function getSubheading(): string|Htmlable|null
@@ -41,6 +43,7 @@ class ListOpportunities extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            CommercialDataActions::import('opportunities', 'manage-opportunities'),
             CreateAction::make()
                 ->label(UiText::get('actions.create_opportunity', 'Create opportunity'))
                 ->icon('heroicon-o-plus')

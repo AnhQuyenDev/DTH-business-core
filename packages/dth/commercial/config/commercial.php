@@ -5,6 +5,9 @@ return [
 
     'features' => [
         'catalog' => true,
+        'products' => true,
+        'bundles' => true,
+        // Backward-compatible flag name. 'bundles' takes precedence when present.
         'packages' => true,
         'opportunities' => true,
         'analytics' => true,

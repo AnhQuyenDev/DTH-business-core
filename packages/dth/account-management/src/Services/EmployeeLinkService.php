@@ -4,6 +4,8 @@ namespace Dth\AccountManagement\Services;
 
 use Dth\AccountManagement\Models\AccountUser;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -96,15 +98,18 @@ final class EmployeeLinkService
         }
 
         $model = (string) config('dth-account-management.human_resource.employee_model');
-        $employee = $model::query()->find($employeeId, ['id', 'full_name', 'email', 'phone']);
+        $employee = $model::query()->find($employeeId, ['id', 'full_name', 'email', 'phone', 'metadata']);
         if (! $employee) {
             return null;
         }
 
+        $request = data_get($employee->metadata ?? [], self::REQUEST_KEY);
+        $request = is_array($request) && ($request['status'] ?? null) === 'pending' ? $request : [];
+
         return match ($field) {
-            'name' => $employee->full_name,
-            'email' => $employee->email,
-            'phone' => $employee->phone,
+            'name' => filled($request['requested_name'] ?? null) ? (string) $request['requested_name'] : $employee->full_name,
+            'email' => filled($request['requested_email'] ?? null) ? (string) $request['requested_email'] : $employee->email,
+            'phone' => array_key_exists('requested_phone', $request) ? $request['requested_phone'] : $employee->phone,
             default => null,
         };
     }
@@ -225,7 +230,7 @@ final class EmployeeLinkService
         }
 
         $nameOk = blank($request['requested_name'] ?? null)
-            || trim((string) $request['requested_name']) === trim((string) $user->name);
+            || $this->normalizeName((string) $request['requested_name']) === $this->normalizeName((string) $user->name);
         $emailOk = blank($request['requested_email'] ?? null)
             || strtolower(trim((string) $request['requested_email'])) === strtolower(trim((string) $user->email));
         $phoneOk = blank($request['requested_phone'] ?? null)
@@ -234,6 +239,46 @@ final class EmployeeLinkService
         if ($nameOk && $emailOk && $phoneOk) {
             $this->resolveRequestForEmployee((int) $employee->id, 'identity_synchronized');
         }
+    }
+
+    public function synchronizeIdentityRequest(int $employeeId): void
+    {
+        if (! $this->available()) {
+            throw ValidationException::withMessages(['request' => 'Module Nhân sự hiện không khả dụng.']);
+        }
+
+        $model = (string) config('dth-account-management.human_resource.employee_model');
+        $employee = $model::query()->find($employeeId);
+        if (! $employee) {
+            throw ValidationException::withMessages(['request' => 'Không tìm thấy hồ sơ nhân viên.']);
+        }
+
+        $request = data_get($employee->metadata ?? [], self::REQUEST_KEY);
+        if (! is_array($request) || ($request['status'] ?? null) !== 'pending' || ($request['type'] ?? null) !== 'sync_account_identity') {
+            throw ValidationException::withMessages(['request' => 'Yêu cầu đồng bộ này không còn ở trạng thái chờ xử lý.']);
+        }
+
+        $userId = (int) ($employee->user_id ?: ($request['account_user_id'] ?? 0));
+        $user = $userId > 0 ? AccountUser::query()->find($userId) : null;
+        if (! $user) {
+            throw ValidationException::withMessages(['request' => 'Không tìm thấy tài khoản cần đồng bộ.']);
+        }
+
+        $payload = [
+            'name' => trim((string) ($request['requested_name'] ?? $employee->full_name ?? $user->name)),
+            'email' => strtolower(trim((string) ($request['requested_email'] ?? $employee->email ?? $user->email))),
+            'phone' => array_key_exists('requested_phone', $request) ? $request['requested_phone'] : $user->phone,
+        ];
+
+        Validator::make($payload, [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:30'],
+        ])->validate();
+
+        $user->forceFill($payload)->save();
+        $employee->forceFill(['user_id' => $user->id])->save();
+        $this->resolveRequestForEmployee($employeeId, 'identity_synchronized');
     }
 
     private function isProtectedAccount(AccountUser $user): bool
@@ -286,5 +331,91 @@ final class EmployeeLinkService
         $request['resolution'] = $resolution;
         $metadata[self::REQUEST_KEY] = $request;
         $employee->forceFill(['metadata' => $metadata])->save();
+        $this->markSourceNotificationsResolved($employee, $resolution);
+        $this->notifyRequesterResolved($employee, $request, $resolution);
     }
+
+    /** @param array<string, mixed> $request */
+    private function notifyRequesterResolved(object $employee, array $request, string $resolution): void
+    {
+        $requesterUserId = (int) ($request['requested_by_user_id'] ?? 0);
+        $manager = 'Dth\NotificationCenter\Services\NotificationManager';
+        if ($requesterUserId <= 0 || ! class_exists($manager) || ! Schema::hasTable('dth_notifications')) {
+            return;
+        }
+
+        try {
+            $employeeResource = 'Dth\HumanResource\Filament\Resources\EmployeeResource';
+            $actionUrl = class_exists($employeeResource)
+                ? $employeeResource::getUrl('view', ['record' => (int) $employee->getKey()])
+                : null;
+            $body = trim((string) $employee->employee_code.' · '.(string) $employee->full_name).' đã được quản trị viên xử lý yêu cầu tài khoản.';
+
+            app($manager)->send([
+                'type' => 'status_update',
+                'priority' => 'normal',
+                'source_module' => 'accounts',
+                'source_event' => 'hr.account_request_resolved',
+                'source_type' => $employee::class,
+                'source_id' => (string) $employee->getKey(),
+                'sender_user_id' => auth()->id(),
+                'sender_name' => auth()->user()?->name,
+                'title' => 'Yêu cầu tài khoản đã được xử lý',
+                'body' => $body,
+                'detail_body' => trim('Kết quả xử lý: '.str($resolution)->replace('_', ' ')->headline()->toString().'.'.PHP_EOL.(filled($request['note'] ?? null) ? 'Ghi chú yêu cầu: '.(string) $request['note'] : '')),
+                'action_label' => 'Xem nhân viên',
+                'action_url' => $actionUrl,
+                'mandatory' => true,
+                'manual' => false,
+                'metadata' => [
+                    'employee_id' => (int) $employee->getKey(),
+                    'resolution' => $resolution,
+                    'workflow_status' => 'resolved',
+                ],
+            ], [$requesterUserId], (array) config('dth-notification-center.integrations.hr_account_request_resolved_channels', ['in_app', 'email']));
+        } catch (Throwable) {
+            // Notification Center is optional. Account/HR workflow must remain operational without it.
+        }
+    }
+    private function markSourceNotificationsResolved(object $employee, string $resolution): void
+    {
+        $notificationModel = 'Dth\NotificationCenter\Models\Notification';
+        if (! class_exists($notificationModel) || ! Schema::hasTable('dth_notifications')) {
+            return;
+        }
+
+        try {
+            $notificationModel::query()
+                ->where('source_type', $employee::class)
+                ->where('source_id', (string) $employee->getKey())
+                ->whereIn('source_event', ['hr.account_request_submitted', 'hr.account_identity_sync_requested'])
+                ->get()
+                ->each(function ($notification) use ($resolution): void {
+                    $metadata = is_array($notification->metadata) ? $notification->metadata : [];
+                    $metadata['workflow_status'] = 'resolved';
+                    $metadata['resolution'] = $resolution;
+                    $metadata['resolved_at'] = now()->toIso8601String();
+
+                    $notification->forceFill([
+                        'type' => 'status_update',
+                        'priority' => 'normal',
+                        'action_label' => null,
+                        'action_url' => null,
+                        'metadata' => $metadata,
+                    ])->save();
+
+                    $notification->recipients()
+                        ->whereNull('read_at')
+                        ->update(['read_at' => now(), 'updated_at' => now()]);
+                });
+        } catch (Throwable) {
+            // Notification state should never block the account workflow.
+        }
+    }
+
+    private function normalizeName(string $value): string
+    {
+        return mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $value)));
+    }
+
 }

@@ -18,13 +18,15 @@ final class AccessControlService
     {
         if (! $user) return false;
         if (! Schema::hasTable('account_roles') || ! Schema::hasTable('account_role_user')) {
-            return ! str_starts_with($permission, 'accounts.') || $this->isBootstrapAdministrator($user);
+            $protectedWithoutRegistry = str_starts_with($permission, 'accounts.') || str_starts_with($permission, 'notifications.');
+            return ! $protectedWithoutRegistry || $this->isBootstrapAdministrator($user);
         }
 
         if (! $this->accountCanAuthenticate($user)) return false;
         if ($this->isSuperAdministrator($user) || $this->isBootstrapAdministrator($user)) return true;
 
-        if (! str_starts_with($permission, 'accounts.') && ! $this->settings->bool('security.permissions_enforced', false)) {
+        $alwaysEnforced = str_starts_with($permission, 'accounts.') || str_starts_with($permission, 'notifications.');
+        if (! $alwaysEnforced && ! $this->settings->bool('security.permissions_enforced', false)) {
             return true;
         }
 

@@ -24,6 +24,9 @@ class ServicePackage extends Model
             'status' => ServiceStatus::class,
             'billing_period' => 'integer',
             'default_quantity' => 'integer',
+            'price' => 'decimal:2',
+            'renewal_price' => 'decimal:2',
+            'setup_fee' => 'decimal:2',
             'sort_order' => 'integer',
             'metadata' => 'array',
         ];

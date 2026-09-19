@@ -18,7 +18,8 @@ final class CommercialInsightService
         $closingCount = (int) ($snapshot['closing_this_month_count'] ?? 0);
         $closingValue = (float) ($snapshot['closing_this_month_value'] ?? 0);
         $activeServices = (int) ($snapshot['active_services'] ?? 0);
-        $activePackages = (int) ($snapshot['active_packages'] ?? 0);
+        $activeProducts = (int) ($snapshot['active_products'] ?? 0);
+        $activeBundles = (int) ($snapshot['active_bundles'] ?? ($snapshot['active_packages'] ?? 0));
         $stages = collect($snapshot['stage_breakdown'] ?? []);
         $topServices = collect($snapshot['top_services'] ?? []);
 
@@ -85,13 +86,14 @@ final class CommercialInsightService
                 'title' => UiText::get('insights.catalog_title', 'Commercial catalog coverage'),
                 'body' => UiText::get(
                     'insights.catalog_body',
-                    'The active catalog currently has :services services and :packages packages available for commercial use.',
+                    'The active catalog currently has :services services, :products products and :bundles bundles available for commercial use.',
                     [
                         'services' => number_format($activeServices),
-                        'packages' => number_format($activePackages),
+                        'products' => number_format($activeProducts),
+                        'bundles' => number_format($activeBundles),
                     ],
                 ),
-                'metric' => number_format($activeServices).' / '.number_format($activePackages),
+                'metric' => number_format($activeServices).' / '.number_format($activeProducts).' / '.number_format($activeBundles),
             ],
         ];
 

@@ -121,7 +121,7 @@ class RoleResource extends Resource
             SelectFilter::make('data_scope')->label(UiText::get('fields.data_scope', 'Phạm vi dữ liệu'))->options(DataScope::options()),
             SelectFilter::make('color')->label(UiText::get('fields.color', 'Màu'))->options(['gray'=>UiText::get('colors.gray','Xám'),'primary'=>UiText::get('colors.primary','Màu chính'),'info'=>UiText::get('colors.info','Thông tin'),'success'=>UiText::get('colors.success','Thành công'),'warning'=>UiText::get('colors.warning','Cảnh báo'),'danger'=>UiText::get('colors.danger','Nguy hiểm')]),
             SelectFilter::make('module')->label(UiText::get('fields.module', 'Phân hệ'))
-                ->options(['accounts'=>UiText::get('modules.accounts','Tài khoản & Phân quyền'),'commercial'=>UiText::get('modules.commercial','Dịch vụ & Kinh doanh'),'crm'=>UiText::get('modules.crm','CRM'),'marketing'=>UiText::get('modules.marketing','Marketing'),'human-resource'=>UiText::get('modules.human-resource','Nhân sự'),'email'=>UiText::get('modules.email','Email')])
+                ->options(fn (): array => app(PermissionRegistryService::class)->moduleOptions())
                 ->query(fn (Builder $query, array $data) => $query->when($data['value'] ?? null, fn (Builder $q, string $module) => $q->whereHas('permissions', fn (Builder $p) => $p->where('module', $module)))),
             TernaryFilter::make('has_users')->label(UiText::get('fields.has_users', 'Đang gán cho người dùng'))
                 ->queries(

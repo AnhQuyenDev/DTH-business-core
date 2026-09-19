@@ -152,14 +152,19 @@
 
             <div class="dth-com-catalog-metrics">
                 <div>
-                    <span class="dth-com-catalog-metric__icon"><x-filament::icon icon="heroicon-o-cube" /></span>
+                    <span class="dth-com-catalog-metric__icon"><x-filament::icon icon="heroicon-o-rectangle-stack" /></span>
                     <span>{{ \Dth\Commercial\Support\UiText::get('overview.active_services', 'Active services') }}</span>
                     <strong>{{ number_format((int) ($snapshot['active_services'] ?? 0)) }}</strong>
                 </div>
                 <div>
-                    <span class="dth-com-catalog-metric__icon"><x-filament::icon icon="heroicon-o-squares-2x2" /></span>
-                    <span>{{ \Dth\Commercial\Support\UiText::get('overview.active_packages', 'Active packages') }}</span>
-                    <strong>{{ number_format((int) ($snapshot['active_packages'] ?? 0)) }}</strong>
+                    <span class="dth-com-catalog-metric__icon"><x-filament::icon icon="heroicon-o-cube" /></span>
+                    <span>{{ \Dth\Commercial\Support\UiText::get('overview.active_products', 'Active products') }}</span>
+                    <strong>{{ number_format((int) ($snapshot['active_products'] ?? 0)) }}</strong>
+                </div>
+                <div>
+                    <span class="dth-com-catalog-metric__icon"><x-filament::icon icon="heroicon-o-gift" /></span>
+                    <span>{{ \Dth\Commercial\Support\UiText::get('overview.active_bundles', 'Active bundles') }}</span>
+                    <strong>{{ number_format((int) ($snapshot['active_bundles'] ?? ($snapshot['active_packages'] ?? 0))) }}</strong>
                 </div>
             </div>
 

@@ -3,7 +3,9 @@
 namespace Dth\Commercial\Filament\Resources\ServicePackageResource\Pages;
 
 use Dth\Commercial\Filament\Resources\ServicePackageResource;
+use Dth\Commercial\Filament\Support\CommercialDataActions;
 use Dth\Commercial\Filament\Widgets\ServicePackageListStats;
+use Dth\Commercial\Support\PageHeading;
 use Dth\Commercial\Support\UiText;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -15,7 +17,7 @@ class ListServicePackages extends ListRecords
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('pages.packages.title', 'Service packages');
+        return PageHeading::make(UiText::get('pages.packages.title', 'Service packages'), ServicePackageResource::NAVIGATION_ICON);
     }
 
     public function getSubheading(): string|Htmlable|null
@@ -37,6 +39,7 @@ class ListServicePackages extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            CommercialDataActions::import('packages', 'manage-catalog'),
             CreateAction::make()
                 ->label(UiText::get('actions.create_package', 'Create package'))
                 ->icon('heroicon-o-plus')

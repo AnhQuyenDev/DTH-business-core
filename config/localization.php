@@ -757,6 +757,11 @@ return [
                     'color' => 'Màu hiển thị',
                     'sort_order' => 'Thứ tự',
                     'employee_count' => 'Số nhân viên',
+                    'requested_login_email' => 'Email đăng nhập đề nghị',
+                    'requested_login_email_help' => 'Email dự kiến dùng để đăng nhập. Có thể nhập tại đây ngay cả khi hồ sơ nhân viên chưa có email.',
+                    'request_note' => 'Ghi chú cho quản trị viên',
+                    'request_note_help' => 'Nêu rõ lý do cấp tài khoản, thời hạn sử dụng hoặc yêu cầu đặc biệt nếu có.',
+                    'link_note_help' => 'Ghi rõ cơ sở xác minh hoặc thông tin Admin cần biết khi đồng bộ tài khoản.',
                 ],
                 'status' => [
                     'employment' => [
@@ -864,6 +869,15 @@ return [
                     'new_position' => 'Thêm chức danh',
                     'add_availability' => 'Thêm lịch làm việc / nghỉ phép',
                     'add_business_function' => 'Thêm chức năng nghiệp vụ',
+                ],
+                'notifications' => [
+                    'account_request_sent' => 'Đã gửi yêu cầu cấp tài khoản',
+                    'account_request_sent_body' => 'Yêu cầu đã được ghi nhận và gửi tới quản trị viên tài khoản để xử lý.',
+                    'account_request_saved_no_admin' => 'Yêu cầu đã được lưu nhưng hiện chưa tìm thấy quản trị viên có quyền nhận thông báo.',
+                    'account_linked' => 'Đã liên kết tài khoản',
+                    'account_identity_request_created' => 'Thông tin tài khoản khác với hồ sơ nhân viên. Hệ thống đã gửi yêu cầu cho quản trị viên tài khoản để đồng bộ danh tính.',
+                    'account_identity_request_saved_no_admin' => 'Tài khoản đã được liên kết nhưng yêu cầu đồng bộ chưa có quản trị viên nhận thông báo.',
+                    'account_linked_body' => 'Tài khoản đã được gắn với nhân viên này.',
                 ],
                 'dashboard' => [
                     'title' => 'Quản trị Nhân sự',

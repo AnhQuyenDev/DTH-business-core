@@ -1,0 +1,49 @@
+{
+  "name": "dth/notification-center",
+  "description": "DTH Notification Center foundation module: in-app notifications, transactional email, recipient targeting and notification preferences.",
+  "type": "library",
+  "license": "proprietary",
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^12.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Dth\\NotificationCenter\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Dth\\NotificationCenter\\NotificationCenterServiceProvider"
+      ]
+    },
+    "dth-module": {
+      "id": "notification-center",
+      "name": "Thông báo",
+      "order": 15,
+      "enabled_config": "dth-notification-center.enabled",
+      "filament": {
+        "plugin": "Dth\\NotificationCenter\\Filament\\NotificationCenterPlugin"
+      },
+      "dependencies": {
+        "required": [],
+        "optional": [
+          "dth/account-management",
+          "dth/human-resource"
+        ],
+        "integrations": [
+          "dth/account-management",
+          "dth/human-resource"
+        ]
+      }
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "suggest": {
+    "filament/filament": "Host application should use Filament 4.x for the Notification Center administration UI.",
+    "dth/account-management": "Enables role/group recipient targeting and permission-based notification administration.",
+    "dth/human-resource": "Enables department targeting and HR workflow notifications."
+  }
+}

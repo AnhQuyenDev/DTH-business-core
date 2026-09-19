@@ -3,6 +3,7 @@
 namespace Dth\Commercial\Filament\Resources\ServiceResource\Pages;
 
 use Dth\Commercial\Filament\Resources\ServiceResource;
+use Dth\Commercial\Support\PageHeading;
 use Dth\Commercial\Support\UiText;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
@@ -13,7 +14,7 @@ class CreateService extends CreateRecord
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('pages.services.create_title', 'Create service');
+        return PageHeading::make(UiText::get('pages.services.create_title', 'Create service'), ServiceResource::NAVIGATION_ICON);
     }
 
     public function getSubheading(): string|Htmlable|null

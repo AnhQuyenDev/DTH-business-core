@@ -23,6 +23,7 @@
     "dth/email": "@dev",
     "dth/human-resource": "@dev",
     "dth/marketing": "@dev",
+    "dth/notification-center": "@dev",
     "dth/commercial": "@dev",
     "dth/account-management": "@dev",
     "filament/filament": "^4.0",

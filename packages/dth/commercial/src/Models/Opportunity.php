@@ -28,14 +28,43 @@ class Opportunity extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $opportunity): void {
+            $opportunity->currency = strtoupper(trim((string) ($opportunity->currency ?: 'VND')));
+        });
+    }
+
+    /** Legacy primary-service snapshot retained for CRM handoff compatibility. */
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class, 'service_id');
     }
 
+    public function items(): HasMany
+    {
+        return $this->hasMany(OpportunityItem::class, 'opportunity_id')->orderBy('sort_order')->orderBy('id');
+    }
+
     public function interactions(): HasMany
     {
         return $this->hasMany(OpportunityInteraction::class, 'opportunity_id')->orderByDesc('interaction_at');
+    }
+
+    public function recalculateEstimatedValue(bool $zeroWhenEmpty = false): void
+    {
+        if (! $this->exists) {
+            return;
+        }
+
+        $items = $this->items();
+        if (! $items->exists() && ! $zeroWhenEmpty) {
+            return;
+        }
+
+        $this->updateQuietly([
+            'estimated_value' => round((float) $items->sum('total'), 2),
+        ]);
     }
 
     public function isTerminal(): bool

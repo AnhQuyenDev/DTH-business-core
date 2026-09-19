@@ -23,8 +23,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServiceResource extends Resource
 {
+    public const NAVIGATION_ICON = 'heroicon-o-rectangle-stack';
+
     protected static ?string $model = Service::class;
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = self::NAVIGATION_ICON;
     protected static string|\UnitEnum|null $navigationGroup = CommercialNavigationGroup::Commercial;
     protected static ?int $navigationSort = 10;
     protected static ?string $slug = 'commercial-services';
@@ -53,11 +55,13 @@ class ServiceResource extends Resource
                         TextInput::make('name')
                             ->label(UiText::get('common.fields.name', 'Name'))
                             ->placeholder(UiText::get('fields.service_name_placeholder', 'Example: CRM implementation'))
+                            ->helperText(UiText::get('fields.service_name_help', 'Use the customer-facing service name shared by Marketing, Email and business opportunities.'))
                             ->required()
                             ->maxLength(255),
                         TextInput::make('service_code')
                             ->label(UiText::get('fields.service_code', 'Service code'))
                             ->placeholder('SVC-CRM')
+                            ->helperText(UiText::get('fields.service_code_help', 'Unique business code used for import, reporting and cross-module references. Avoid changing it after the service is in use.'))
                             ->required()
                             ->maxLength(50)
                             ->unique(ignoreRecord: true),
@@ -71,6 +75,7 @@ class ServiceResource extends Resource
                             ->label(UiText::get('common.fields.status', 'Status'))
                             ->options(ServiceStatus::options())
                             ->default(ServiceStatus::Active->value)
+                            ->helperText(UiText::get('fields.service_status_help', 'Active services can own products and be reused by Marketing; inactive or archived records remain available for history.'))
                             ->required()
                             ->native(false),
                     ])
@@ -78,20 +83,23 @@ class ServiceResource extends Resource
                     ->columnSpanFull(),
 
                 Section::make(UiText::get('sections.service_content', 'Description & offer defaults'))
-                    ->description(UiText::get('sections.service_content_help', 'Content here becomes the default business context reused when this service is offered in campaigns and packages.'))
+                    ->description(UiText::get('sections.service_content_help', 'Content here becomes the default business context reused when products from this service are presented in campaigns and commercial offers.'))
                     ->schema([
                         Textarea::make('description')
                             ->label(UiText::get('common.fields.description', 'Description'))
                             ->placeholder(UiText::get('fields.service_description_placeholder', 'Describe the customer problem, value proposition and expected outcome.'))
+                            ->helperText(UiText::get('fields.service_description_help', 'Keep this concise and reusable because other modules may surface it as the default offer context.'))
                             ->rows(3)
                             ->columnSpanFull(),
                         Textarea::make('default_scope')
                             ->label(UiText::get('fields.scope', 'Default scope'))
                             ->placeholder(UiText::get('fields.scope_placeholder', 'Main implementation scope, deliverables and boundaries.'))
+                            ->helperText(UiText::get('fields.scope_help', 'Describe the default deliverables, boundaries and exclusions. Packages may refine this scope later.'))
                             ->rows(4),
                         Textarea::make('default_terms')
                             ->label(UiText::get('fields.terms', 'Default terms'))
                             ->placeholder(UiText::get('fields.terms_placeholder', 'Default commercial terms or notes applied to this service.'))
+                            ->helperText(UiText::get('fields.terms_help', 'Record reusable commercial assumptions or notes; do not put deal-specific contractual terms here.'))
                             ->rows(4),
                     ])
                     ->columns(2)
@@ -119,9 +127,9 @@ class ServiceResource extends Resource
                     ->copyable()
                     ->searchable()
                     ->toggleable(),
-                TextColumn::make('packages_count')
-                    ->counts('packages')
-                    ->label(UiText::get('models.packages', 'Packages'))
+                TextColumn::make('products_count')
+                    ->counts('products')
+                    ->label(UiText::get('models.products', 'Products'))
                     ->alignCenter()
                     ->sortable(),
                 TextColumn::make('status')

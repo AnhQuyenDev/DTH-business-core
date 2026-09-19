@@ -1,11 +1,12 @@
 {
   "name": "dth/commercial",
-  "description": "DTH Commercial module: service catalog, service packages and business opportunities with optional CRM, Marketing and Email integration.",
+  "description": "DTH Commercial module: services, sellable products and price lists, cross-service bundles, and multi-line business opportunities with optional CRM, Marketing and Email integration.",
   "type": "library",
   "license": "proprietary",
   "require": {
     "php": "^8.2",
-    "laravel/framework": "^12.0"
+    "laravel/framework": "^12.0",
+    "openspout/openspout": "^4.32"
   },
   "require-dev": {
     "orchestra/testbench": "^10.0",
@@ -54,7 +55,7 @@
   "prefer-stable": true,
   "suggest": {
     "filament/filament": "Provides the optional Commercial administration UI.",
-    "dth/marketing": "Lets Marketing select services/packages through CatalogProvider.",
+    "dth/marketing": "Lets Marketing select services/bundles through the existing CatalogProvider compatibility contract.",
     "dth/crm": "Lets qualified CRM leads hand off into Commercial opportunities.",
     "dth/email": "Email Campaigns can display Marketing offer context when linked to a Marketing Campaign."
   }

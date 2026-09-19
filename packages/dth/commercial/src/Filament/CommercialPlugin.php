@@ -3,8 +3,9 @@
 namespace Dth\Commercial\Filament;
 
 use Dth\Commercial\Filament\Pages\CommercialOverview;
+use Dth\Commercial\Filament\Resources\BundleResource;
 use Dth\Commercial\Filament\Resources\OpportunityResource;
-use Dth\Commercial\Filament\Resources\ServicePackageResource;
+use Dth\Commercial\Filament\Resources\ProductResource;
 use Dth\Commercial\Filament\Resources\ServiceResource;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
@@ -33,15 +34,17 @@ final class CommercialPlugin implements Plugin
         if (config('dth-commercial.features.catalog', true)) {
             $resources[] = ServiceResource::class;
         }
-        if (config('dth-commercial.features.packages', true)) {
-            $resources[] = ServicePackageResource::class;
+        if (config('dth-commercial.features.products', true)) {
+            $resources[] = ProductResource::class;
+        }
+        if (config('dth-commercial.features.bundles', config('dth-commercial.features.packages', true))) {
+            $resources[] = BundleResource::class;
         }
         if (config('dth-commercial.features.opportunities', true)) {
             $resources[] = OpportunityResource::class;
         }
 
         $pages = config('dth-commercial.features.analytics', true) ? [CommercialOverview::class] : [];
-
         $panel->pages($pages)->resources($resources);
     }
 

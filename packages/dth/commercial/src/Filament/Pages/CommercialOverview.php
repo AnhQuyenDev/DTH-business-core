@@ -6,6 +6,7 @@ use Dth\Commercial\Filament\Navigation\CommercialNavigationGroup;
 use Dth\Commercial\Services\CommercialAnalyticsService;
 use Dth\Commercial\Services\CommercialInsightService;
 use Dth\Commercial\Support\CommercialAuthorization;
+use Dth\Commercial\Support\PageHeading;
 use Dth\Commercial\Support\UiText;
 use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
@@ -15,8 +16,10 @@ use Illuminate\Contracts\Support\Htmlable;
 
 final class CommercialOverview extends Dashboard
 {
+    public const NAVIGATION_ICON = 'heroicon-o-squares-2x2';
+
     protected static string $routePath = 'commercial-overview';
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-squares-2x2';
+    protected static string|\BackedEnum|null $navigationIcon = self::NAVIGATION_ICON;
     protected static string|\UnitEnum|null $navigationGroup = CommercialNavigationGroup::Commercial;
     protected static ?int $navigationSort = 0;
 
@@ -27,7 +30,7 @@ final class CommercialOverview extends Dashboard
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('overview.title', 'Services & Commercial');
+        return PageHeading::make(UiText::get('overview.title', 'Services & Commercial'), self::NAVIGATION_ICON);
     }
 
     public function getSubheading(): string|Htmlable|null
@@ -93,7 +96,8 @@ final class CommercialOverview extends Dashboard
                     'snapshot' => app(CommercialAnalyticsService::class)->snapshot(),
                     'features' => [
                         'catalog' => (bool) config('dth-commercial.features.catalog', true),
-                        'packages' => (bool) config('dth-commercial.features.packages', true),
+                        'products' => (bool) config('dth-commercial.features.products', true),
+                        'bundles' => (bool) config('dth-commercial.features.bundles', config('dth-commercial.features.packages', true)),
                         'opportunities' => (bool) config('dth-commercial.features.opportunities', true),
                     ],
                 ]),

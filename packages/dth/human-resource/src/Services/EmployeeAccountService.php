@@ -164,9 +164,9 @@ final class EmployeeAccountService
     }
 
     /**
-     * @return array{identity_mismatch: bool, admin_request_created: bool}
+     * @return array{identity_mismatch: bool, admin_request_created: bool, admin_recipient_count: int}
      */
-    public function linkExisting(Employee $employee, int $userId, bool $confirmedMismatch = false): array
+    public function linkExisting(Employee $employee, int $userId, bool $confirmedMismatch = false, ?string $note = null): array
     {
         if (! $this->available()) {
             throw ValidationException::withMessages([
@@ -220,8 +220,9 @@ final class EmployeeAccountService
         $employee->forceFill(['user_id' => $userId])->save();
 
         $requestCreated = false;
+        $adminRecipientCount = 0;
         if ($comparison['mismatch'] && ! $this->canManageAccounts()) {
-            $this->writeAdminRequest($employee, [
+            $adminRecipientCount = $this->writeAdminRequest($employee, [
                 'type' => 'sync_account_identity',
                 'status' => 'pending',
                 'account_user_id' => $userId,
@@ -229,7 +230,7 @@ final class EmployeeAccountService
                 'requested_email' => $employee->email,
                 'requested_phone' => $employee->phone,
                 'differences' => $comparison['differences'],
-                'note' => 'HR đã xác minh liên kết nhưng không có quyền sửa danh tính tài khoản. Cần quản trị viên kiểm tra và đồng bộ thông tin tài khoản.',
+                'note' => trim((string) $note) ?: 'HR đã xác minh liên kết nhưng không có quyền sửa danh tính tài khoản. Cần quản trị viên kiểm tra và đồng bộ thông tin tài khoản.',
             ]);
             $requestCreated = true;
         } else {
@@ -239,28 +240,37 @@ final class EmployeeAccountService
         return [
             'identity_mismatch' => $comparison['mismatch'],
             'admin_request_created' => $requestCreated,
+            'admin_recipient_count' => $adminRecipientCount,
         ];
     }
 
-    public function requestProvisioning(Employee $employee, ?string $note = null): void
+    public function requestProvisioning(Employee $employee, ?string $note = null, ?string $requestedEmail = null): int
     {
-        if (blank($employee->email)) {
+        $requestedEmail = strtolower(trim((string) ($requestedEmail ?: $employee->email)));
+
+        if ($requestedEmail === '' || ! filter_var($requestedEmail, FILTER_VALIDATE_EMAIL)) {
             throw ValidationException::withMessages([
-                'note' => 'Hãy cập nhật email của nhân viên trước khi gửi yêu cầu cấp tài khoản.',
+                'requested_email' => 'Hãy nhập email đăng nhập hợp lệ để quản trị viên có thể cấp tài khoản.',
             ]);
         }
 
         if ($employee->user_id) {
             throw ValidationException::withMessages([
-                'note' => 'Nhân viên này đã có tài khoản hệ thống.',
+                'requested_email' => 'Nhân viên này đã có tài khoản hệ thống.',
             ]);
         }
 
-        $this->writeAdminRequest($employee, [
+        if ($this->hasPendingAdminRequest($employee)) {
+            throw ValidationException::withMessages([
+                'requested_email' => 'Nhân viên này đã có một yêu cầu tài khoản đang chờ xử lý.',
+            ]);
+        }
+
+        return $this->writeAdminRequest($employee, [
             'type' => 'provision_account',
             'status' => 'pending',
             'requested_name' => $employee->full_name,
-            'requested_email' => $employee->email,
+            'requested_email' => $requestedEmail,
             'requested_phone' => $employee->phone,
             'note' => trim((string) $note) ?: null,
         ]);
@@ -296,7 +306,7 @@ final class EmployeeAccountService
         $employee->forceFill(['user_id' => null])->save();
     }
 
-    private function writeAdminRequest(Employee $employee, array $payload): void
+    private function writeAdminRequest(Employee $employee, array $payload): int
     {
         $metadata = is_array($employee->metadata) ? $employee->metadata : [];
         $metadata[self::REQUEST_KEY] = array_merge($payload, [
@@ -306,6 +316,111 @@ final class EmployeeAccountService
         ]);
 
         $employee->forceFill(['metadata' => $metadata])->save();
+        $request = (array) $metadata[self::REQUEST_KEY];
+        $adminRecipientCount = $this->notifyAccountAdministrators($employee, $request);
+        $this->notifyRequesterSubmitted($employee, $request, $adminRecipientCount);
+
+        return $adminRecipientCount;
+    }
+
+    /** @param array<string, mixed> $request */
+    private function notifyAccountAdministrators(Employee $employee, array $request): int
+    {
+        $manager = 'Dth\NotificationCenter\Services\NotificationManager';
+        if (! class_exists($manager) || ! Schema::hasTable('dth_notifications')) {
+            return 0;
+        }
+
+        try {
+            $resource = 'Dth\AccountManagement\Filament\Resources\AccountUserResource';
+            $type = (string) ($request['type'] ?? 'provision_account');
+            $isIdentitySync = $type === 'sync_account_identity';
+            $actionUrl = null;
+            if (class_exists($resource)) {
+                $actionUrl = $isIdentitySync && $employee->user_id
+                    ? $resource::getUrl('edit', ['record' => (int) $employee->user_id])
+                    : $resource::getUrl('create', ['employee_id' => (int) $employee->getKey()]);
+            }
+
+            $title = $isIdentitySync ? 'Yêu cầu đồng bộ danh tính tài khoản' : 'Yêu cầu cấp tài khoản mới';
+            $body = trim($employee->employee_code.' · '.$employee->full_name)
+                .($isIdentitySync ? ' cần quản trị viên kiểm tra và đồng bộ thông tin tài khoản.' : ' cần được cấp tài khoản hệ thống.');
+
+            $notification = app($manager)->sendToPermission('accounts.users.manage', [
+                'type' => 'action_required',
+                'priority' => 'high',
+                'source_module' => 'human-resource',
+                'source_event' => $isIdentitySync ? 'hr.account_identity_sync_requested' : 'hr.account_request_submitted',
+                'source_type' => Employee::class,
+                'source_id' => (string) $employee->getKey(),
+                'sender_user_id' => auth()->id(),
+                'sender_name' => auth()->user()?->name,
+                'title' => $title,
+                'body' => $body,
+                'detail_body' => trim((string) ($request['note'] ?? '')) ?: null,
+                'action_label' => 'Xử lý yêu cầu',
+                'action_url' => $actionUrl,
+                'mandatory' => true,
+                'manual' => false,
+                'metadata' => [
+                    'employee_id' => (int) $employee->getKey(),
+                    'employee_code' => (string) $employee->employee_code,
+                    'request_type' => $type,
+                    'workflow_status' => 'pending',
+                ],
+            ], (array) config('dth-notification-center.integrations.hr_account_request_channels', ['in_app', 'email']));
+
+            return (int) $notification->recipients->count();
+        } catch (Throwable) {
+            // Notification Center is optional. A delivery failure must never block the HR request itself.
+            return 0;
+        }
+    }
+
+    /** @param array<string, mixed> $request */
+    private function notifyRequesterSubmitted(Employee $employee, array $request, int $adminRecipientCount): void
+    {
+        $requesterUserId = (int) ($request['requested_by_user_id'] ?? 0);
+        $manager = 'Dth\NotificationCenter\Services\NotificationManager';
+        if ($requesterUserId <= 0 || ! class_exists($manager) || ! Schema::hasTable('dth_notifications')) {
+            return;
+        }
+
+        try {
+            $type = (string) ($request['type'] ?? 'provision_account');
+            $isIdentitySync = $type === 'sync_account_identity';
+            $resource = 'Dth\HumanResource\Filament\Resources\EmployeeResource';
+            $actionUrl = class_exists($resource)
+                ? $resource::getUrl('view', ['record' => (int) $employee->getKey()])
+                : null;
+
+            app($manager)->send([
+                'type' => 'status_update',
+                'priority' => $adminRecipientCount > 0 ? 'normal' : 'high',
+                'source_module' => 'human-resource',
+                'source_event' => $isIdentitySync ? 'hr.account_identity_sync_submitted' : 'hr.account_request_submitted_confirmation',
+                'source_type' => Employee::class,
+                'source_id' => (string) $employee->getKey(),
+                'sender_user_id' => auth()->id(),
+                'sender_name' => auth()->user()?->name,
+                'title' => $isIdentitySync ? 'Đã gửi yêu cầu đồng bộ tài khoản' : 'Đã gửi yêu cầu cấp tài khoản',
+                'body' => trim($employee->employee_code.' · '.$employee->full_name)
+                    .($adminRecipientCount > 0 ? ' đã được chuyển tới quản trị viên tài khoản.' : ' đã được lưu nhưng chưa có quản trị viên nhận thông báo.'),
+                'detail_body' => trim((string) ($request['note'] ?? '')) ?: null,
+                'action_label' => 'Xem nhân viên',
+                'action_url' => $actionUrl,
+                'mandatory' => false,
+                'manual' => false,
+                'metadata' => [
+                    'employee_id' => (int) $employee->getKey(),
+                    'request_type' => $type,
+                    'admin_recipient_count' => $adminRecipientCount,
+                    'workflow_status' => 'pending',
+                ],
+            ], [$requesterUserId], ['in_app']);
+        } catch (Throwable) {
+            // Confirmation notification is best effort only.
+        }
     }
 
     private function markAdminRequestResolved(Employee $employee, string $resolution): void

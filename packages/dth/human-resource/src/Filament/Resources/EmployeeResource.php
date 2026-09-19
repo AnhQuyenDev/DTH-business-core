@@ -200,18 +200,40 @@ class EmployeeResource extends Resource
                             ->label(UiText::get('common.actions.cancel', 'Hủy thao tác'))
                             ->extraAttributes(['class' => 'dth-hr-modal-action dth-hr-modal-action--secondary']))
                         ->schema([
+                            TextInput::make('requested_email')
+                                ->label(UiText::get('fields.requested_login_email', 'Requested login email'))
+                                ->default(fn (Employee $record): ?string => $record->email)
+                                ->email()
+                                ->required()
+                                ->maxLength(255)
+                                ->helperText(UiText::get('fields.requested_login_email_help', 'Proposed sign-in email. You can enter it here even when the employee profile does not have an email yet.')),
                             Textarea::make('note')
-                                ->label(UiText::get('fields.request_note', 'Ghi chú cho quản trị viên'))
+                                ->label(UiText::get('fields.request_note', 'Note for administrator'))
+                                ->helperText(UiText::get('fields.request_note_help', 'Describe why the account is needed, its expected duration, or any special access notes.'))
                                 ->rows(3)
                                 ->maxLength(1000),
                         ])
                         ->action(function (Employee $record, array $data): void {
-                            app(EmployeeAccountService::class)->requestProvisioning($record, $data['note'] ?? null);
-                            Notification::make()
-                                ->title(UiText::get('notifications.account_request_sent', 'Đã gửi yêu cầu cấp tài khoản'))
-                                ->body(UiText::get('notifications.account_request_sent_body', 'Quản trị viên tài khoản có thể xem và xử lý yêu cầu này trong danh sách Người dùng.'))
-                                ->success()
-                                ->send();
+                            $adminRecipients = app(EmployeeAccountService::class)->requestProvisioning(
+                                $record,
+                                $data['note'] ?? null,
+                                $data['requested_email'] ?? null,
+                            );
+
+                            $feedback = Notification::make()
+                                ->title(UiText::get('notifications.account_request_sent', 'Account request sent'))
+                                ->body($adminRecipients > 0
+                                    ? UiText::get('notifications.account_request_sent_body', 'The request was recorded and sent to an account administrator for processing.')
+                                    : UiText::get('notifications.account_request_saved_no_admin', 'The request was saved, but no account administrator is currently eligible to receive the notification.'))
+                                ->persistent();
+
+                            if ($adminRecipients > 0) {
+                                $feedback->success();
+                            } else {
+                                $feedback->warning();
+                            }
+
+                            $feedback->send();
                         })
                         ->visible(fn (Employee $record): bool => app(HumanResourceAuthorization::class)->allows('hr.manage')
                             && app(EmployeeAccountService::class)->available()
@@ -248,21 +270,35 @@ class EmployeeResource extends Resource
                             Toggle::make('confirm_identity_mismatch')
                                 ->label(UiText::get('fields.confirm_identity_mismatch', 'Tôi đã xác minh đúng chủ tài khoản'))
                                 ->helperText(UiText::get('fields.confirm_identity_mismatch_help', 'Chỉ bật khi tài khoản được đánh dấu cần xác minh. Nếu HR không có quyền quản trị tài khoản, hệ thống sẽ tự gửi yêu cầu để Admin đồng bộ lại tên/email.')),
+                            Textarea::make('note')
+                                ->label(UiText::get('fields.request_note', 'Note for administrator'))
+                                ->helperText(UiText::get('fields.link_note_help', 'Record how the identity was verified or anything the Account administrator should know before synchronization.'))
+                                ->rows(3)
+                                ->maxLength(1000),
                         ])
                         ->action(function (Employee $record, array $data): void {
                             $result = app(EmployeeAccountService::class)->linkExisting(
                                 $record,
                                 (int) $data['account_user_id'],
                                 (bool) ($data['confirm_identity_mismatch'] ?? false),
+                                $data['note'] ?? null,
                             );
 
-                            Notification::make()
-                                ->title(UiText::get('notifications.account_linked', 'Đã liên kết tài khoản'))
+                            $feedback = Notification::make()
+                                ->title(UiText::get('notifications.account_linked', 'Account linked'))
                                 ->body($result['admin_request_created']
-                                    ? UiText::get('notifications.account_identity_request_created', 'Thông tin tài khoản khác với hồ sơ nhân viên. Hệ thống đã gửi yêu cầu cho quản trị viên tài khoản để đồng bộ danh tính.')
-                                    : UiText::get('notifications.account_linked_body', 'Tài khoản đã được gắn với nhân viên này.'))
-                                ->success()
-                                ->send();
+                                    ? ((int) ($result['admin_recipient_count'] ?? 0) > 0
+                                        ? UiText::get('notifications.account_identity_request_created', 'The account identity differs from the employee record. A synchronization request was sent to an account administrator.')
+                                        : UiText::get('notifications.account_identity_request_saved_no_admin', 'The account was linked, but no account administrator is currently eligible to receive the synchronization request.'))
+                                    : UiText::get('notifications.account_linked_body', 'The account is now linked to this employee.'));
+
+                            if ($result['admin_request_created'] && (int) ($result['admin_recipient_count'] ?? 0) === 0) {
+                                $feedback->warning()->persistent();
+                            } else {
+                                $feedback->success();
+                            }
+
+                            $feedback->send();
                         })
                         ->visible(fn (Employee $record): bool => app(HumanResourceAuthorization::class)->allows('hr.manage')
                             && app(EmployeeAccountService::class)->available()

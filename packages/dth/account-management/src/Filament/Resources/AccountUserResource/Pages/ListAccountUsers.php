@@ -9,8 +9,11 @@ use Dth\AccountManagement\Support\AccountAuthorization;
 use Dth\AccountManagement\Support\UiText;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ListAccountUsers extends ListRecords
 {
@@ -44,4 +47,36 @@ class ListAccountUsers extends ListRecords
                 ->visible(fn (): bool => app(AccountAuthorization::class)->allows('accounts.users.manage')),
         ];
     }
+    public function synchronizeHrIdentityRequest(int $employeeId): void
+    {
+        abort_unless(app(AccountAuthorization::class)->allows('accounts.users.manage'), 403);
+
+        try {
+            app(EmployeeLinkService::class)->synchronizeIdentityRequest($employeeId);
+
+            Notification::make()
+                ->success()
+                ->title(UiText::get('hr_requests.sync_completed', 'Đã đồng bộ và hoàn tất yêu cầu'))
+                ->body(UiText::get('hr_requests.sync_completed_body', 'Thông tin tài khoản đã được đồng bộ theo hồ sơ Nhân sự. Người gửi yêu cầu đã được thông báo kết quả.'))
+                ->send();
+
+            $this->dispatch('close-modal', id: 'sync-hr-identity-'.$employeeId);
+        } catch (ValidationException $exception) {
+            Notification::make()
+                ->danger()
+                ->title(UiText::get('hr_requests.sync_failed', 'Không thể hoàn tất yêu cầu'))
+                ->body(collect($exception->errors())->flatten()->first() ?: $exception->getMessage())
+                ->persistent()
+                ->send();
+        } catch (Throwable $exception) {
+            report($exception);
+            Notification::make()
+                ->danger()
+                ->title(UiText::get('hr_requests.sync_failed', 'Không thể hoàn tất yêu cầu'))
+                ->body(UiText::get('hr_requests.sync_failed_body', 'Đã xảy ra lỗi khi đồng bộ tài khoản. Hãy kiểm tra dữ liệu và thử lại.'))
+                ->persistent()
+                ->send();
+        }
+    }
+
 }

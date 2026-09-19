@@ -3,6 +3,7 @@
 namespace Dth\Commercial\Filament\Resources\ServiceResource\Pages;
 
 use Dth\Commercial\Filament\Resources\ServiceResource;
+use Dth\Commercial\Support\PageHeading;
 use Dth\Commercial\Support\UiText;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
@@ -13,7 +14,7 @@ class EditService extends EditRecord
 
     public function getTitle(): string|Htmlable
     {
-        return UiText::get('pages.services.edit_title', 'Edit service');
+        return PageHeading::make(UiText::get('pages.services.edit_title', 'Edit service'), ServiceResource::NAVIGATION_ICON);
     }
 
     public function getSubheading(): string|Htmlable|null

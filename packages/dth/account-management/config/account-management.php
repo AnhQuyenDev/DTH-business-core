@@ -53,6 +53,13 @@ return [
         'accounts.sessions.manage' => ['accounts.view'],
         'accounts.settings.manage' => ['accounts.view'],
 
+        'notifications.send.roles' => ['notifications.send'],
+        'notifications.send.groups' => ['notifications.send'],
+        'notifications.send.departments' => ['notifications.send'],
+        'notifications.send.broadcast' => ['notifications.send'],
+        'notifications.templates.manage' => ['notifications.send'],
+        'notifications.settings.manage' => ['notifications.send'],
+
         'commercial.manage-catalog' => ['commercial.view'],
         'commercial.manage-opportunities' => ['commercial.view'],
         'commercial.reports' => ['commercial.view'],
@@ -88,6 +95,15 @@ return [
         'accounts.sessions.manage' => ['module' => 'accounts', 'name' => 'Quản lý phiên đăng nhập', 'description' => 'Xem và thu hồi phiên đăng nhập.'],
         'accounts.audit.view' => ['module' => 'accounts', 'name' => 'Xem nhật ký hoạt động', 'description' => 'Xem audit log và sự kiện bảo mật.'],
         'accounts.settings.manage' => ['module' => 'accounts', 'name' => 'Cấu hình truy cập', 'description' => 'Thay đổi chính sách truy cập và bảo mật.'],
+
+        'notifications.send' => ['module' => 'notifications', 'name' => 'Gửi thông báo', 'description' => 'Gửi thông báo thủ công tới người dùng cụ thể; là quyền nền cho các quyền gửi mở rộng.'],
+        'notifications.send.roles' => ['module' => 'notifications', 'name' => 'Gửi thông báo theo vai trò', 'description' => 'Chọn một hoặc nhiều vai trò làm tập người nhận.'],
+        'notifications.send.groups' => ['module' => 'notifications', 'name' => 'Gửi thông báo theo nhóm & đơn vị', 'description' => 'Chọn nhóm hoặc đơn vị làm tập người nhận.'],
+        'notifications.send.departments' => ['module' => 'notifications', 'name' => 'Gửi thông báo theo phòng ban', 'description' => 'Chọn phòng ban HR làm tập người nhận.'],
+        'notifications.send.broadcast' => ['module' => 'notifications', 'name' => 'Gửi thông báo toàn hệ thống', 'description' => 'Gửi broadcast tới toàn bộ tài khoản đang hoạt động.'],
+        'notifications.audit.view' => ['module' => 'notifications', 'name' => 'Xem nhật ký gửi thông báo', 'description' => 'Xem trạng thái phân phối In-app và Email của thông báo.'],
+        'notifications.templates.manage' => ['module' => 'notifications', 'name' => 'Quản lý mẫu thông báo', 'description' => 'Quản lý nội dung mẫu và biến dữ liệu của thông báo hệ thống.'],
+        'notifications.settings.manage' => ['module' => 'notifications', 'name' => 'Cấu hình Notification Center', 'description' => 'Quản lý thiết lập hệ thống và thông báo bắt buộc.'],
 
         'commercial.view' => ['module' => 'commercial', 'name' => 'Xem Dịch vụ & Kinh doanh', 'description' => 'Truy cập module Commercial.'],
         'commercial.manage-catalog' => ['module' => 'commercial', 'name' => 'Quản lý danh mục Commercial', 'description' => 'Quản lý dịch vụ và gói dịch vụ.'],

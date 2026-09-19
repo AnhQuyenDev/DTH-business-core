@@ -1,10 +1,10 @@
 @php
     $path = trim(request()->path(), '/');
-    $segments = ['commercial-overview', 'commercial-services', 'commercial-service-packages', 'commercial-opportunities'];
+    $segments = ['commercial-overview', 'commercial-services', 'commercial-products', 'commercial-service-packages', 'commercial-opportunities'];
     $isCommercialPage = collect($segments)->contains(fn (string $segment): bool => str_contains($path, $segment));
     $isCommercialFormPage = $isCommercialPage && (
         str_ends_with($path, '/create') ||
-        (bool) preg_match('#commercial-(services|service-packages|opportunities)/[^/]+/edit$#', $path)
+        (bool) preg_match('#commercial-(services|products|service-packages|opportunities)/[^/]+/edit$#', $path)
     );
 @endphp
 
@@ -57,6 +57,35 @@
         line-height: 1.1 !important;
         font-weight: 820 !important;
         letter-spacing: -.04em !important;
+    }
+
+
+    /* Page headings reuse the exact navigation icon of the current Commercial function. */
+    .dth-com-page-title {
+        display: inline-flex;
+        align-items: center;
+        gap: .68rem;
+        min-width: 0;
+    }
+
+    .dth-com-page-title__icon {
+        display: inline-flex;
+        width: 1.72rem;
+        height: 1.72rem;
+        flex: 0 0 1.72rem;
+        align-items: center;
+        justify-content: center;
+        color: rgb(var(--primary-600, 8 113 120));
+    }
+
+    .dth-com-page-title__icon svg {
+        width: 100%;
+        height: 100%;
+        stroke-width: 1.8;
+    }
+
+    .dth-com-page-title__text {
+        min-width: 0;
     }
 
     .fi-header-subheading {
@@ -1001,7 +1030,7 @@
 
     .dth-com-trend-summary {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: .55rem;
         padding: .1rem 1rem 1rem;
     }

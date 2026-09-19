@@ -10,7 +10,19 @@ final class PermissionRegistryService
 {
     public function definitions(): array
     {
-        return (array) config('dth-account-management.permissions', []);
+        $definitions = (array) config('dth-account-management.permissions', []);
+
+        // Optional module permissions remain in Account Management's stable registry,
+        // but disappear from roles/gates when that module is detached or disabled.
+        if (! (bool) config('dth-notification-center.enabled', false)) {
+            $definitions = array_filter(
+                $definitions,
+                fn (array $definition, string $key): bool => ! str_starts_with($key, 'notifications.'),
+                ARRAY_FILTER_USE_BOTH,
+            );
+        }
+
+        return $definitions;
     }
 
     public function dependencies(): array
@@ -39,9 +51,23 @@ final class PermissionRegistryService
     public function groupedOptions(): array
     {
         if (! Schema::hasTable('account_permissions')) return [];
-        return AccountPermission::query()->orderBy('module')->orderBy('name')->get()
+        $keys = array_keys($this->definitions());
+        if ($keys === []) return [];
+
+        return AccountPermission::query()->whereIn('key', $keys)->orderBy('module')->orderBy('name')->get()
             ->groupBy('module')
             ->map(fn ($items) => $items->mapWithKeys(fn (AccountPermission $item) => [$item->id => UiText::permission($item->key, $item->name)])->all())
+            ->all();
+    }
+
+    /** @return array<string, string> */
+    public function moduleOptions(): array
+    {
+        return collect($this->definitions())
+            ->map(fn (array $definition): string => (string) ($definition['module'] ?? 'core'))
+            ->unique()
+            ->sort()
+            ->mapWithKeys(fn (string $module): array => [$module => UiText::get('modules.'.$module, str($module)->replace('-', ' ')->headline()->toString())])
             ->all();
     }
 
